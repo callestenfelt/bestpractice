@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS sub_considerations (
   created_at       TEXT NOT NULL,
   last_updated     TEXT NOT NULL,
   superseded_by    INTEGER REFERENCES sub_considerations(id),
+  -- 1-10 from Groq scoring; NULL for items that didn't enter via the queue.
+  relevance_score  INTEGER,
   UNIQUE (consideration_id, slug)
 );
 CREATE INDEX IF NOT EXISTS idx_subs_cons ON sub_considerations(consideration_id);

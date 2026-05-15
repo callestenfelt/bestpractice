@@ -336,13 +336,113 @@ def search():
     )
 
 
+def _format_relative(iso: str | None) -> str:
+    if not iso:
+        return "never"
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        return iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    s = int((datetime.now(timezone.utc) - dt).total_seconds())
+    if s < 60:
+        return "just now"
+    if s < 3600:
+        return f"{s // 60}m ago"
+    if s < 86400:
+        return f"{s // 3600}h ago"
+    d = s // 86400
+    if d == 1:
+        return "yesterday"
+    if d < 7:
+        return f"{d}d ago"
+    return dt.date().isoformat()
+
+
+def load_queue_view(db: sqlite3.Connection):
+    rows = db.execute(
+        """SELECT s.id, s.slug, s.one_liner, s.body, s.relevance_score,
+                  s.source_name, s.source_date, s.source_url, s.source_title,
+                  c.slug AS cons_slug, c.title AS cons_title,
+                  c.parent_type, c.parent_slug, c.group_label
+             FROM sub_considerations s
+             JOIN considerations c ON c.id = s.consideration_id
+            WHERE s.status = 'pending'
+            ORDER BY COALESCE(s.relevance_score, 0) DESC, s.created_at DESC"""
+    ).fetchall()
+
+    sub_ids = [r["id"] for r in rows]
+    phases_by_sub: dict[int, list[str]] = {sid: [] for sid in sub_ids}
+    if sub_ids:
+        ph = ",".join("?" * len(sub_ids))
+        for row in db.execute(
+            f"""SELECT sub_consideration_id, phase_slug
+                  FROM sub_consideration_phases
+                 WHERE sub_consideration_id IN ({ph})
+                 ORDER BY sub_consideration_id, position""",
+            sub_ids,
+        ).fetchall():
+            phases_by_sub[row["sub_consideration_id"]].append(row["phase_slug"])
+
+    page_types = {r["slug"]: r["label"] for r in db.execute(
+        "SELECT slug, label FROM page_types"
+    ).fetchall()}
+    components = {r["slug"]: r["label"] for r in db.execute(
+        "SELECT slug, label FROM components"
+    ).fetchall()}
+
+    items = []
+    for r in rows:
+        if r["parent_type"] == "page_type":
+            parent_label = page_types.get(r["parent_slug"], r["parent_slug"])
+        else:
+            parent_label = components.get(r["parent_slug"], r["parent_slug"])
+        bits = [parent_label]
+        if r["group_label"]:
+            bits.append(r["group_label"])
+        bits.append(r["cons_title"])
+        items.append({
+            "id": r["id"],
+            "slug": r["slug"],
+            "one_liner": r["one_liner"],
+            "body": r["body"],
+            "score": r["relevance_score"],
+            "source_name": r["source_name"],
+            "source_date": r["source_date"],
+            "source_url": r["source_url"],
+            "source_title": r["source_title"],
+            "phases": phases_by_sub.get(r["id"], []),
+            "cons_breadcrumb": " · ".join(bits),
+        })
+
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    approved_week = db.execute(
+        "SELECT COUNT(*) FROM sub_considerations WHERE status='approved' AND last_updated >= ?",
+        (week_ago,),
+    ).fetchone()[0]
+    rejected_count = db.execute(
+        "SELECT COUNT(*) FROM sub_considerations WHERE status='rejected'"
+    ).fetchone()[0]
+
+    last_sync_row = db.execute(
+        "SELECT MAX(last_collected) AS lc FROM sources WHERE status='active'"
+    ).fetchone()
+    last_sync = _format_relative(last_sync_row["lc"] if last_sync_row else None)
+
+    return {
+        "items": items,
+        "pending_count": len(items),
+        "approved_week": approved_week,
+        "rejected_count": rejected_count,
+        "last_sync": last_sync,
+    }
+
+
 @app.route("/admin/queue")
 def admin_queue():
-    return render_template(
-        "placeholder.html",
-        heading="Review queue",
-        message="Admin queue lands in a later slice. Ingestion + Groq scoring write pending items here for approval.",
-    )
+    view = load_queue_view(get_db())
+    return render_template("admin/queue.html", **view)
 
 
 @app.route("/admin/sources")

@@ -111,6 +111,22 @@ def now_iso() -> str:
 
 def apply_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    migrate(conn)
+
+
+def migrate(conn: sqlite3.Connection) -> None:
+    """Idempotent column additions for DBs that predate a schema change.
+
+    CREATE TABLE IF NOT EXISTS doesn't touch existing tables, so any new
+    column added to schema.sql needs an explicit ALTER here for prod boxes
+    that already have the file.
+    """
+    cur = conn.cursor()
+    # PRAGMA table_info columns: (cid, name, type, notnull, dflt_value, pk)
+    existing = {row[1] for row in cur.execute("PRAGMA table_info(sub_considerations)").fetchall()}
+    if "relevance_score" not in existing:
+        cur.execute("ALTER TABLE sub_considerations ADD COLUMN relevance_score INTEGER")
+    conn.commit()
 
 
 def seed_taxonomies(conn: sqlite3.Connection) -> None:

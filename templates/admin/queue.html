@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Review queue · bestpractice{% endblock %}
+
+{% macro score_dots(score) -%}
+{%- if score -%}
+<span class="qcard__score" title="AI relevance score, 1–10">
+  {%- for i in range(1, 11) -%}{{ '●' if i <= score else '○' }}{%- endfor %} {{ score }}/10
+</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+<div class="shell shell--narrow">
+  <div class="main" style="max-width: none;">
+
+    <div class="page-heading">
+      <div class="page-heading__eyebrow">Admin · queue</div>
+      <h1 class="page-heading__title">Review queue</h1>
+      <p class="page-heading__definition">
+        AI-suggested sub-accordions waiting for editorial approval. Nothing here is visible to readers
+        until you approve it.
+      </p>
+    </div>
+
+    <div class="queue-toolbar">
+      <div class="queue-toolbar__count">
+        <strong>{{ pending_count }}</strong> pending ·
+        <strong>{{ approved_week }}</strong> approved this week ·
+        <strong>{{ rejected_count }}</strong> rejected
+      </div>
+      <div class="queue-toolbar__actions">
+        <span class="btn btn--quiet btn--sm" aria-disabled="true">Last sync: {{ last_sync }}</span>
+      </div>
+    </div>
+
+    {% if not items %}
+      <div class="empty">
+        <div class="empty__title">No pending items.</div>
+        <p class="empty__body">
+          Ingestion and Groq scoring will create pending rows here for editorial approval.
+          Configure feeds in <a href="{{ url_for('admin_sources') }}">Sources</a> once the ingestion pipeline lands.
+        </p>
+      </div>
+    {% else %}
+      <div class="queue-list">
+        {% for item in items %}
+          <article class="qcard" data-sub-id="{{ item.id }}">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                {% if item.source_name %}<strong>{{ item.source_name }}</strong>{% endif %}
+                {% if item.source_name and item.source_date %}<span class="sub__dot" aria-hidden="true"></span>{% endif %}
+                {% if item.source_date %}<span>{{ item.source_date }}</span>{% endif %}
+                {{ score_dots(item.score) }}
+              </div>
+
+              <p class="qcard__one-liner">{{ item.one_liner }}</p>
+
+              {% if item.phases %}
+                <div class="qcard__chips">
+                  {% for p in item.phases %}<span class="chip">{{ p }}</span>{% endfor %}
+                </div>
+              {% endif %}
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <span>{{ item.cons_breadcrumb }}</span>
+              </div>
+
+              {% if item.body %}
+                <div class="qcard__extract">
+                  <span class="qcard__extract-label">Body</span>
+                  {{ item.body|safe }}
+                </div>
+              {% endif %}
+            </div>
+
+            <aside class="qcard__aside" aria-label="Actions">
+              <span class="sr-only">Approve, reject, and edit controls land in Slice C.</span>
+            </aside>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}{% endblock %}
