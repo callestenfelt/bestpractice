@@ -300,15 +300,21 @@ run between them. Locally verified by inserting a synthetic pending row
 9. Regression: `/page-type/article-page` Content-Length still 107695,
    `/search?q=image` still 200.
 
-### How tested — production (pending)
-- Push 1 (queue + migration) deployed via GHA run `25944598945` in
-  ~10s, success. Prod `/admin/queue` will 500 until `python3
-  init_db.py` runs on the VPS to add `relevance_score` (the route
-  SELECTs it). Auto-classifier blocked the SSH; needs explicit user
-  OK before running `ssh root@77.42.40.207 'cd /opt/bestpractice &&
-  python3 init_db.py'`.
-- Push 2 (sources) will be batched with this `nextstep.md` update so
-  one deploy covers everything still missing on prod.
+### How tested — production (passed 2026-05-16)
+- Push 1 (queue + relevance_score migration) deployed via GHA
+  `25944598945` in ~10s, success.
+- Push 2 (sources + nextstep + archive) deployed via GHA `25944916410`
+  in ~10s, success.
+- `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
+  added the `relevance_score` column to the prod DB. Output: `(skip)
+  article-page already has 16 considerations`, `FTS rows: 59`. Idempotent
+  — the migration isn't re-run on subsequent invocations.
+- Prod verification from the VPS:
+  `curl -sI http://localhost:5681/admin/queue` → `HTTP/1.1 200 OK`
+  (`Server: Werkzeug/3.1.5 Python/3.10.12`); `/admin/sources` → 200.
+- Sibling regression held: amusealot.com 200, bubblesdontcry.com 200,
+  staging.bubblesdontcry.com 401, best.amusealot.com 401 — all
+  unchanged from Session 4.
 
 ### Out of scope (parked — Session 6 starts here)
 - `/admin/queue` write paths: approve / reject / edit-and-approve.
