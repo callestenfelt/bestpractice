@@ -179,13 +179,160 @@ def page_type(slug):
     return render_template("page_type.html", page=page, phases=phases, groups=groups)
 
 
+def _fts_quote(term: str) -> str:
+    return '"' + term.replace('"', '""') + '"'
+
+
+def expand_synonyms(db: sqlite3.Connection, q: str) -> list[str]:
+    """Return alternative search terms derived from the synonyms table.
+
+    Matches the whole query case-insensitively against (a) synonym text and
+    (b) entity labels (page_types, components, phases). For each hit, adds
+    the entity's other names (label + other synonyms) as expansions. The
+    user's own query is never returned as an expansion.
+    """
+    q_lower = q.lower()
+    expansions: set[str] = set()
+    matched_entities: set[tuple[str, str]] = set()
+
+    for row in db.execute(
+        "SELECT entity_type, entity_slug FROM synonyms WHERE LOWER(synonym) = ?",
+        (q_lower,),
+    ).fetchall():
+        matched_entities.add((row["entity_type"], row["entity_slug"]))
+
+    for table, etype in (("page_types", "page_type"), ("components", "component"), ("phases", "phase")):
+        for row in db.execute(
+            f"SELECT slug FROM {table} WHERE LOWER(label) = ?", (q_lower,)
+        ).fetchall():
+            matched_entities.add((etype, row["slug"]))
+
+    for etype, eslug in matched_entities:
+        table = {"page_type": "page_types", "component": "components", "phase": "phases"}[etype]
+        label_row = db.execute(
+            f"SELECT label FROM {table} WHERE slug = ?", (eslug,)
+        ).fetchone()
+        if label_row and label_row["label"].lower() != q_lower:
+            expansions.add(label_row["label"])
+        for syn_row in db.execute(
+            "SELECT synonym FROM synonyms WHERE entity_type = ? AND entity_slug = ?",
+            (etype, eslug),
+        ).fetchall():
+            if syn_row["synonym"].lower() != q_lower:
+                expansions.add(syn_row["synonym"])
+
+    return sorted(expansions, key=str.lower)
+
+
+def run_search(db: sqlite3.Connection, q: str):
+    expansions = expand_synonyms(db, q)
+    match_parts = [_fts_quote(q)] + [_fts_quote(e) for e in expansions]
+    match_expr = " OR ".join(match_parts)
+
+    rows = db.execute(
+        """SELECT s.id, s.slug, s.one_liner,
+                  c.slug AS cons_slug, c.title AS cons_title,
+                  c.parent_type, c.parent_slug, c.group_label,
+                  snippet(subs_fts, 1, '<mark>', '</mark>', '…', 18) AS body_snippet,
+                  snippet(subs_fts, 0, '<mark>', '</mark>', '…', 12) AS one_liner_snippet
+             FROM subs_fts
+             JOIN sub_considerations s ON s.id = subs_fts.rowid
+             JOIN considerations c ON c.id = s.consideration_id
+            WHERE subs_fts MATCH ?
+              AND s.status = 'approved'
+              AND c.status = 'approved'
+            ORDER BY rank""",
+        (match_expr,),
+    ).fetchall()
+
+    # Resolve human labels for parents (page types, components).
+    page_type_labels = {r["slug"]: (r["label"], r["display_order"]) for r in db.execute(
+        "SELECT slug, label, display_order FROM page_types"
+    ).fetchall()}
+    component_labels = {r["slug"]: (r["label"], r["display_order"]) for r in db.execute(
+        "SELECT slug, label, display_order FROM components"
+    ).fetchall()}
+
+    def group_key(row):
+        ptype = row["parent_type"]
+        pslug = row["parent_slug"]
+        if ptype == "page_type":
+            label, order = page_type_labels.get(pslug, (pslug, 999))
+            # Site-wide is rendered as its own kind, ordered after page types.
+            if pslug == "site-wide":
+                return ("site-wide", pslug, "Site-wide", "Cross-cutting", 10_000)
+            return ("page_type", pslug, label, "Page type", order)
+        if ptype == "component":
+            label, order = component_labels.get(pslug, (pslug, 999))
+            return ("component", pslug, label, "Component", 1_000 + order)
+        return ("other", pslug, pslug, "", 100_000)
+
+    groups: dict[tuple, dict] = {}
+    for r in rows:
+        kind, pslug, plabel, kind_label, order = group_key(r)
+        key = (order, kind, pslug)
+        if key not in groups:
+            groups[key] = {
+                "kind": kind,
+                "kind_label": kind_label,
+                "parent_slug": pslug,
+                "parent_label": plabel,
+                "results": [],
+            }
+        # Prefer the body snippet when FTS injected a highlight there;
+        # otherwise fall back to the one-liner snippet, otherwise the
+        # raw one-liner. Snippet() returns the text with no <mark> when
+        # the column had no hits.
+        body_snip = r["body_snippet"]
+        ol_snip = r["one_liner_snippet"]
+        has_body_hit = "<mark>" in (body_snip or "")
+        snippet = body_snip if has_body_hit else ol_snip
+        groups[key]["results"].append({
+            "cons_slug": r["cons_slug"],
+            "sub_slug": r["slug"],
+            "cons_title": r["cons_title"],
+            "group_label": r["group_label"],
+            "one_liner": r["one_liner"],
+            "one_liner_html": ol_snip if "<mark>" in (ol_snip or "") else r["one_liner"],
+            "snippet": snippet,
+            "parent_label": plabel,
+        })
+
+    ordered_groups = [groups[k] for k in sorted(groups.keys())]
+    total = len(rows)
+    page_type_hits = sum(1 for g in ordered_groups if g["kind"] == "page_type")
+    component_hits = sum(1 for g in ordered_groups if g["kind"] == "component")
+    return ordered_groups, total, page_type_hits, component_hits, expansions
+
+
 @app.route("/search")
 def search():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return render_template(
+            "search.html",
+            q="",
+            groups=[],
+            total=0,
+            page_type_hits=0,
+            component_hits=0,
+            expansions=[],
+        )
+    db = get_db()
+    try:
+        groups, total, pt_hits, comp_hits, expansions = run_search(db, q)
+    except sqlite3.OperationalError:
+        # FTS rejects some special-char inputs; treat as no results rather
+        # than 500ing the page.
+        groups, total, pt_hits, comp_hits, expansions = [], 0, 0, 0, []
     return render_template(
-        "placeholder.html",
-        heading="Search",
-        message="Search lands in a later slice. The header form already points here so it's wired when the route comes online.",
-        q=request.args.get("q", ""),
+        "search.html",
+        q=q,
+        groups=groups,
+        total=total,
+        page_type_hits=pt_hits,
+        component_hits=comp_hits,
+        expansions=expansions,
     )
 
 

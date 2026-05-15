@@ -91,3 +91,14 @@ CREATE TABLE IF NOT EXISTS sources (
   config_json    TEXT NOT NULL DEFAULT '{}',
   created_at     TEXT NOT NULL
 );
+
+-- Full-text search over approved sub_considerations + parent consideration
+-- title/intro. rowid = sub_considerations.id. Populated by init_db.py
+-- (rebuilt on every run) and, later, by admin write paths.
+CREATE VIRTUAL TABLE IF NOT EXISTS subs_fts USING fts5(
+  one_liner,
+  body,
+  cons_title,
+  cons_intro,
+  tokenize = 'unicode61 remove_diacritics 2'
+);

@@ -220,6 +220,21 @@ def load_article_page_fixture(conn: sqlite3.Connection) -> int:
     return inserted_cons
 
 
+def rebuild_fts(conn: sqlite3.Connection) -> int:
+    cur = conn.cursor()
+    cur.execute("DELETE FROM subs_fts")
+    cur.execute(
+        """INSERT INTO subs_fts (rowid, one_liner, body, cons_title, cons_intro)
+           SELECT s.id, s.one_liner, s.body, c.title, c.intro
+             FROM sub_considerations s
+             JOIN considerations c ON c.id = s.consideration_id
+            WHERE s.status = 'approved' AND c.status = 'approved'"""
+    )
+    count = cur.execute("SELECT COUNT(*) FROM subs_fts").fetchone()[0]
+    conn.commit()
+    return count
+
+
 def main() -> None:
     db_path = Path(os.environ.get("BESTPRACTICE_DB", str(DEFAULT_DB)))
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -234,6 +249,9 @@ def main() -> None:
         seed_taxonomies(conn)
         print("loading article-page fixture...")
         load_article_page_fixture(conn)
+        print("rebuilding FTS...")
+        n = rebuild_fts(conn)
+        print(f"  FTS rows: {n}")
     finally:
         conn.close()
     print("done.")

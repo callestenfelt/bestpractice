@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}{{ q }} · Search · bestpractice{% else %}Search · bestpractice{% endif %}{% endblock %}
+{% block content %}
+<div class="shell shell--narrow">
+  <div class="main" style="max-width: none;">
+
+    <div class="page-heading">
+      <div class="page-heading__eyebrow">Search results</div>
+      <h1 class="page-heading__title">{% if q %}&ldquo;<span data-role="query-echo">{{ q }}</span>&rdquo;{% else %}Search{% endif %}</h1>
+    </div>
+
+    {% if not q %}
+      <div class="empty">
+        <div class="empty__title">Enter a query in the header to search.</div>
+        <p class="empty__body">Search runs over consideration titles, sub-consideration one-liners, body content, and synonyms.</p>
+        <ul class="empty__list">
+          <li>Browse <a href="{{ url_for('page_type', slug='article-page') }}">page types</a></li>
+        </ul>
+      </div>
+    {% elif total == 0 %}
+      <div class="empty">
+        <div class="empty__title">No matches for &ldquo;{{ q }}&rdquo;.</div>
+        <p class="empty__body">Search runs over titles, one-liners, body content, and synonyms. Try a broader term, or browse from the start page.</p>
+        <ul class="empty__list">
+          <li>Try <code>image</code> instead of <code>img</code></li>
+          <li>Try <code>navigation</code> instead of <code>nav</code></li>
+          <li>Browse <a href="{{ url_for('page_type', slug='article-page') }}">page types</a></li>
+        </ul>
+      </div>
+    {% else %}
+      <p class="results-meta">
+        <strong>{{ total }}</strong> match{{ '' if total == 1 else 'es' }}
+        {% if page_type_hits or component_hits %}
+          in
+          {% if page_type_hits %}<strong>{{ page_type_hits }}</strong> page type{{ '' if page_type_hits == 1 else 's' }}{% endif %}
+          {% if page_type_hits and component_hits %} and {% endif %}
+          {% if component_hits %}<strong>{{ component_hits }}</strong> component{{ '' if component_hits == 1 else 's' }}{% endif %}.
+        {% endif %}
+        {% if expansions %}
+          Includes synonym matches for
+          {% for e in expansions %}<em>{{ e }}</em>{% if not loop.last %}, {% endif %}{% endfor %}.
+        {% endif %}
+      </p>
+
+      {% for group in groups %}
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              {{ group.parent_label }}
+              <span class="chip chip--ghost">{{ group.results|length }} hit{{ '' if group.results|length == 1 else 's' }}</span>
+            </div>
+            <span class="result-group__kind">{{ group.kind_label }}</span>
+          </header>
+
+          {% for r in group.results %}
+            {% if group.kind == 'page_type' %}
+              {% set href = url_for('page_type', slug=group.parent_slug) ~ '#' ~ r.cons_slug ~ '.' ~ r.sub_slug %}
+            {% elif group.kind == 'site-wide' %}
+              {% set href = url_for('page_type', slug='article-page') ~ '#' ~ r.cons_slug ~ '.' ~ r.sub_slug %}
+            {% else %}
+              {% set href = '#' %}
+            {% endif %}
+            <a class="result" href="{{ href }}">
+              <div class="result__breadcrumb">
+                {{ group.parent_label }}
+                {% if r.group_label %}<span class="sep">›</span> {{ r.group_label }}{% endif %}
+                <span class="sep">›</span> {{ r.cons_title }}
+              </div>
+              <div class="result__title">{{ r.one_liner_html|safe }}</div>
+              {% if r.snippet %}
+                <div class="result__snippet">{{ r.snippet|safe }}</div>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </section>
+      {% endfor %}
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+{% endblock %}
