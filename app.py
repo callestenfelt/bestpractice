@@ -14,6 +14,9 @@ DB_PATH = Path(os.environ.get("BESTPRACTICE_DB", str(ROOT / "data" / "bestpracti
 NEW_WINDOW = timedelta(days=14)
 
 app = Flask(__name__, root_path=str(ROOT))
+# Single-user admin tool; cheap to revalidate. Avoids the 12-hour stale-cache
+# window where users see old JS/CSS after a deploy until they hard-refresh.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 
 def get_db() -> sqlite3.Connection:
