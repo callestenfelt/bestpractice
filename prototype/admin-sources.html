@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sources · bestpractice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+</head>
+<body>
+<div class="app">
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-header__brand" href="index.html">
+        <span class="site-header__brand-mark" aria-hidden="true"></span>
+        bestpractice
+      </a>
+      <form class="search-form search" role="search" action="search.html" method="get">
+        <svg class="search__icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m14 14-3.2-3.2"/></svg>
+        <input class="search__input" type="search" name="q" placeholder="Search…" aria-label="Search" />
+        <kbd class="search__kbd">⌘K</kbd>
+      </form>
+      <nav class="site-header__nav" aria-label="Admin">
+        <a href="admin-queue.html"><span class="label">Review queue</span></a>
+        <a href="admin-sources.html" aria-current="page"><span class="label">Sources</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="shell shell--narrow">
+      <div class="main" style="max-width: none;">
+
+        <div class="page-heading">
+          <div class="page-heading__eyebrow">Admin · sources</div>
+          <h1 class="page-heading__title">Sources</h1>
+          <p class="page-heading__definition">
+            Feeds and datasets bestpractice ingests from. RSS sources poll on schedule;
+            structured sources sync weekly.
+          </p>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table" aria-label="Ingestion sources">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th class="col-hide-mobile">URL</th>
+                <th>Status</th>
+                <th class="col-hide-mobile">Last collected</th>
+                <th class="col-num">Items</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>web.dev</strong></td>
+                <td><span class="chip">rss</span></td>
+                <td class="col-url col-hide-mobile">https://web.dev/rss.xml</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-15 · 06:00</td>
+                <td class="col-num">214</td>
+                <td><label class="sr-only" for="t-1">Toggle active</label><input id="t-1" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>Nielsen Norman Group</strong></td>
+                <td><span class="chip">rss</span></td>
+                <td class="col-url col-hide-mobile">https://www.nngroup.com/feed/rss/</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-15 · 06:00</td>
+                <td class="col-num">186</td>
+                <td><label class="sr-only" for="t-2">Toggle active</label><input id="t-2" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>The A11y Project</strong></td>
+                <td><span class="chip">rss</span></td>
+                <td class="col-url col-hide-mobile">https://www.a11yproject.com/feed.xml</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-15 · 06:00</td>
+                <td class="col-num">94</td>
+                <td><label class="sr-only" for="t-3">Toggle active</label><input id="t-3" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>caniuse</strong></td>
+                <td><span class="chip">structured</span></td>
+                <td class="col-url col-hide-mobile">github.com/Fyrd/caniuse</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-12 · 02:00</td>
+                <td class="col-num">643</td>
+                <td><label class="sr-only" for="t-4">Toggle active</label><input id="t-4" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>WCAG 2.2</strong></td>
+                <td><span class="chip">structured</span></td>
+                <td class="col-url col-hide-mobile">w3.org/TR/WCAG22/wcag22.jsonld</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-12 · 02:00</td>
+                <td class="col-num">87</td>
+                <td><label class="sr-only" for="t-5">Toggle active</label><input id="t-5" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>MDN browser-compat-data</strong></td>
+                <td><span class="chip">structured</span></td>
+                <td class="col-url col-hide-mobile">github.com/mdn/browser-compat-data</td>
+                <td><span class="status status--error">Error · timeout</span></td>
+                <td class="col-hide-mobile">2026-05-10 · 02:00</td>
+                <td class="col-num">1,402</td>
+                <td><label class="sr-only" for="t-6">Toggle active</label><input id="t-6" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>Schema.org WebPage</strong></td>
+                <td><span class="chip">structured</span></td>
+                <td class="col-url col-hide-mobile">schema.org/version/latest/schemaorg-current-https.jsonld</td>
+                <td><span class="status status--active">Active</span></td>
+                <td class="col-hide-mobile">2026-05-08 · 02:00</td>
+                <td class="col-num">112</td>
+                <td><label class="sr-only" for="t-7">Toggle active</label><input id="t-7" class="toggle" type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td><strong>Adrian Roselli</strong></td>
+                <td><span class="chip">rss</span></td>
+                <td class="col-url col-hide-mobile">adrianroselli.com/feed</td>
+                <td><span class="status status--paused">Paused</span></td>
+                <td class="col-hide-mobile">2026-03-22 · 06:00</td>
+                <td class="col-num">31</td>
+                <td><label class="sr-only" for="t-8">Toggle active</label><input id="t-8" class="toggle" type="checkbox" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <form class="form" aria-label="Add source">
+          <h2 class="form__title">Add source</h2>
+          <p class="form__subtitle">Adds the source in <em>active</em> status. First collection runs on the next scheduled tick.</p>
+          <div class="form__grid">
+            <div class="field">
+              <label class="field__label" for="src-name">Name</label>
+              <input id="src-name" class="input" placeholder="Smashing Magazine" />
+            </div>
+            <div class="field">
+              <label class="field__label" for="src-type">Type</label>
+              <select id="src-type" class="select input" style="height: 32px; padding-right: 26px;">
+                <option>RSS</option>
+                <option>Structured (JSON / JSON-LD)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field__label" for="src-url">URL</label>
+              <input id="src-url" class="input" placeholder="https://www.smashingmagazine.com/feed/" />
+            </div>
+            <button class="btn btn--primary" type="button" style="height: 32px;">Add source</button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="js/search.js"></script>
+</body>
+</html>

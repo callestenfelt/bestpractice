@@ -1,0 +1,80 @@
+/* tokens.css — original design tokens.
+   Build agent: swap these for vendored Radix Themes CSS at integration time.
+   Until then, this provides a self-contained palette and scale. */
+
+:root {
+  /* ---- gray scale (cool neutrals, 12 steps) ---- */
+  --gray-1:  #fcfcfd;  /* app background */
+  --gray-2:  #f8f9fa;  /* subtle surface */
+  --gray-3:  #f1f2f4;  /* hover surface */
+  --gray-4:  #eaecef;  /* active surface */
+  --gray-5:  #e3e5e9;  /* hairline strong */
+  --gray-6:  #d9dce1;  /* hairline */
+  --gray-7:  #c8ccd3;  /* border interactive */
+  --gray-8:  #b1b6bf;  /* border interactive hover */
+  --gray-9:  #8a8f99;  /* solid muted */
+  --gray-10: #71757e;  /* solid muted hover */
+  --gray-11: #555962;  /* muted text */
+  --gray-12: #1c1e22;  /* primary text */
+
+  /* ---- blue accent (used only for "new" + active states) ---- */
+  --blue-2:  #f0f6ff;  /* tint background */
+  --blue-3:  #e2edff;
+  --blue-6:  #b6cdff;
+  --blue-9:  #2a6df4;  /* primary blue */
+  --blue-10: #1f5cdc;
+  --blue-11: #1a4bb8;  /* blue text on white */
+
+  /* ---- focus ---- */
+  --focus-ring: 0 0 0 2px var(--blue-9), 0 0 0 4px rgba(42, 109, 244, 0.18);
+
+  /* ---- type ---- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* fluid-ish but disciplined sizes (px) */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;   /* secondary body */
+  --fs-15: 15px;   /* primary body */
+  --fs-16: 16px;
+  --fs-18: 18px;   /* accordion title */
+  --fs-20: 20px;
+  --fs-24: 24px;   /* group header */
+  --fs-32: 32px;   /* page title */
+
+  --lh-tight: 1.25;
+  --lh-snug:  1.4;
+  --lh-normal: 1.55;
+  --lh-loose: 1.7;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---- spacing (4px scale) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+  --space-10: 72px;
+
+  /* ---- radius ---- */
+  --radius-1: 3px;
+  --radius-2: 4px;
+  --radius-3: 6px;
+  --radius-4: 8px;
+
+  /* ---- layout ---- */
+  --rail-width: 240px;
+  --content-max: 760px;
+  --gutter: 48px;
+  --header-height: 56px;
+}

@@ -60,7 +60,7 @@ each deploy.
 
 ---
 
-## Session 2 — Design prototype 🟡 in progress (started 2026-05-15)
+## Session 2 — Design prototype ✅ shipped 2026-05-15
 
 Claude Design is producing the `prototype/` folder per
 `docs/DESIGN_HANDOVER.md`: four static HTML views (`page-type.html`,
@@ -78,33 +78,56 @@ infra, and the running session log.
 - Push frequency on Claude Design's side is their call — this log will
   reflect their commits when they arrive.
 
-### When Claude Design hands back — review checklist
-Use this before approving so the build session has a clean input. The
-checklist is derived from `docs/DESIGN_HANDOVER.md` constraints.
+### Prototype review — done 2026-05-15
+v1 of the prototype passed every structural item in the checklist below
+but expanded the blue accent beyond the strict `CLAUDE.md` rule ("new"
+indicator + active/focus only) to also cover links, primary CTAs,
+`<mark>` highlights, and a `.chip--blue` utility class. Sent back to
+Claude Design with two asks: (1) write down the full approved list of
+blue uses so the build agent has a deterministic rule, (2) remove
+anything in that list that isn't actually used. Claude Design returned
+prototype2 with exactly that — a new "Blue accent — definitive list" §
+in `DECISIONS.md` enumerating 7 approved uses, `.chip--blue` removed
+from `components.css`, and a `BUILD_NOTES.md` callout explaining the
+intentionally-missing `assets/` folder (inline SVG icons + Google Fonts
+CDN are both deliberate; build agent does the self-hosting swap).
+prototype2 promoted to canonical `prototype/`, v1 discarded (was never
+committed). Five HTML files, three CSS files, three JS files (all
+<100 lines), 18 considerations across 5 content groups + a site-wide
+group with `hidden`, 59 sub-accordions, 10 phases in the filter rail.
 
-- [ ] `prototype/` exists with the five HTML files, `styles/`, `js/`, `assets/` layout described in the brief.
-- [ ] Each HTML file opens directly from the filesystem — no server required, no build step.
-- [ ] Vanilla JS only; each JS file under ~100 lines; no React/Vue/Svelte/bundler.
-- [ ] Native `<details>`/`<summary>` used for accordions; `<input type="search">` for search; `<dialog>` if any modal exists.
-- [ ] Light mode only. No dark-mode CSS variables or toggle.
-- [ ] Blue accent appears **only** on the "new" indicator and active filter / focus states. Nothing else.
-- [ ] "New" indicator is not color-alone — paired with a shape or text cue (per accessibility note in `DESIGN_HANDOVER.md`).
-- [ ] `page-type.html` is populated with Article Page content: 12–18 large accordions across the four groups (Before you start / Top of page / Body / End of page / Behind the scenes), 3–8 sub-accordions each, fake-but-plausible sources (NN/g, web.dev, W3C/WCAG, A11y Project, MDN, caniuse), realistic dates and phase tags.
-- [ ] Filter rail has all ten phases from `PROJECT.md` §2.1, all checked by default, plus the "Show site-wide considerations" toggle off by default.
-- [ ] Hash-state deep links work: opening `page-type.html#some-id.some-sub-id` expands the matching accordions on load.
-- [ ] Filter-driven hiding works: unchecking a phase hides sub-accordions without that tag and collapses out empty large accordions.
-- [ ] `search.html` echoes the query in the input and shows results grouped by parent.
-- [ ] `admin-queue.html` and `admin-sources.html` are functional rather than pretty (per the brief).
-- [ ] Inter variable font is self-hosted under `prototype/assets/fonts/`, not pulled from a CDN.
-- [ ] Radix Themes CSS is vendored as a static file, not loaded from a CDN.
-- [ ] `prototype/DECISIONS.md` exists (per `DESIGN_HANDOVER.md`) with one bullet per noteworthy decision.
+### Review checklist (results)
+The checklist was derived from `docs/DESIGN_HANDOVER.md` constraints
+and applied to the prototype before approval.
 
-If anything in the checklist fails, send it back to Claude Design rather
-than fixing it in the build session — the prototype is a hard input to the
-build agent and shouldn't be redesigned downstream.
+- [x] `prototype/` exists with the five HTML files, `styles/`, `js/` (`assets/` deliberately omitted — see DECISIONS / BUILD_NOTES).
+- [x] Each HTML file opens directly from the filesystem — no server required, no build step.
+- [x] Vanilla JS only; each JS file under ~100 lines (59 / 69 / 29); no React/Vue/Svelte/bundler.
+- [x] Native `<details>`/`<summary>` for accordions; `<input type="search">` for search. No `<dialog>` yet — "Edit & approve" modal deferred to build, flagged in `DECISIONS.md`.
+- [x] Light mode only. No `prefers-color-scheme` or dark-mode CSS.
+- [x] Blue accent uses documented as a definitive 7-item list in `prototype/DECISIONS.md` ("Blue accent — definitive list" §). Build agent: don't add an eighth without asking.
+- [x] "New" indicator is not color-alone — paired with sr-only "New. " text (per accessibility note in `DESIGN_HANDOVER.md`).
+- [x] `page-type.html` populated with Article Page content: 18 large accordions across 5 groups (Before you start / Top of page / Body / End of page / Behind the scenes) plus the site-wide group rendered `hidden`. 59 sub-accordions total (≈3.3 per consideration, within the 3–8 target). Sources realistic (NN/g, web.dev, WCAG, MDN, caniuse, A11y Project).
+- [x] Filter rail has all ten phases from `PROJECT.md` §2.1, all checked by default, plus the "Show site-wide considerations" toggle (`#toggle-sitewide`) off by default.
+- [x] Hash-state deep links work: `accordion.js` parses comma-separated `top-id` or `top-id.sub-id` entries and forces `open` on the matching `<details>` elements.
+- [x] Filter-driven hiding works: `filters.js` hides subs whose `data-phases` don't intersect active set, then collapses out empty considerations, then empty group sections.
+- [x] `search.html` echoes the query (`[data-role="query-echo"]` + input `value`) and shows results grouped by parent.
+- [x] `admin-queue.html` and `admin-sources.html` are functional rather than pretty (per the brief).
+- [⏭] Inter variable font is self-hosted — deferred to build session (prototype loads from Google Fonts CDN for portability; see `BUILD_NOTES.md` §1).
+- [⏭] Radix Themes CSS is vendored — deferred to build session (prototype uses its own gray/blue scales with Radix-shaped variable names; see `DECISIONS.md` Tokens §).
+- [x] `prototype/DECISIONS.md` exists with one bullet per noteworthy decision.
 
-### Files changed (so far this session)
-- `nextstep.md` — Session 2 block + this deploy-prep sub-section, ready for Claude Design's commits to land alongside.
+### Files changed
+- `prototype/` (new, 13 files) — five HTML views, three CSS files, three JS files, `BUILD_NOTES.md`, `DECISIONS.md`. Top-level (not under `docs/`) so the path matches `BUILD_NOTES.md` §1's file-mapping table.
+- `nextstep.md` — Session 2 block updated with checklist results + this Files-changed entry.
+- `.github/workflows/deploy.yml` — added earlier in the session (see Deploy prep below).
+
+### How to test
+1. Open `prototype/index.html` directly from the filesystem — should redirect to `page-type.html`.
+2. On `page-type.html`: scroll the five groups, expand a large accordion, expand a sub. Untick a phase checkbox and watch subs hide. Tick the "site-wide" toggle and watch a new group appear at the bottom.
+3. Append `#some-cons-id.some-sub-id` to the URL and reload — both accordions should open on load.
+4. Click the search button in the header → lands on `search.html?q=…` with results grouped by parent and the query echoed in the input.
+5. Visit `admin-queue.html` and `admin-sources.html` — verify they render without errors.
 
 ### Deploy prep — done in parallel with design work
 Done while waiting on the design prototype so the build session has fewer
@@ -133,10 +156,14 @@ blockers. No secret values appear in this repo; only names and structure.
 
 ---
 
-## Next session — pick up here
+## Next session — Session 3 (build) starts here
 
-Once the prototype is approved, a build session (Claude Code, following
-`CLAUDE.md` in this repo) will, roughly in this order:
+Prototype is approved and committed. The next session is the **build
+agent** per `CLAUDE.md`. Hard inputs: `docs/PROJECT.md`,
+`docs/DESIGN_HANDOVER.md`, `prototype/BUILD_NOTES.md`,
+`prototype/DECISIONS.md`. Don't redesign — wire it up.
+
+Rough order:
 
 1. Flask app skeleton at `app.py`; Jinja templates lifted from the prototype.
 2. `schema.sql` seeding the three locked taxonomies (`docs/PROJECT.md` §2.1–2.3) and the relational tables in §4.
