@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-The design prototype is approved and canonical at `prototype/`, and the build agent has shipped Slice A of the Flask app: `app.py` + `schema.sql` + `init_db.py` + `templates/` + `static/`, with the prototype's 18 Article Page considerations / 59 sub-accordions imported as fixtures. `/page-type/article-page` renders identically to the prototype, served from SQLite.
+Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Caddy basic auth, single user). `/page-type/article-page` renders the prototype's 18 considerations / 59 sub-accordions from SQLite, byte-identical to opening `prototype/page-type.html` directly. The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths).
 
 Slices B+ are still pending: `/search`, the three admin views (`/admin/queue`, `/admin/sources`, `/admin/considerations/<slug>`), the `/component/<slug>` route, other page types, RSS + structured ingestion, and Groq scoring. See `nextstep.md` for the running session log and the current "Next session" pointer.
 
 The prototype remains a hard input — visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Don't redesign; wire it up.
+
+**VPS Python note.** The VPS runs Python 3.10.12, not the 3.12+ that `PROJECT.md` §8 specifies. Slice A doesn't trip on this; flag if you reach for 3.12-only syntax.
 
 ## Running it locally
 
