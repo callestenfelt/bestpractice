@@ -1,0 +1,116 @@
+{
+  "parent_type": "component",
+  "parent_slug": "image",
+  "extracted_at": "2026-05-16T00:00:00Z",
+  "groups": [
+    {
+      "group_slug": "image-essentials",
+      "group_label": "Image essentials",
+      "group_order": 1,
+      "considerations": [
+        {
+          "slug": "alt-text",
+          "title": "Alternative text",
+          "intro": "Every <code>&lt;img&gt;</code> needs an <code>alt</code> attribute. Whether it's empty or carries text depends on whether the image conveys content.",
+          "display_order": 1,
+          "sub_considerations": [
+            {
+              "slug": "wcag-111-informative",
+              "one_liner": "Write alt text that conveys the same information as the image, not a literal description of pixels.",
+              "body": "<p>WCAG 2.2 SC 1.1.1 (Non-text Content, Level A) requires that informative images have a text alternative that serves the equivalent purpose. \"Photo of a man at a desk\" is rarely it — what matters is why the image was chosen.</p>\n<p>Rule of thumb: read the page with images removed. If the alt text leaves the surrounding paragraph coherent, it's doing its job.</p>",
+              "phases": ["content", "ux", "frontend"],
+              "source_name": "W3C / WCAG 2.2",
+              "source_suffix": "SC 1.1.1",
+              "source_title": "Non-text Content",
+              "source_url": "https://www.w3.org/WAI/WCAG22/Understanding/non-text-content.html",
+              "source_date": "2023-10-05",
+              "last_updated": "2026-05-16",
+              "display_order": 1
+            },
+            {
+              "slug": "decorative-empty-alt",
+              "one_liner": "Decorative images take <code>alt=\"\"</code>, not a missing attribute and not <code>role=\"presentation\"</code>.",
+              "body": "<p>If the image is purely visual decoration — a divider, a flourish, a stock photo that adds nothing the text doesn't already say — the HTML Living Standard expects <code>alt=\"\"</code> so screen readers skip it. A missing <code>alt</code> attribute is different: it tells assistive tech the alternative is <em>unknown</em>, which is worse.</p>\n<p>Don't reach for <code>role=\"presentation\"</code> or <code>aria-hidden=\"true\"</code> as substitutes; an empty alt is the canonical signal.</p>",
+              "phases": ["content", "frontend"],
+              "source_name": "WHATWG",
+              "source_suffix": "",
+              "source_title": "HTML Living Standard — Requirements for providing text to act as an alternative for images",
+              "source_url": "https://html.spec.whatwg.org/multipage/images.html#a-purely-decorative-image-that-doesn't-add-information-beyond-what-is-already-conveyed-in-the-text",
+              "source_date": "2026-04-22",
+              "last_updated": "2026-05-16",
+              "display_order": 2
+            }
+          ]
+        },
+        {
+          "slug": "responsive-delivery",
+          "title": "Responsive delivery",
+          "intro": "Ship the right pixels for the device. Wrong-sized images are the single largest contributor to wasted bytes on most sites.",
+          "display_order": 2,
+          "sub_considerations": [
+            {
+              "slug": "srcset-sizes",
+              "one_liner": "Use <code>srcset</code> + <code>sizes</code> so the browser picks an appropriately sized source, not the largest one.",
+              "body": "<p>Set <code>srcset</code> with width descriptors (<code>image-800.jpg 800w, image-1600.jpg 1600w</code>) and a <code>sizes</code> attribute that tells the browser how wide the image will render at each breakpoint. Without <code>sizes</code>, browsers assume <code>100vw</code> and may download a 1600w source for a 400px slot.</p>\n<p>For art direction (different crops, not just different sizes), reach for <code>&lt;picture&gt;</code> with <code>&lt;source media=\"...\"&gt;</code> instead.</p>",
+              "phases": ["frontend", "design"],
+              "source_name": "web.dev",
+              "source_suffix": "",
+              "source_title": "Serve responsive images",
+              "source_url": "https://web.dev/articles/serve-responsive-images",
+              "source_date": "2025-03-11",
+              "last_updated": "2026-05-10",
+              "display_order": 1
+            },
+            {
+              "slug": "lazy-loading",
+              "one_liner": "Add <code>loading=\"lazy\"</code> to below-the-fold images; keep above-the-fold ones eager (the default).",
+              "body": "<p>Native lazy loading is a one-attribute win for images outside the initial viewport. It's safe to apply blanket to in-article and grid imagery — browsers handle the threshold heuristics.</p>\n<p>Do not lazy-load the LCP image or anything in the hero. Lazy-loading the LCP candidate measurably worsens Core Web Vitals because the request is deferred until layout, then re-prioritised.</p>",
+              "phases": ["frontend", "measurement"],
+              "source_name": "MDN",
+              "source_suffix": "",
+              "source_title": "&lt;img&gt;: loading attribute",
+              "source_url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading",
+              "source_date": "2025-12-04",
+              "last_updated": "2026-05-08",
+              "display_order": 2
+            }
+          ]
+        },
+        {
+          "slug": "stability-format",
+          "title": "Stability & format",
+          "intro": "Reserve space before bytes arrive; pick the right codec.",
+          "display_order": 3,
+          "sub_considerations": [
+            {
+              "slug": "width-height-cls",
+              "one_liner": "Always set <code>width</code> and <code>height</code> attributes — they let the browser reserve aspect ratio and prevent CLS.",
+              "body": "<p>Modern browsers use the <code>width</code> and <code>height</code> HTML attributes to compute an aspect-ratio box before the image loads, even when CSS resizes the image to <code>width: 100%</code>. Omitting them is the most common cause of Cumulative Layout Shift on content-heavy pages.</p>\n<p>Set them to the image's intrinsic pixel dimensions, not its rendered size.</p>",
+              "phases": ["frontend", "measurement"],
+              "source_name": "web.dev",
+              "source_suffix": "",
+              "source_title": "Optimize Cumulative Layout Shift",
+              "source_url": "https://web.dev/articles/optimize-cls",
+              "source_date": "2025-08-20",
+              "last_updated": "2026-04-30",
+              "display_order": 1
+            },
+            {
+              "slug": "modern-formats",
+              "one_liner": "Prefer AVIF then WebP via <code>&lt;picture&gt;</code> with a JPEG/PNG fallback for the long tail of clients.",
+              "body": "<p>AVIF typically saves 30–50% over JPEG at equivalent perceptual quality; WebP saves 20–30%. Both are supported across all evergreen browsers per caniuse. For photographic content, ship AVIF first; for graphics with transparency, WebP usually wins on encoder maturity.</p>\n<p>Use <code>&lt;picture&gt;&lt;source type=\"image/avif\"&gt;&lt;source type=\"image/webp\"&gt;&lt;img src=\"...jpg\"&gt;&lt;/picture&gt;</code> rather than content-negotiating at the CDN — the markup version is cacheable and survives proxies.</p>",
+              "phases": ["frontend", "design"],
+              "source_name": "caniuse.com",
+              "source_suffix": "",
+              "source_title": "AVIF image format",
+              "source_url": "https://caniuse.com/avif",
+              "source_date": "2026-02-17",
+              "last_updated": "2026-04-22",
+              "display_order": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

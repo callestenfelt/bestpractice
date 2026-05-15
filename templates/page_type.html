@@ -87,15 +87,23 @@
   <div class="main">
 
     <div class="page-heading">
-      <div class="page-heading__eyebrow">Page type{% if page.schema_org_type %} · <code>{{ page.schema_org_type }}</code>{% endif %}</div>
+      <div class="page-heading__eyebrow">{{ parent_kind | default('Page type') }}{% if page.schema_org_type %} · <code>{{ page.schema_org_type }}</code>{% endif %}</div>
       <h1 class="page-heading__title">{{ page.label }}</h1>
       <p class="page-heading__definition">{{ page.definition }}</p>
     </div>
 
     <hr class="hr" />
 
+    {% set visible_groups = groups | rejectattr('group_slug', 'equalto', 'site-wide') | list %}
+    {% if not visible_groups and not is_self_sitewide %}
+      <div class="empty-state" style="padding: 32px 0; color: var(--gray-10); line-height: var(--lh-snug);">
+        <p style="font-size: var(--fs-16); margin: 0 0 8px;">No considerations curated for this {{ (parent_kind | default('page type')) | lower }} yet.</p>
+        <p style="font-size: var(--fs-14); margin: 0;">Cross-cutting guidance still applies — toggle <em>Show site-wide considerations</em> in the rail to layer it on.</p>
+      </div>
+    {% endif %}
+
     {% for group in groups %}
-      <section class="group" data-group="{{ group.group_slug }}"{% if group.group_slug == 'site-wide' %} hidden{% endif %}>
+      <section class="group" data-group="{{ group.group_slug }}"{% if group.group_slug == 'site-wide' and not is_self_sitewide %} hidden{% endif %}>
         <header class="group__header">
           <h2 class="group__title">{{ group.group_label }}</h2>
           {% if group.group_slug == 'site-wide' %}<span class="group__count">Layered onto every page</span>{% endif %}

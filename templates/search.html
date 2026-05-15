@@ -55,6 +55,8 @@
           {% for r in group.results %}
             {% if group.kind == 'page_type' %}
               {% set href = url_for('page_type', slug=group.parent_slug) ~ '#' ~ r.cons_slug ~ '.' ~ r.sub_slug %}
+            {% elif group.kind == 'component' %}
+              {% set href = url_for('component', slug=group.parent_slug) ~ '#' ~ r.cons_slug ~ '.' ~ r.sub_slug %}
             {% elif group.kind == 'site-wide' %}
               {% set href = url_for('page_type', slug='article-page') ~ '#' ~ r.cons_slug ~ '.' ~ r.sub_slug %}
             {% else %}

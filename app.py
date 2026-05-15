@@ -50,14 +50,37 @@ def is_new_filter(last_updated: str | None) -> bool:
     return (datetime.now(timezone.utc) - dt) < NEW_WINDOW
 
 
-def load_page_type_view(slug: str):
-    db = get_db()
-    page = db.execute(
-        "SELECT slug, label, definition, schema_org_type FROM page_types WHERE slug = ?",
-        (slug,),
-    ).fetchone()
-    if not page:
+def load_parent_view(parent_type: str, parent_slug: str):
+    """Build the read-view payload for a page_type OR component parent.
+
+    Returns (page, parent_kind_label, phases, groups). `page` is a dict with
+    {slug, label, definition, schema_org_type} — schema_org_type is None for
+    components. Site-wide considerations are always appended as a trailing
+    hidden group unless the requested parent IS the site-wide bucket itself.
+    """
+    if parent_type not in ("page_type", "component"):
         abort(404)
+    db = get_db()
+    if parent_type == "page_type":
+        row = db.execute(
+            "SELECT slug, label, definition, schema_org_type FROM page_types WHERE slug = ?",
+            (parent_slug,),
+        ).fetchone()
+        parent_kind_label = "Page type"
+    else:
+        row = db.execute(
+            "SELECT slug, label, definition FROM components WHERE slug = ?",
+            (parent_slug,),
+        ).fetchone()
+        parent_kind_label = "Component"
+    if not row:
+        abort(404)
+    page = {
+        "slug": row["slug"],
+        "label": row["label"],
+        "definition": row["definition"],
+        "schema_org_type": row["schema_org_type"] if parent_type == "page_type" else None,
+    }
 
     phases = db.execute(
         "SELECT slug, label FROM phases ORDER BY display_order"
@@ -66,13 +89,15 @@ def load_page_type_view(slug: str):
     cons_rows = db.execute(
         """SELECT id, slug, title, intro, group_label, group_slug, group_order, display_order
              FROM considerations
-            WHERE parent_type = 'page_type' AND parent_slug = ? AND status = 'approved'
+            WHERE parent_type = ? AND parent_slug = ? AND status = 'approved'
             ORDER BY group_order, display_order""",
-        (slug,),
+        (parent_type, parent_slug),
     ).fetchall()
 
-    # Also pull site-wide considerations (special bucket) regardless of current page.
-    if slug != "site-wide":
+    # Site-wide is always its own page_type bucket; layer it onto every
+    # other parent (page types AND components) as a trailing hidden group.
+    is_sitewide_self = parent_type == "page_type" and parent_slug == "site-wide"
+    if not is_sitewide_self:
         sw_rows = db.execute(
             """SELECT id, slug, title, intro, group_label, group_slug, group_order, display_order
                  FROM considerations
@@ -165,7 +190,7 @@ def load_page_type_view(slug: str):
             "considerations": sw_subs,
         })
 
-    return page, phases, groups
+    return page, parent_kind_label, phases, groups
 
 
 @app.route("/")
@@ -175,8 +200,28 @@ def home():
 
 @app.route("/page-type/<slug>")
 def page_type(slug):
-    page, phases, groups = load_page_type_view(slug)
-    return render_template("page_type.html", page=page, phases=phases, groups=groups)
+    page, parent_kind, phases, groups = load_parent_view("page_type", slug)
+    return render_template(
+        "page_type.html",
+        page=page,
+        parent_kind=parent_kind,
+        phases=phases,
+        groups=groups,
+        is_self_sitewide=(slug == "site-wide"),
+    )
+
+
+@app.route("/component/<slug>")
+def component(slug):
+    page, parent_kind, phases, groups = load_parent_view("component", slug)
+    return render_template(
+        "page_type.html",
+        page=page,
+        parent_kind=parent_kind,
+        phases=phases,
+        groups=groups,
+        is_self_sitewide=False,
+    )
 
 
 def _fts_quote(term: str) -> str:

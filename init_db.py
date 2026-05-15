@@ -15,7 +15,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SCHEMA_PATH = ROOT / "schema.sql"
-FIXTURE_PATH = ROOT / "fixtures" / "article_page.json"
+FIXTURE_DIR = ROOT / "fixtures"
+FIXTURES = [
+    ("page_type", "article-page", FIXTURE_DIR / "article_page.json"),
+    ("component", "image",        FIXTURE_DIR / "image_component.json"),
+]
 DEFAULT_DB = ROOT / "data" / "bestpractice.db"
 
 # ---------- Locked taxonomies (PROJECT.md §2.1-2.3) ----------
@@ -163,46 +167,54 @@ def seed_taxonomies(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def load_article_page_fixture(conn: sqlite3.Connection) -> int:
-    if not FIXTURE_PATH.exists():
-        print(f"  (skip) fixture not found: {FIXTURE_PATH}")
+def load_fixture(conn: sqlite3.Connection, parent_type: str, parent_slug: str, path: Path) -> int:
+    """Idempotently import one fixture file.
+
+    Skips if any considerations already exist for the (parent_type, parent_slug)
+    pair. Honours the special-case where a group's `group_slug == 'site-wide'`
+    gets rebucketed under `parent_slug='site-wide'` so it can be layered onto
+    any parent (PROJECT.md §2.2).
+    """
+    if not path.exists():
+        print(f"  (skip) fixture not found: {path}")
         return 0
 
     cur = conn.cursor()
     existing = cur.execute(
-        "SELECT COUNT(*) FROM considerations WHERE parent_type='page_type' AND parent_slug='article-page'"
+        "SELECT COUNT(*) FROM considerations WHERE parent_type=? AND parent_slug=?",
+        (parent_type, parent_slug),
     ).fetchone()[0]
+    # site-wide is a shared bucket fed by the article-page fixture; let other
+    # fixtures coexist with it without tripping the skip.
     if existing:
-        print(f"  (skip) article-page already has {existing} considerations")
+        print(f"  (skip) {parent_type}/{parent_slug} already has {existing} considerations")
         return 0
 
-    fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
-    parent_type = fixture["parent_type"]
-    parent_slug = fixture["parent_slug"]
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    fx_parent_type = fixture["parent_type"]
+    fx_parent_slug = fixture["parent_slug"]
+    if (fx_parent_type, fx_parent_slug) != (parent_type, parent_slug):
+        print(f"  (skip) fixture parent mismatch: expected {parent_type}/{parent_slug}, got {fx_parent_type}/{fx_parent_slug}")
+        return 0
 
     inserted_cons = 0
     inserted_subs = 0
     now = now_iso()
 
-    display_order = 0
     for group in fixture["groups"]:
         group_label = group["group_label"]
         group_slug = group["group_slug"]
         group_order = group["group_order"]
-        # Site-wide group lives under its own page_type bucket so it can be
-        # layered onto any page type, per PROJECT.md §2.2 (site-wide is "not
-        # a real page").
-        effective_parent_slug = "site-wide" if group_slug == "site-wide" else parent_slug
+        effective_parent_slug = "site-wide" if group_slug == "site-wide" else fx_parent_slug
 
         for cons in group["considerations"]:
-            display_order += 1
             cur.execute(
                 """INSERT INTO considerations
                        (slug, parent_type, parent_slug, title, intro,
                         group_label, group_slug, group_order, display_order,
                         status, created_at, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)""",
-                (cons["slug"], parent_type, effective_parent_slug, cons["title"], cons.get("intro", ""),
+                (cons["slug"], fx_parent_type, effective_parent_slug, cons["title"], cons.get("intro", ""),
                  group_label, group_slug, group_order, cons["display_order"],
                  now, now),
             )
@@ -231,8 +243,7 @@ def load_article_page_fixture(conn: sqlite3.Connection) -> int:
                     )
 
     conn.commit()
-    print(f"  considerations inserted: {inserted_cons}")
-    print(f"  sub-considerations inserted: {inserted_subs}")
+    print(f"  {parent_type}/{parent_slug}: considerations={inserted_cons} subs={inserted_subs}")
     return inserted_cons
 
 
@@ -263,8 +274,9 @@ def main() -> None:
         apply_schema(conn)
         print("seeding taxonomies...")
         seed_taxonomies(conn)
-        print("loading article-page fixture...")
-        load_article_page_fixture(conn)
+        print("loading fixtures...")
+        for parent_type, parent_slug, path in FIXTURES:
+            load_fixture(conn, parent_type, parent_slug, path)
         print("rebuilding FTS...")
         n = rebuild_fts(conn)
         print(f"  FTS rows: {n}")
