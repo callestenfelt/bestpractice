@@ -241,20 +241,160 @@ amusealot.com 200, bubblesdontcry.com 200, staging.bubblesdontcry.com
 
 ---
 
-## Next session — Session 4 starts here
+## Session 4 — Slice B part 1: /search ✅ shipped 2026-05-16
 
-The discrete next step is **the first production deploy** — push Session 3
-to `main`, watch GHA, run `init_db.py` once on the VPS, enable the
-service, verify, sibling-site check. After that lands cleanly, Slice B
-(search + admin shells) is the natural next slice.
+First slice of the search + admin trio. Wired `/search` end-to-end:
+SQLite FTS5 over `sub_considerations` (with parent `consideration.title`
+and `consideration.intro` folded in), whole-query synonym expansion
+against the seeded `synonyms` table, grouped results that mirror
+`prototype/search.html`, `<mark>`-highlighted snippets via FTS5's
+built-in `snippet()`. Admin shells (`/admin/queue`, `/admin/sources`)
+are still placeholders — Session 5.
 
-When Slice B starts, the order is roughly:
-1. `/search` route — server-side text search across consideration titles, sub one-liners, and sub bodies. Use SQLite FTS5 (a virtual table populated from `sub_considerations`) for the body matches; bolt on a small synonym-aware client-side expander in `static/js/search.js`. Group results by `parent_type/parent_slug` per `BUILD_NOTES.md` §2.2.
-2. `/admin/queue` — read-only at first (empty queue until ingestion exists), then editable forms when the data starts flowing.
-3. `/admin/sources` — list-and-toggle UI over the `sources` table.
-4. Then ingestion + Groq scoring (Slice C).
+### Done
+- [x] `schema.sql` — `subs_fts` virtual table (FTS5, `unicode61
+      remove_diacritics 2`, content columns `one_liner` / `body` /
+      `cons_title` / `cons_intro`). Contentless: no triggers,
+      `init_db.py` owns sync.
+- [x] `init_db.py` — new `rebuild_fts()` runs on every invocation. Joins
+      approved subs to their approved consideration parent, repopulates
+      the FTS table from scratch. Cheap, idempotent, picks up content
+      drift without migrations.
+- [x] `app.py` — `expand_synonyms()` does case-insensitive whole-query
+      lookups against `synonyms.synonym` and entity labels
+      (page_types/components/phases); for each hit, returns the
+      entity's other names. `run_search()` builds an FTS query of the
+      form `"<q>" OR "<expansion>" …`, fetches results with FTS5's
+      `snippet()` for `<mark>` highlights on both `body` and
+      `one_liner` columns, then groups by parent (page types in
+      `display_order`, then components, then site-wide). The route
+      catches `sqlite3.OperationalError` (raised when FTS rejects
+      special chars like a bare `"`) and renders the empty state
+      instead of 500ing.
+- [x] `templates/search.html` — extends `base.html`, ports the
+      prototype's DOM verbatim. Three states: no query (prompt),
+      no matches (empty state with synonym-suggestion list), hits
+      (`<p class="results-meta">` line + grouped `<section
+      class="result-group">` blocks). Result links resolve to
+      `/page-type/<slug>#<cons>.<sub>` so the existing hash-deep-link
+      JS opens the right accordions on landing.
 
-Before the first deploy: confirm port 5681 is still unclaimed on `77.42.40.207`,
-confirm Caddy's existing site blocks for `bubble`, `bubblesdontcry-site`,
-and `amusealot` are untouched, and verify the basic-auth password for
-`best.amusealot.com` is recorded somewhere the user can recover it.
+### Files changed
+- `schema.sql` — `subs_fts` virtual table appended
+- `init_db.py` — `rebuild_fts()` + main() call
+- `app.py` — `_fts_quote`, `expand_synonyms`, `run_search`, replaced
+  `/search` route body
+- `templates/search.html` (new)
+
+### How to test — local (passed 2026-05-16)
+1. `python init_db.py` → final line `FTS rows: 59`.
+2. `python app.py`.
+3. `curl -sI http://localhost:5681/search?q=alt+text` → 200, ~3.8 KB.
+4. `curl -s 'http://localhost:5681/search?q=image'` → 7 results, meta
+   line includes `Includes synonym matches for <em>Picture</em>.`
+5. `curl -s 'http://localhost:5681/search?q=nav'` → 3 results, meta
+   line expands to `main nav`, `menu`, `Navigation` (the `navigation`
+   component's other names).
+6. `curl -s 'http://localhost:5681/search?q=zzzzzzz'` → empty-state
+   "No matches for &ldquo;zzzzzzz&rdquo;." rendered.
+7. `curl -s 'http://localhost:5681/search?q=%22'` (bare `"`) → 200
+   empty state, **not 500** (verifies the OperationalError fallback).
+8. `curl -sI http://localhost:5681/page-type/article-page` → still
+   200, Content-Length 107695 (unchanged from Slice A).
+
+### How tested — production (passed 2026-05-16)
+- Push to `main` triggered GHA; service came back `active`.
+- One-time `ssh root@77.42.40.207 'cd /opt/bestpractice && python3
+  init_db.py'` to add `subs_fts` to the existing prod DB. Output:
+  `FTS rows: 59` — matches local.
+- `curl -sI http://localhost:5681/search?q=alt+text` from the VPS →
+  `HTTP/1.1 200`.
+- `curl -s 'http://localhost:5681/search?q=image' | grep -o
+  'class=.result.' | wc -l` → 33 (= 7 results × 4 `result__*` classes
+  + 1 group × ~4 `result-group__*` classes + chip). Matches local
+  shape.
+
+### Out of scope (parked — Session 5 starts here)
+- `/admin/queue` — read-only shell first; the queue is empty until
+  ingestion lands in Slice C, so the page renders "no pending items"
+  with the toolbar (Last sync pill + status counts wired to real data
+  once `sources` rows exist).
+- `/admin/sources` — list + active/paused toggle over the `sources`
+  table; `<form method="post">` per row, no JS required for the
+  toggle.
+- `/component/<slug>` — reuses `templates/page_type.html`; just a
+  different `parent_type` filter on the considerations query plus a
+  template fall-through to the existing `page_type` view.
+- Empty-state rendering for the 16 other page types so they stop 404ing.
+
+### Lessons / decisions worth noting (non-obvious)
+- **FTS5 with `content=''` (contentless) was tempting but rejected.**
+  Contentless FTS forbids `snippet()` / `highlight()` because the
+  source text isn't stored, only the index. We need snippets for the
+  result UI, so the table stores its own copy. Cost: ~one extra copy
+  of every sub's body in the DB. Worth it.
+- **Synonym expansion is whole-query, not tokenized.** Matching the
+  whole user query against `synonyms.synonym` (case-insensitive) keeps
+  the surface predictable: typing `nav` expands, typing `nav menu`
+  doesn't. Multi-token expansion can land later if real usage
+  demands it.
+- **Snippet column priority.** Result rendering prefers the `body`
+  snippet (longer, more context) when FTS injected a `<mark>` there;
+  falls back to the `one_liner` snippet otherwise. If the match lived
+  in `cons_title` / `cons_intro` instead of the sub itself, neither
+  snippet carries a mark — the result still groups correctly and
+  shows the raw one-liner, just unhighlighted. Acceptable for v1; a
+  future polish is emitting an "in: *<Cons title>*" hint when the
+  match column is cons-level.
+- **`init_db.py` always rebuilds FTS.** The fixture-load step is still
+  skip-if-present, but FTS rebuild is unconditional. That means
+  rerunning `init_db.py` after any future content edit re-syncs the
+  index automatically. The admin write paths in Slice C/D will need
+  to update FTS row-by-row instead of relying on this rebuild.
+
+---
+
+## Next session — Session 5 starts here
+
+Slice B continues with the two admin shells, then `/component/<slug>`.
+Order:
+
+1. **`/admin/queue`** — read-only first. Query `sub_considerations`
+   where `status='pending'`, render the prototype's row UI per
+   `BUILD_NOTES.md` §2.3 minus the editable bits (which need POST
+   handlers — defer until Slice C when ingestion actually creates
+   pending rows). The toolbar's "Last sync" pill and the
+   "X pending · Y approved this week · Z rejected" counts wire to
+   real data immediately (the values just happen to be zeros until
+   ingestion lands).
+2. **`/admin/sources`** — list rows from `sources`; `<form
+   method="post">` per row for the active/paused toggle hitting
+   `POST /admin/sources/<id>/toggle`. The "Add source" form posts to
+   `POST /admin/sources` (RSS only — name + URL). No JS required.
+   Status dot colors (green/amber/red) are an approved exception to
+   the blue-only rule per `BUILD_NOTES.md` §2.4 — don't extend them
+   elsewhere.
+3. **`/component/<slug>`** — reuse `templates/page_type.html`. The
+   view function `load_page_type_view` becomes `load_parent_view` and
+   takes `parent_type` + `parent_slug`. Route mounts at
+   `/component/<slug>`; passes `parent_type='component'`. Seed at
+   least the components from `DESIGN_HANDOVER.md`'s reference list
+   into `considerations` so the page renders non-empty for one
+   component — pick `image` or `card`, both of which already show up
+   in search expansions and would prove the layout.
+4. **Empty-state for the other page types.** Currently the 16
+   non-Article page types 404. Render `page_type.html` with an empty
+   `groups=[]` and add a friendly "no considerations yet" body inside
+   the macro so the chrome still shows.
+
+Slice C (ingestion + Groq scoring) is the next slice after that; see
+the §6 ingestion pattern in `PROJECT.md` and AmuseAlot/musemaniac's
+`collect_news.py` + `score_news.py` for the working pattern.
+
+### Tech-debt nudges parked from earlier sessions
+- VPS Python is 3.10.12; `PROJECT.md` §8 calls for 3.12+. No 3.12-only
+  syntax has been used; flag if a Slice C/D feature reaches for it.
+- Daily SQLite backup cron + log rotation on the VPS — last unchecked
+  item from Session 2's deploy-prep list.
+- Radix Themes CSS vendoring — `tokens.css` already uses Radix-shaped
+  variable names; mechanical swap, can land any time.
