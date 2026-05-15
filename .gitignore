@@ -11,6 +11,9 @@ env/
 .env.local
 *.local
 
+# Claude Code personal settings (per-repo, not shared)
+.claude/settings.local.json
+
 # SQLite / Flask instance
 instance/
 *.db
