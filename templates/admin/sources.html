@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Sources · bestpractice{% endblock %}
+
+{% block content %}
+<div class="shell shell--narrow">
+  <div class="main" style="max-width: none;">
+
+    <div class="page-heading">
+      <div class="page-heading__eyebrow">Admin · sources</div>
+      <h1 class="page-heading__title">Sources</h1>
+      <p class="page-heading__definition">
+        Feeds bestpractice ingests from. RSS sources poll on schedule;
+        structured sources sync weekly.
+      </p>
+    </div>
+
+    {% if error %}
+      <div class="empty" role="alert" style="margin-bottom: var(--space-5);">
+        <div class="empty__title">{{ error }}</div>
+      </div>
+    {% endif %}
+
+    {% if not sources %}
+      <div class="empty">
+        <div class="empty__title">No sources yet.</div>
+        <p class="empty__body">Add an RSS feed below. The first collection runs on the next scheduled tick once ingestion lands.</p>
+      </div>
+    {% else %}
+      <div class="table-wrap">
+        <table class="table" aria-label="Ingestion sources">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th class="col-hide-mobile">URL</th>
+              <th>Status</th>
+              <th class="col-hide-mobile">Last collected</th>
+              <th class="col-num">Items</th>
+              <th>Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in sources %}
+              <tr>
+                <td><strong>{{ s.name }}</strong></td>
+                <td><span class="chip">{{ s.type }}</span></td>
+                <td class="col-url col-hide-mobile">{{ s.url }}</td>
+                <td>
+                  {% if s.status == 'active' %}
+                    <span class="status status--active">Active</span>
+                  {% elif s.status == 'paused' %}
+                    <span class="status status--paused">Paused</span>
+                  {% else %}
+                    <span class="status status--error">Error</span>
+                  {% endif %}
+                </td>
+                <td class="col-hide-mobile">{{ s.last_collected_human }}</td>
+                <td class="col-num">{{ '{:,}'.format(s.item_count) }}</td>
+                <td>
+                  <form method="post"
+                        action="{{ url_for('admin_sources_toggle', source_id=s.id) }}"
+                        data-auto-submit>
+                    <label class="sr-only" for="t-{{ s.id }}">
+                      Toggle active for {{ s.name }}
+                    </label>
+                    <input id="t-{{ s.id }}" name="active" class="toggle"
+                           type="checkbox" {% if s.status == 'active' %}checked{% endif %} />
+                    <noscript><button class="btn btn--sm" type="submit">Save</button></noscript>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+
+    <form class="form" method="post" action="{{ url_for('admin_sources_add') }}" aria-label="Add source">
+      <h2 class="form__title">Add source</h2>
+      <p class="form__subtitle">Adds an RSS source in <em>active</em> status. First collection runs on the next scheduled tick once ingestion lands.</p>
+      <div class="form__grid">
+        <div class="field">
+          <label class="field__label" for="src-name">Name</label>
+          <input id="src-name" name="name" class="input" placeholder="Smashing Magazine" required />
+        </div>
+        <div class="field">
+          <label class="field__label" for="src-url">URL</label>
+          <input id="src-url" name="url" class="input" type="url"
+                 placeholder="https://www.smashingmagazine.com/feed/" required />
+        </div>
+        <button class="btn btn--primary" type="submit" style="height: 32px;">Add source</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-15 (Session 2 — Design in progress + deploy prep)
+Last updated: 2026-05-16 (Session 5 — admin queue + sources)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -9,150 +9,8 @@ this file passes ~400 lines and has 4+ completed sessions, archive the
 oldest sessions to `docs/archive/sessions.md` and keep the 3 most recent
 live here.
 
----
-
-## Session 1 — Project bootstrap ✅ shipped 2026-05-15
-
-Took the repo from a docs-only state to a real git repo connected to
-`https://github.com/callestenfelt/bestpractice.git`. No application code
-yet — that waits for the design prototype per `docs/DESIGN_HANDOVER.md`
-and a later build session per `docs/PROJECT.md` §12.
-
-### Done
-- [x] `docs/PROJECT.md` — project brief (authored prior to this session)
-- [x] `docs/DESIGN_HANDOVER.md` — design agent brief (authored prior)
-- [x] `CLAUDE.md` — orientation for future Claude Code instances (authored prior)
-- [x] `.gitignore` — Python + Flask + SQLite + OS/editor patterns
-- [x] `nextstep.md` — this file, session log
-- [x] `git init -b main` and explicit initial commit
-- [x] `origin` remote pointed at `https://github.com/callestenfelt/bestpractice.git`
-- [x] Pushed `main` to GitHub
-
-### Files changed
-- `.gitignore` (new)
-- `nextstep.md` (new)
-
-### How to test
-1. `git remote -v` shows exactly `origin → https://github.com/callestenfelt/bestpractice.git` (fetch + push) and no other remotes.
-2. `git status` is clean on `main`.
-3. `git log --oneline` shows one commit on `main`.
-4. Open `https://github.com/callestenfelt/bestpractice` in a browser — `CLAUDE.md`, `.gitignore`, `nextstep.md`, and the two files under `docs/` are visible.
-
-### Out of scope (parked — for future sessions)
-- Flask app skeleton (`app.py`, Jinja templates, `static/`).
-- SQLite `schema.sql` with seeded taxonomies (phases, page types, components).
-- RSS ingestion pipeline (pattern: AmuseAlot's `collect_news.py`).
-- Structured-data ingestion (caniuse, WCAG 2.2 JSON-LD, MDN BCD, Schema.org).
-- Groq + Llama 3.3 scoring pass + admin review queue (pattern: AmuseAlot's `score_news.py`).
-- `Caddyfile` snippet for `best.amusealot.com`.
-- `bestpractice.service` systemd unit (port 5681 per `docs/PROJECT.md` §7 — must confirm unclaimed on the VPS first).
-- `.github/workflows/deploy.yml` — adapt the bubble / bubblesdontcry-site pattern for `main` (their workflows trigger on `master`).
-- `.env` template and the `set -a; source .env; set +a` loader script.
-- `prototype/` folder — owned by Claude Design, not Claude Code.
-
-### Safety note
-This session did **not** SSH to `77.42.40.207`, did **not** touch Caddy
-on the VPS, and did **not** bind any new ports. The three sibling sites
-(`bubble`, `bubblesdontcry-site`, `amusealot`) are unaffected. Keep this
-property until the build agent is ready to deploy — and at that point,
-verify the three siblings are still serving cleanly **before and after**
-each deploy.
-
----
-
-## Session 2 — Design prototype ✅ shipped 2026-05-15
-
-Claude Design is producing the `prototype/` folder per
-`docs/DESIGN_HANDOVER.md`: four static HTML views (`page-type.html`,
-`search.html`, `admin-queue.html`, `admin-sources.html`), Radix Themes
-CSS vendored, Inter self-hosted, vanilla JS only, no build step. This
-Claude Code session is **not** doing design work — we only handle code,
-infra, and the running session log.
-
-### Working in parallel
-- Design work happens in its own branch/folder. When the prototype lands,
-  it should be **added under `prototype/`** so it sits alongside (not
-  inside) `docs/`.
-- The repo is untouched on this end while design is in flight; no merge
-  conflicts to manage.
-- Push frequency on Claude Design's side is their call — this log will
-  reflect their commits when they arrive.
-
-### Prototype review — done 2026-05-15
-v1 of the prototype passed every structural item in the checklist below
-but expanded the blue accent beyond the strict `CLAUDE.md` rule ("new"
-indicator + active/focus only) to also cover links, primary CTAs,
-`<mark>` highlights, and a `.chip--blue` utility class. Sent back to
-Claude Design with two asks: (1) write down the full approved list of
-blue uses so the build agent has a deterministic rule, (2) remove
-anything in that list that isn't actually used. Claude Design returned
-prototype2 with exactly that — a new "Blue accent — definitive list" §
-in `DECISIONS.md` enumerating 7 approved uses, `.chip--blue` removed
-from `components.css`, and a `BUILD_NOTES.md` callout explaining the
-intentionally-missing `assets/` folder (inline SVG icons + Google Fonts
-CDN are both deliberate; build agent does the self-hosting swap).
-prototype2 promoted to canonical `prototype/`, v1 discarded (was never
-committed). Five HTML files, three CSS files, three JS files (all
-<100 lines), 18 considerations across 5 content groups + a site-wide
-group with `hidden`, 59 sub-accordions, 10 phases in the filter rail.
-
-### Review checklist (results)
-The checklist was derived from `docs/DESIGN_HANDOVER.md` constraints
-and applied to the prototype before approval.
-
-- [x] `prototype/` exists with the five HTML files, `styles/`, `js/` (`assets/` deliberately omitted — see DECISIONS / BUILD_NOTES).
-- [x] Each HTML file opens directly from the filesystem — no server required, no build step.
-- [x] Vanilla JS only; each JS file under ~100 lines (59 / 69 / 29); no React/Vue/Svelte/bundler.
-- [x] Native `<details>`/`<summary>` for accordions; `<input type="search">` for search. No `<dialog>` yet — "Edit & approve" modal deferred to build, flagged in `DECISIONS.md`.
-- [x] Light mode only. No `prefers-color-scheme` or dark-mode CSS.
-- [x] Blue accent uses documented as a definitive 7-item list in `prototype/DECISIONS.md` ("Blue accent — definitive list" §). Build agent: don't add an eighth without asking.
-- [x] "New" indicator is not color-alone — paired with sr-only "New. " text (per accessibility note in `DESIGN_HANDOVER.md`).
-- [x] `page-type.html` populated with Article Page content: 18 large accordions across 5 groups (Before you start / Top of page / Body / End of page / Behind the scenes) plus the site-wide group rendered `hidden`. 59 sub-accordions total (≈3.3 per consideration, within the 3–8 target). Sources realistic (NN/g, web.dev, WCAG, MDN, caniuse, A11y Project).
-- [x] Filter rail has all ten phases from `PROJECT.md` §2.1, all checked by default, plus the "Show site-wide considerations" toggle (`#toggle-sitewide`) off by default.
-- [x] Hash-state deep links work: `accordion.js` parses comma-separated `top-id` or `top-id.sub-id` entries and forces `open` on the matching `<details>` elements.
-- [x] Filter-driven hiding works: `filters.js` hides subs whose `data-phases` don't intersect active set, then collapses out empty considerations, then empty group sections.
-- [x] `search.html` echoes the query (`[data-role="query-echo"]` + input `value`) and shows results grouped by parent.
-- [x] `admin-queue.html` and `admin-sources.html` are functional rather than pretty (per the brief).
-- [⏭] Inter variable font is self-hosted — deferred to build session (prototype loads from Google Fonts CDN for portability; see `BUILD_NOTES.md` §1).
-- [⏭] Radix Themes CSS is vendored — deferred to build session (prototype uses its own gray/blue scales with Radix-shaped variable names; see `DECISIONS.md` Tokens §).
-- [x] `prototype/DECISIONS.md` exists with one bullet per noteworthy decision.
-
-### Files changed
-- `prototype/` (new, 13 files) — five HTML views, three CSS files, three JS files, `BUILD_NOTES.md`, `DECISIONS.md`. Top-level (not under `docs/`) so the path matches `BUILD_NOTES.md` §1's file-mapping table.
-- `nextstep.md` — Session 2 block updated with checklist results + this Files-changed entry.
-- `.github/workflows/deploy.yml` — added earlier in the session (see Deploy prep below).
-
-### How to test
-1. Open `prototype/index.html` directly from the filesystem — should redirect to `page-type.html`.
-2. On `page-type.html`: scroll the five groups, expand a large accordion, expand a sub. Untick a phase checkbox and watch subs hide. Tick the "site-wide" toggle and watch a new group appear at the bottom.
-3. Append `#some-cons-id.some-sub-id` to the URL and reload — both accordions should open on load.
-4. Click the search button in the header → lands on `search.html?q=…` with results grouped by parent and the query echoed in the input.
-5. Visit `admin-queue.html` and `admin-sources.html` — verify they render without errors.
-
-### Deploy prep — done in parallel with design work
-Done while waiting on the design prototype so the build session has fewer
-blockers. No secret values appear in this repo; only names and structure.
-
-- [x] GitHub Actions secrets added to `callestenfelt/bestpractice` (Settings → Secrets and variables → Actions):
-  - `SSH_PRIVATE_KEY` — same ED25519 key musemaniac's `deploy.sh` uses
-  - `SSH_HOST` — VPS IP (already public in `docs/PROJECT.md` §7)
-  - `SSH_USER` — `root`
-  - `SSH_KNOWN_HOSTS` — three host key lines pulled from the local `~/.ssh/known_hosts` (Windows' shipped `ssh-keyscan` couldn't negotiate the VPS's post-quantum KEX `sntrup761x25519-sha512@openssh.com`; pulling from existing trusted entries is the cleaner path anyway)
-- [x] SSH auth verified end-to-end: `ssh -i ~/.ssh/id_ed25519 root@77.42.40.207 "echo ok; hostname"` returns `ok` and the VPS hostname.
-- [x] DNS: `A` record `best.amusealot.com → 77.42.40.207` added at Namecheap (Advanced DNS tab, Host = `best`). Verify with `nslookup best.amusealot.com` once propagated. No Cloudflare in front, so Caddy will get a Let's Encrypt cert directly via HTTP-01 on first request.
-
-### Deploy prep — still pending (build agent will handle)
-- [x] `/opt/bestpractice/.env` on the VPS, 2026-05-15. Reused musemaniac's `GROQ_API_KEY` by piping the line directly: `grep ^GROQ_API_KEY= /opt/musemaniac/.env > /opt/bestpractice/.env` (avoids copy-paste contamination — the first attempt via PowerShell ended up with `GROQ_API_KEY=GROQ_API_KEY=gsk_...` because the whole line had been pasted as the value). File is `root:root 600`, 70 bytes (13 + 56-char key + newline).
-- [x] Confirm port `5681` is free on the VPS: `ss -tlnp | grep 5681` returned nothing on 2026-05-15; sanity-check `grep 5680` confirmed musemaniac listening on 5680 (`python3` pid 233037). 5681 cleared for bestpractice.
-- [x] Caddy site block for `best.amusealot.com` added 2026-05-15. Pattern follows `staging.bubblesdontcry.com`: HSTS + `header -Server` + `X-Robots-Tag noindex,nofollow` + `encode zstd gzip` + `basic_auth { calle <bcrypt-hash> }` + `reverse_proxy localhost:5681`. Block appended at end of `/etc/caddy/Caddyfile` (not inserted near the other `*.amusealot.com` blocks — tidiness can wait, append-only is the lowest-risk edit). Backup saved as `Caddyfile.bak.1778877083`. Username `calle`. `caddy validate` passed; `systemctl reload caddy` clean; Let's Encrypt cert obtained via `tls-alpn-01` in ~5s. Verified end-to-end with `curl --resolve best.amusealot.com:443:77.42.40.207 -I https://best.amusealot.com` → `HTTP/1.1 401 Unauthorized` with `WWW-Authenticate: Basic`. Sibling sites confirmed untouched: amusealot.com 200, bubblesdontcry.com 200, staging.bubblesdontcry.com 401.
-- [x] `bestpractice.service` systemd unit written at `/etc/systemd/system/bestpractice.service`, 2026-05-15. Mirrors `musemaniac-subscriber.service`: `Type=simple`, `User=root`, `WorkingDirectory=/opt/bestpractice`, `EnvironmentFile=/opt/bestpractice/.env`, `ExecStart=/usr/bin/python3 /opt/bestpractice/app.py`, `Restart=always`, `RestartSec=5`, `WantedBy=multi-user.target`. Port 5681 lives in `app.py`, not the unit. `systemctl daemon-reload` clean; status shows `Loaded: loaded; disabled; inactive (dead)`. Intentionally not enabled or started — no `app.py` yet, build session will deploy code then `systemctl enable --now bestpractice`. Running as root matches musemaniac's pattern; hardening (dedicated user, NoNewPrivileges, ProtectSystem, etc.) deferred to post-v1.
-- [x] `.github/workflows/deploy.yml` added 2026-05-15. Triggers on push to `main` with `paths-ignore` for docs/`nextstep.md`/`CLAUDE.md`/`.gitignore`/`.claude/**` so doc-only commits don't spin a runner. Uses our four SSH secrets (`SSH_PRIVATE_KEY`, `SSH_HOST`, `SSH_USER`, `SSH_KNOWN_HOSTS`) — pre-stored known_hosts because Windows ssh-keyscan can't negotiate the VPS's KEX. Gated on `app.py` existing so the workflow runs green on doc/scaffold-only repos: when `app.py` lands, rsync + `systemctl restart bestpractice` start firing. Rsync excludes `.git/`, `.github/`, `.claude/`, `docs/`, `nextstep.md`, `CLAUDE.md`, `.gitignore`, `__pycache__/`, `*.pyc`, `.venv/`, `.pytest_cache/`, `*.db`, `*.sqlite*`, `instance/`. **Intentionally no `--delete` flag** — the SQLite DB lives next to the app; build agent should revisit this when finalizing data layout (likely move DB to `/opt/bestpractice-data/` so `--delete` becomes safe). `workflow_dispatch` enabled for manual runs.
-- [ ] Daily SQLite backup cron and log rotation on the VPS.
-
-### Lessons
-- Windows' built-in OpenSSH `ssh-keyscan` (in `C:\Windows\System32\OpenSSH\`) is too old for the VPS's modern KEX list. When you need host keys on Windows, pull them from your existing `~/.ssh/known_hosts` instead of running keyscan. Anyone you've previously SSHed to is already a trusted entry.
-- Musemaniac is the repo name for what `docs/PROJECT.md` calls "AmuseAlot". Local path: `E:\_dev\musemaniac`. When the briefs reference `collect_news.py`, `score_news.py`, or `run_newsletter.sh`, look there.
-- Musemaniac deploys via local `deploy.sh` (scp + ssh systemctl restart), **not** GitHub Actions. Bestpractice will be the first Python-on-VPS project to use GHA-on-push — no existing workflow to copy.
+Sessions 1–2 (project bootstrap, design prototype + deploy prep) live in
+[`docs/archive/sessions.md`](docs/archive/sessions.md).
 
 ---
 
@@ -354,42 +212,155 @@ are still placeholders — Session 5.
 
 ---
 
-## Next session — Session 5 starts here
+## Session 5 — Slice B parts 2 + 3: /admin/queue + /admin/sources ✅ shipped 2026-05-16
 
-Slice B continues with the two admin shells, then `/component/<slug>`.
-Order:
+The two admin shells from the Session 4 punch list. `/admin/queue` is a
+**read-only** view of `sub_considerations WHERE status='pending'` —
+approve/reject/edit POST handlers defer to Slice C, when ingestion
+actually creates pending rows. `/admin/sources` is the full CRUD shell:
+list, add (RSS only — name + URL), and per-row toggle (active ↔ paused;
+error → active for operator unblocking).
 
-1. **`/admin/queue`** — read-only first. Query `sub_considerations`
-   where `status='pending'`, render the prototype's row UI per
-   `BUILD_NOTES.md` §2.3 minus the editable bits (which need POST
-   handlers — defer until Slice C when ingestion actually creates
-   pending rows). The toolbar's "Last sync" pill and the
-   "X pending · Y approved this week · Z rejected" counts wire to
-   real data immediately (the values just happen to be zeros until
-   ingestion lands).
-2. **`/admin/sources`** — list rows from `sources`; `<form
-   method="post">` per row for the active/paused toggle hitting
-   `POST /admin/sources/<id>/toggle`. The "Add source" form posts to
-   `POST /admin/sources` (RSS only — name + URL). No JS required.
-   Status dot colors (green/amber/red) are an approved exception to
-   the blue-only rule per `BUILD_NOTES.md` §2.4 — don't extend them
-   elsewhere.
-3. **`/component/<slug>`** — reuse `templates/page_type.html`. The
-   view function `load_page_type_view` becomes `load_parent_view` and
-   takes `parent_type` + `parent_slug`. Route mounts at
-   `/component/<slug>`; passes `parent_type='component'`. Seed at
-   least the components from `DESIGN_HANDOVER.md`'s reference list
-   into `considerations` so the page renders non-empty for one
-   component — pick `image` or `card`, both of which already show up
-   in search expansions and would prove the layout.
-4. **Empty-state for the other page types.** Currently the 16
-   non-Article page types 404. Render `page_type.html` with an empty
-   `groups=[]` and add a friendly "no considerations yet" body inside
-   the macro so the chrome still shows.
+Pushed in two commits with one deploy gap so the prod migration could
+run between them. Locally verified by inserting a synthetic pending row
++ a synthetic source through the admin POST routes, then deleting both.
 
-Slice C (ingestion + Groq scoring) is the next slice after that; see
-the §6 ingestion pattern in `PROJECT.md` and AmuseAlot/musemaniac's
-`collect_news.py` + `score_news.py` for the working pattern.
+### Done
+- [x] `schema.sql` — nullable `relevance_score INTEGER` on
+      `sub_considerations` for Groq's 1–10 score on AI-suggested items.
+- [x] `init_db.py` — new `migrate()` step compares `PRAGMA
+      table_info(sub_considerations)` against expected columns and
+      `ALTER`s anything missing. `CREATE TABLE IF NOT EXISTS` doesn't
+      touch existing tables, so any future column add must be wired
+      through `migrate()`. Idempotent — re-running adds nothing.
+- [x] `app.py` — `_format_relative()` formats an ISO timestamp as
+      "just now", "12m ago", "2h ago", "yesterday", "3d ago", or a
+      bare ISO date past 7 days. `load_queue_view()` joins pending
+      subs to parent + phases, computes `pending_count` /
+      `approved_week` (`last_updated >= now-7d`) / `rejected_count`,
+      and a `last_sync` string from `MAX(sources.last_collected) WHERE
+      status='active'`.
+- [x] `app.py` — `/admin/sources` GET lists rows ordered (active first,
+      then alpha). POST `/admin/sources` adds an RSS source with
+      `status='active'` (validates name + http(s) URL; bad input
+      redirects with `?error=…` echoed by the template). POST
+      `/admin/sources/<id>/toggle` flips `active` ↔ `paused`; `error`
+      promotes to `active` (operator unblocking the feed).
+- [x] `templates/admin/queue.html` — extends `base.html`. Empty state
+      points operators at `/admin/sources`. When pending rows exist:
+      `qcard` per item with source meta (name + dot + date + score
+      strip via Jinja macro), one-liner as static `<p>` (no
+      textarea), phase chips (no remove ×), "Suggested home" as a
+      static breadcrumb of `parent_label · group_label · cons_title`,
+      body extract. The aside is empty for now (sr-only message
+      announcing approve/reject controls land in Slice C).
+- [x] `templates/admin/sources.html` — extends `base.html`. Table per
+      `BUILD_NOTES.md` §2.4 (status dots green/amber/red are the
+      approved blue-only exception). Per-row toggle is its own
+      `<form method="post" data-auto-submit>` wrapping the prototype's
+      `.toggle` checkbox; `<noscript>` falls back to a Save button.
+      Add-source form is RSS-only per `BUILD_NOTES.md` §2.4
+      (structured needs `config_json`, deferred).
+- [x] `static/js/admin.js` (3 lines) — auto-submits any
+      `form[data-auto-submit]` on change. Loaded only by
+      `templates/admin/sources.html`'s `block scripts` override (not
+      every page).
+
+### Files changed
+- `schema.sql` — added `relevance_score INTEGER` (nullable)
+- `init_db.py` — added `migrate()` for idempotent column adds
+- `app.py` — `_format_relative`, `load_queue_view`, three new admin
+  routes (queue read; sources GET/POST/toggle); replaced two
+  placeholders
+- `templates/admin/queue.html` (new)
+- `templates/admin/sources.html` (new)
+- `static/js/admin.js` (new, 3 lines)
+- `nextstep.md` — Session 5 block (this entry); sessions 1–2 archived
+  to `docs/archive/sessions.md`
+- `docs/archive/sessions.md` (new) — historical Session 1 + 2 blocks
+
+### How to test — local (passed 2026-05-16)
+1. `python init_db.py` (twice) → second run reports
+   `(skip) article-page already has 16 considerations` and `FTS rows: 59`.
+   Verify column exists:
+   `sqlite3 data/bestpractice.db 'PRAGMA table_info(sub_considerations)'`
+   includes `relevance_score`.
+2. `python app.py`.
+3. `curl -sI /admin/queue` → 200, ~2.7 KB empty state. Body shows
+   `0 pending · 0 approved this week · 0 rejected · Last sync: never`.
+4. Insert a pending row by hand (1-line Python via sqlite3), reload,
+   confirm `qcard` renders with score strip + chips + breadcrumb.
+5. `curl -sI /admin/sources` → 200, "No sources yet" empty state.
+6. `curl -X POST /admin/sources -d 'name=web.dev&url=https://web.dev/rss.xml'`
+   → 302; reload `/admin/sources` shows the row.
+7. Bad inputs (`name=Foo` alone, or `url=ftp://x`) redirect to
+   `?error=…` and the template echoes the message.
+8. `curl -X POST /admin/sources/<id>/toggle` flips the DB column;
+   reload shows status flip. Toggle on a 9999 id → 404.
+9. Regression: `/page-type/article-page` Content-Length still 107695,
+   `/search?q=image` still 200.
+
+### How tested — production (pending)
+- Push 1 (queue + migration) deployed via GHA run `25944598945` in
+  ~10s, success. Prod `/admin/queue` will 500 until `python3
+  init_db.py` runs on the VPS to add `relevance_score` (the route
+  SELECTs it). Auto-classifier blocked the SSH; needs explicit user
+  OK before running `ssh root@77.42.40.207 'cd /opt/bestpractice &&
+  python3 init_db.py'`.
+- Push 2 (sources) will be batched with this `nextstep.md` update so
+  one deploy covers everything still missing on prod.
+
+### Out of scope (parked — Session 6 starts here)
+- `/admin/queue` write paths: approve / reject / edit-and-approve.
+  These need pending rows to manipulate, which need ingestion.
+- `/admin/considerations/<slug>` — large-accordion editor.
+- The "Edit & approve" `<dialog>` from `BUILD_NOTES.md` §2.3.
+
+### Lessons / decisions worth noting (non-obvious)
+- **`migrate()` is the new home for column adds.** SQLite's `CREATE
+  TABLE IF NOT EXISTS` won't apply changes to an existing table. Any
+  future `schema.sql` column needs a parallel ALTER in
+  `init_db.py:migrate()`. Pattern: read `PRAGMA table_info(<table>)`,
+  diff against expected names, ALTER what's missing. Cheap to call
+  every run.
+- **No Flask `flash()`.** Adding flash would force a `secret_key` and
+  signed session cookies for a single-user admin behind Caddy basic
+  auth — not worth it. Errors round-trip through `?error=…` query
+  string instead, echoed by the template's `{% if error %}` block.
+  Idempotent and bookmarkable.
+- **`error` source status promotes to `active` on toggle.** The
+  prototype only models active ↔ paused, but `sources.status` allows
+  `error`. When operators toggle an errored source, the intent is
+  "unblock and try again" — flipping to `active` is the useful
+  default. Toggle-from-error → paused would just hide the symptom.
+- **`data-auto-submit` is the no-JS fallback contract.** The toggle
+  form works without JS via the `<noscript>` Save button. With JS
+  loaded, `static/js/admin.js` (3 lines) submits on change. Same form
+  HTML in both cases — degrades cleanly.
+
+---
+
+## Next session — Session 6 starts here
+
+Two unfinished items from Session 5's punch list, then Slice C kicks
+off ingestion:
+
+1. **`/component/<slug>`** — reuse `templates/page_type.html`. Rename
+   `load_page_type_view` to `load_parent_view(parent_type,
+   parent_slug)`; mount route at `/component/<slug>`; pass
+   `parent_type='component'`. Seed `image` or `card` considerations
+   so the route renders non-empty for at least one component.
+2. **Empty-state for the other 16 page types.** Currently they 404.
+   Render `page_type.html` with `groups=[]` and a friendly "no
+   considerations yet" body inside the page_type macro so the chrome
+   still shows. The route already loads `page_type` row before
+   considerations, so this is mostly a template branch.
+
+Then **Slice C** (ingestion + Groq scoring): see the §6 ingestion
+pattern in `PROJECT.md` and AmuseAlot/musemaniac's `collect_news.py`
++ `score_news.py` for the working pattern. First pending rows in the
+queue come from this slice — that's the trigger to wire approve /
+reject / edit POST handlers in `/admin/queue`.
 
 ### Tech-debt nudges parked from earlier sessions
 - VPS Python is 3.10.12; `PROJECT.md` §8 calls for 3.12+. No 3.12-only

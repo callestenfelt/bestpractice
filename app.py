@@ -447,11 +447,55 @@ def admin_queue():
 
 @app.route("/admin/sources")
 def admin_sources():
-    return render_template(
-        "placeholder.html",
-        heading="Sources",
-        message="Source management lands in a later slice. RSS + structured feeds will be configured here.",
+    db = get_db()
+    rows = db.execute(
+        """SELECT id, name, type, url, status, last_collected, item_count, created_at
+             FROM sources
+            ORDER BY status = 'paused', LOWER(name)"""
+    ).fetchall()
+    sources = [{
+        "id": r["id"],
+        "name": r["name"],
+        "type": r["type"],
+        "url": r["url"],
+        "status": r["status"],
+        "last_collected": r["last_collected"],
+        "last_collected_human": _format_relative(r["last_collected"]) if r["last_collected"] else "never",
+        "item_count": r["item_count"],
+    } for r in rows]
+    error = request.args.get("error", "").strip()
+    return render_template("admin/sources.html", sources=sources, error=error)
+
+
+@app.route("/admin/sources", methods=["POST"])
+def admin_sources_add():
+    name = (request.form.get("name") or "").strip()
+    url = (request.form.get("url") or "").strip()
+    if not name or not url:
+        return redirect(url_for("admin_sources", error="Name and URL are required."))
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return redirect(url_for("admin_sources", error="URL must start with http:// or https://."))
+    db = get_db()
+    db.execute(
+        """INSERT INTO sources (name, type, url, status, created_at)
+           VALUES (?, 'rss', ?, 'active', ?)""",
+        (name, url, datetime.now(timezone.utc).isoformat(timespec="seconds")),
     )
+    db.commit()
+    return redirect(url_for("admin_sources"))
+
+
+@app.route("/admin/sources/<int:source_id>/toggle", methods=["POST"])
+def admin_sources_toggle(source_id):
+    db = get_db()
+    row = db.execute("SELECT status FROM sources WHERE id = ?", (source_id,)).fetchone()
+    if not row:
+        abort(404)
+    # Error → active (operator unblocking the feed); active ↔ paused otherwise.
+    new_status = "active" if row["status"] in ("paused", "error") else "paused"
+    db.execute("UPDATE sources SET status = ? WHERE id = ?", (new_status, source_id))
+    db.commit()
+    return redirect(url_for("admin_sources"))
 
 
 if __name__ == "__main__":
