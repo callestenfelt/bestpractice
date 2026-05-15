@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ page.label }} · bestpractice{% endblock %}
+
+{% macro chevron() %}<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>{% endmacro %}
+
+{% macro render_sub(sub) %}
+  {% set is_new = sub.last_updated | is_new %}
+  <details class="sub{% if is_new %} sub--new{% endif %}" id="{{ sub.cons_slug }}.{{ sub.slug }}" data-phases="{{ sub.phases | join(' ') }}">
+    <summary class="sub__summary">
+      <div class="sub__top">
+        <span class="sub__one-liner">{% if is_new %}<span class="sub__newdot" aria-hidden="true"></span><span class="sr-only">New. </span>{% endif %}{{ sub.one_liner | safe }}</span>
+        <div class="sub__metarow">
+          {% for phase in sub.phases %}<span class="chip">{{ phase }}</span>{% endfor %}
+          {% if sub.source_name %}
+            <span class="sub__dot" aria-hidden="true"></span>
+            <span class="sub__source"><strong>{{ sub.source_name }}</strong>{% if sub.source_suffix %} · {{ sub.source_suffix }}{% endif %}</span>
+          {% endif %}
+          {% if sub.source_date %}
+            <span class="sub__dot" aria-hidden="true"></span>
+            <span>{{ sub.source_date }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {{ chevron() }}
+    </summary>
+    <div class="sub__body">
+      {{ sub.body | safe }}
+      {% if sub.source_name or sub.source_url %}
+      <div class="sub__footer">
+        <span><strong>Source.</strong> {{ sub.source_name }}{% if sub.source_title %} · <em>{{ sub.source_title }}</em>{% endif %}</span>
+        {% if sub.source_url %}<a href="{{ sub.source_url }}" rel="noopener">View source ↗</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </details>
+{% endmacro %}
+
+{% macro render_consideration(cons) %}
+  <details class="consideration" id="{{ cons.slug }}">
+    <summary class="consideration__summary">
+      <span class="consideration__title">{{ cons.title }}</span>
+      <span class="consideration__meta" data-role="count">{{ cons.sub_considerations | length }} items</span>
+      {{ chevron() }}
+    </summary>
+    <div class="consideration__body">
+      {% if cons.intro %}<p class="consideration__intro">{{ cons.intro | safe }}</p>{% endif %}
+      <div class="subs">
+        {% for sub in cons.sub_considerations %}{{ render_sub(sub) }}{% endfor %}
+      </div>
+    </div>
+  </details>
+{% endmacro %}
+
+{% block content %}
+<div class="shell">
+
+  <aside class="rail" aria-label="Filters">
+    <div class="rail__section">
+      <div class="rail__heading">
+        <span>Filter by phase</span>
+        <span class="rail__actions">
+          <button class="linkbtn" data-action="select-all" type="button">all</button>
+          <span aria-hidden="true">·</span>
+          <button class="linkbtn" data-action="clear-all" type="button">none</button>
+        </span>
+      </div>
+      <ul class="checklist">
+        {% for phase in phases %}
+        <li><label class="checklist__item"><input type="checkbox" name="phase" value="{{ phase.slug }}" checked /><span>{{ phase.label }}</span></label></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <hr class="hr hr--tight" />
+
+    <div class="rail__section">
+      <label class="toggle-row">
+        <input type="checkbox" class="toggle" id="toggle-sitewide" />
+        <span>Show site-wide considerations</span>
+      </label>
+      <p style="font-size: var(--fs-12); color: var(--gray-10); margin-top: 8px; line-height: var(--lh-snug);">
+        Mixes alt text, contrast, keyboard nav, and other cross-cutting items into this view.
+      </p>
+    </div>
+  </aside>
+
+  <div class="main">
+
+    <div class="page-heading">
+      <div class="page-heading__eyebrow">Page type{% if page.schema_org_type %} · <code>{{ page.schema_org_type }}</code>{% endif %}</div>
+      <h1 class="page-heading__title">{{ page.label }}</h1>
+      <p class="page-heading__definition">{{ page.definition }}</p>
+    </div>
+
+    <hr class="hr" />
+
+    {% for group in groups %}
+      <section class="group" data-group="{{ group.group_slug }}"{% if group.group_slug == 'site-wide' %} hidden{% endif %}>
+        <header class="group__header">
+          <h2 class="group__title">{{ group.group_label }}</h2>
+          {% if group.group_slug == 'site-wide' %}<span class="group__count">Layered onto every page</span>{% endif %}
+        </header>
+        {% for cons in group.considerations %}{{ render_consideration(cons) }}{% endfor %}
+      </section>
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock %}

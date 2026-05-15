@@ -4,12 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-This repo currently contains **only specification documents**. There is no application code, build system, package manifest, or test suite yet. The project ("bestpractice") is in the briefing phase, about to be implemented in two stages:
+The design prototype is approved and canonical at `prototype/`, and the build agent has shipped Slice A of the Flask app: `app.py` + `schema.sql` + `init_db.py` + `templates/` + `static/`, with the prototype's 18 Article Page considerations / 59 sub-accordions imported as fixtures. `/page-type/article-page` renders identically to the prototype, served from SQLite.
 
-1. A **design agent** produces a static HTML/CSS prototype of four views under `prototype/`.
-2. A **build agent** inherits that prototype and wires it into a Flask app.
+Slices B+ are still pending: `/search`, the three admin views (`/admin/queue`, `/admin/sources`, `/admin/considerations/<slug>`), the `/component/<slug>` route, other page types, RSS + structured ingestion, and Groq scoring. See `nextstep.md` for the running session log and the current "Next session" pointer.
 
-If you are asked to "start building," first determine which stage applies. The prototype must exist (and be approved) before the Flask build begins — the prototype is a hard input to the build agent and must not be redesigned.
+The prototype remains a hard input — visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Don't redesign; wire it up.
+
+## Running it locally
+
+```
+python init_db.py     # one-time, creates data/bestpractice.db
+python app.py         # serves on http://localhost:5681
+```
+
+`init_db.py` is idempotent. `app.py` exits with a clear message if the DB file is missing.
 
 ## Authoritative documents
 

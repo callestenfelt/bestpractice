@@ -156,25 +156,100 @@ blockers. No secret values appear in this repo; only names and structure.
 
 ---
 
-## Next session — Session 3 (build) starts here
+## Session 3 — Build Slice A (read surface) 🚧 local complete 2026-05-15, deploy pending
 
-Prototype is approved and committed. The next session is the **build
-agent** per `CLAUDE.md`. Hard inputs: `docs/PROJECT.md`,
-`docs/DESIGN_HANDOVER.md`, `prototype/BUILD_NOTES.md`,
-`prototype/DECISIONS.md`. Don't redesign — wire it up.
+Slice A of the build session per `C:\Users\calle\.claude\plans\whats-next-breezy-pebble.md`:
+smallest deployable read surface. Flask app, full schema, taxonomies seeded
+from `PROJECT.md` §2.1–2.3, prototype's 18 considerations / 59 sub-accordions
+imported as fixtures, `/page-type/article-page` renders identically to
+`prototype/page-type.html`. No search, no admin, no ingestion. Slices B+
+(search, admin shells, ingestion, scoring) are follow-up sessions.
 
-Rough order:
+Local build is complete and verified. **Production deploy is the next
+discrete step** — not done yet because it's the first non-trivial code
+pushed to the repo and warrants a human eyeball on the diff. The GHA
+workflow added in Session 2 fires on push-to-main; once that happens, the
+sibling-site untouched check (per Session 1's standing safety note) is
+mandatory before and after.
 
-1. Flask app skeleton at `app.py`; Jinja templates lifted from the prototype.
-2. `schema.sql` seeding the three locked taxonomies (`docs/PROJECT.md` §2.1–2.3) and the relational tables in §4.
-3. Synonym table populated from the taxonomy synonym columns; search index wired (server-side full-text for bodies, small client-side index for synonym/fuzzy lookups).
-4. Admin views: review queue (`/admin/queue`), source management (`/admin/sources`), considerations editor (`/admin/considerations/<slug>`).
-5. Ingestion pipeline: RSS poller with ETag caching + content-hash dedup + langdetect (mirror AmuseAlot's `collect_news.py`); structured importers for caniuse, WCAG, MDN BCD, Schema.org.
-6. Groq scoring pass (`llama-3.3-70b-versatile`) — never auto-publishes; everything lands in the review queue.
-7. Deployment artifacts: `Caddyfile` snippet for `best.amusealot.com`, `bestpractice.service` unit on port 5681, `.env` at `/opt/bestpractice/.env`, daily SQLite backup cron, daily log rotation.
-8. `.github/workflows/deploy.yml` on push to `main` — rsync source to VPS + remote `systemctl restart bestpractice`. VPS SSH key added as a GitHub Actions secret.
+### Done — local
+- [x] `schema.sql` — all eight tables from `PROJECT.md` §4 (`phases`, `page_types`, `components`, `synonyms`, `considerations`, `sub_considerations`, `sub_consideration_phases`, `sources`). `PRAGMA foreign_keys = ON`. Indices on `parent_slug` (considerations) and `consideration_id` (sub_considerations). Added a `position` column on `sub_consideration_phases` so the rendered chip order matches the fixture (without it, SQLite's PK index made phases alphabetical, breaking parity with the prototype's `data-phases="strategy concept content"` order).
+- [x] `init_db.py` — applies schema, seeds 10 phases / 17 page_types / 46 components (all from `PROJECT.md` §2.1–2.3) and their synonyms (114 rows), loads `fixtures/article_page.json` into `considerations` + `sub_considerations` + `sub_consideration_phases`. Idempotent (`INSERT OR IGNORE` on taxonomies; skip fixture import if `article-page` already has considerations). Site-wide group inside the fixture is bucketed under `parent_slug='site-wide'`, not duplicated into every page type — matches `PROJECT.md` §2.2 ("not a real page" — cross-cutting).
+- [x] `scripts/extract_article_page_fixture.py` — one-shot bs4 parser that turns `prototype/page-type.html` into `fixtures/article_page.json`. Extracts 6 groups (5 page-type + 1 site-wide), 18 considerations, 59 sub-accordions including phases, source name/suffix/title/URL/date, body HTML, and `display_order`. The `sub--new` class is **not** stored; `last_updated` is stamped per `BUILD_NOTES.md` §3 (compute at render time from a 14-day window). For the four `sub--new` subs in the prototype, the extractor stamps `last_updated` near the `NEW_ANCHOR` (2026-05-15) spread by 3-day intervals so the indicators stay live for ~a week post-deploy then decay naturally.
+- [x] `fixtures/article_page.json` (61 KB) — extractor output committed so `init_db.py` has no bs4 runtime dep.
+- [x] `static/styles/{tokens,base,components}.css`, `static/js/{accordion,filters,search}.js` — copied verbatim from `prototype/`. CSS file names preserved per `BUILD_NOTES.md` §1.
+- [x] `static/fonts/InterVariable.woff2` (344 KB) — Inter v4 variable font from `rsms.me/inter/font-files/`. `@font-face` declaration added at the top of `static/styles/base.css`; Google Fonts CDN `<link>` and preconnects dropped from `templates/base.html`. `tokens.css`'s `--font-sans: "Inter", ...` picks it up without further changes.
+- [x] `templates/base.html` — shared chrome with brand, search form (action → `/search`), admin nav. Three CSS files and three JS files loaded via `url_for('static', filename=…)`.
+- [x] `templates/page_type.html` — extends `base.html`. Two macros (`render_consideration`, `render_sub`) emit the prototype's DOM contract from `BUILD_NOTES.md` §3 verbatim: `id="{cons_slug}.{sub_slug}"`, space-separated `data-phases`, `data-role="count"`, `sub--new` class computed at render time via an `is_new` Jinja filter, `<span class="sub__newdot">` + `<span class="sr-only">New. </span>` pair, the chevron SVG. Filter rail iterates `phases` from the DB; site-wide group renders last with `hidden` (the `filters.js` toggle un-hides it client-side per `BUILD_NOTES.md` §2.1).
+- [x] `templates/placeholder.html` — friendly "coming in a later slice" page used by `/search`, `/admin/queue`, `/admin/sources` so the header chrome's links route somewhere reasonable until Slice B+. Skips loading the JS files (filters/accordion/search), since there's nothing to filter on a placeholder.
+- [x] `app.py` — single-file Flask, ~170 lines. Routes: `/` (302 → article-page), `/page-type/<slug>` (loads page_type + phases + considerations + sub-considerations + phase tags, builds the grouped view model, also appends a site-wide group from `parent_slug='site-wide'` when the requested page isn't site-wide), `/search`, `/admin/queue`, `/admin/sources` (placeholders). `is_new` Jinja filter computes "within 14 days of now (UTC)" per `BUILD_NOTES.md` §3. `DB_PATH` reads `BESTPRACTICE_DB` env var with `data/bestpractice.db` default, so systemd's `EnvironmentFile=/opt/bestpractice/.env` can override on the VPS without code changes. Exits with a clear "run `python init_db.py` first" message if the DB file is missing — avoids surprise writes from a misconfigured service start. Listens on `0.0.0.0:5681` to match the `bestpractice.service` unit installed in Session 2.
 
-Before the first deploy: confirm port 5681 is unclaimed on `77.42.40.207`,
+### Files changed
+- `app.py` (new, ~170 lines)
+- `schema.sql` (new)
+- `init_db.py` (new)
+- `scripts/extract_article_page_fixture.py` (new)
+- `fixtures/article_page.json` (new)
+- `templates/base.html` (new)
+- `templates/page_type.html` (new)
+- `templates/placeholder.html` (new)
+- `static/styles/{tokens,base,components}.css` (copied from `prototype/styles/`)
+- `static/js/{accordion,filters,search}.js` (copied from `prototype/js/`)
+- `static/fonts/InterVariable.woff2` (new binary, 344 KB)
+- `nextstep.md` — Session 3 block (this entry)
+
+### How to test — local (passing as of 2026-05-15)
+1. `python init_db.py` → creates `data/bestpractice.db`. Re-running prints `(skip) article-page already has 18 considerations` and exits clean.
+2. `python app.py` → serves on `http://localhost:5681`.
+3. `curl -sI http://localhost:5681/` → 302 to `/page-type/article-page`.
+4. `curl -sI http://localhost:5681/page-type/article-page` → 200, ~108 KB HTML.
+5. DOM contract parity (counted from the served HTML with bs4): 6 groups, 18 considerations, 59 sub-accordions, 4 `sub--new`, 10 phase checkboxes, `#toggle-sitewide` present, the site-wide `<section>` carries `hidden`. The first sub's `id` is `page-purpose.one-job`, `data-phases` is `strategy concept content`, chips render in matching order.
+6. `curl -sI http://localhost:5681/page-type/nonexistent` → 404.
+7. `/search`, `/admin/queue`, `/admin/sources` → 200 with the placeholder template.
+8. `curl -sI http://localhost:5681/static/{styles/base.css,fonts/InterVariable.woff2,js/accordion.js}` → all 200.
+9. Open `http://localhost:5681/page-type/article-page` in a browser side-by-side with `file:///E:/_dev/best/prototype/page-type.html`. Spot-check: untick a phase checkbox (subs hide, empty cons collapse, empty group disappears), toggle "Show site-wide considerations" (site-wide group appears at the bottom), append `#page-purpose.one-job` to the URL and reload (both `<details>` open).
+
+### How to test — production (pending — runs once deploy fires)
+1. Curl-baseline siblings: `amusealot.com`, `bubblesdontcry.com`, `staging.bubblesdontcry.com` — capture status codes.
+2. Push to `main` (or merge a feature branch). GHA workflow's "if `app.py` exists" gate now passes; rsync + remote `systemctl restart bestpractice` should run. Watch the Actions tab.
+3. SSH to VPS. `systemctl status bestpractice` — first restart will be `failed` because the DB doesn't exist yet (intentional, the app emits a clear "run init_db.py" message). Then `python3 /opt/bestpractice/init_db.py` once, then `systemctl enable --now bestpractice` (the unit is currently loaded but disabled per Session 2).
+4. `journalctl -u bestpractice -f` clean; `ss -tlnp | grep 5681` shows the service listening.
+5. `curl --resolve best.amusealot.com:443:77.42.40.207 -u calle:<password> https://best.amusealot.com/page-type/article-page` → 200 with the rendered HTML.
+6. Re-curl the three sibling sites and confirm status codes are byte-identical to the baseline. If any drift, investigate before declaring the deploy green.
+
+### Out of scope (parked — Slice B+)
+- `/search` route — server-side body/title text search, synonyms-driven query expansion, the "Includes synonym matches for *foo*" hint line, snippet generation with `<mark>` highlights.
+- Admin shells: `/admin/queue` (no items yet without ingestion), `/admin/sources` (lists `sources` table rows), `/admin/considerations/<slug>` (large-accordion editor).
+- `/component/<slug>` route. Schema supports `parent_type='component'` but no template/route wiring yet. The `page_type.html` template will be reused per `BUILD_NOTES.md` §2.1.
+- Other page types beyond Article Page. Currently they 404 cleanly; render an empty state in Slice B.
+- RSS ingestion pipeline (`collect.py` mirroring musemaniac's `collect_news.py`): ETag caching, content-hash dedup, langdetect, retry behavior.
+- Structured importers (caniuse, WCAG 2.2 JSON-LD, MDN BCD, Schema.org).
+- Groq scoring (`score.py` mirroring `score_news.py`) — never auto-publishes per `PROJECT.md` §6.2.
+- Daily SQLite backup cron + log rotation on the VPS (last unchecked item in Session 2's deploy-prep list).
+- Radix Themes CSS vendoring — `tokens.css` already uses Radix-shaped variable names per the prototype's `DECISIONS.md`, so this is a mechanical swap that can land any time.
+
+### Decisions worth noting (non-obvious)
+- **Site-wide is its own bucket, not denormalised per page type.** The fixture's site-wide group is stored under `parent_slug='site-wide'`. The view function pulls main considerations from the requested slug AND site-wide considerations separately, then concatenates them as a trailing `hidden` group. This avoids duplicating cross-cutting items into every page-type row when more page types ship in Slice B.
+- **`source_title` is its own column.** The prototype's per-sub footer carries a work/article title (`<em>How users read on the web</em>`) that isn't visible in the metarow. Adding `source_title` to `sub_considerations` lets the footer reconstruct faithfully without storing the prototype's footer HTML verbatim.
+- **`init_db.py` is hand-run, not auto-run on app start.** Avoids surprise writes from a misconfigured service start. The app exits cleanly if the DB is missing.
+- **Werkzeug dev server in production.** Matches musemaniac's pattern (`ExecStart=/usr/bin/python3 .../app.py`). Single user behind Caddy basic auth; gunicorn would be over-engineered for the load shape.
+
+---
+
+## Next session — Session 4 starts here
+
+The discrete next step is **the first production deploy** — push Session 3
+to `main`, watch GHA, run `init_db.py` once on the VPS, enable the
+service, verify, sibling-site check. After that lands cleanly, Slice B
+(search + admin shells) is the natural next slice.
+
+When Slice B starts, the order is roughly:
+1. `/search` route — server-side text search across consideration titles, sub one-liners, and sub bodies. Use SQLite FTS5 (a virtual table populated from `sub_considerations`) for the body matches; bolt on a small synonym-aware client-side expander in `static/js/search.js`. Group results by `parent_type/parent_slug` per `BUILD_NOTES.md` §2.2.
+2. `/admin/queue` — read-only at first (empty queue until ingestion exists), then editable forms when the data starts flowing.
+3. `/admin/sources` — list-and-toggle UI over the `sources` table.
+4. Then ingestion + Groq scoring (Slice C).
+
+Before the first deploy: confirm port 5681 is still unclaimed on `77.42.40.207`,
 confirm Caddy's existing site blocks for `bubble`, `bubblesdontcry-site`,
-and `amusealot` are untouched, and add the new site block side-by-side
-rather than editing existing ones.
+and `amusealot` are untouched, and verify the basic-auth password for
+`best.amusealot.com` is recorded somewhere the user can recover it.
