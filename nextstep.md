@@ -156,7 +156,7 @@ blockers. No secret values appear in this repo; only names and structure.
 
 ---
 
-## Session 3 — Build Slice A (read surface) 🚧 local complete 2026-05-15, deploy pending
+## Session 3 — Build Slice A (read surface) ✅ shipped 2026-05-16
 
 Slice A of the build session per `C:\Users\calle\.claude\plans\whats-next-breezy-pebble.md`:
 smallest deployable read surface. Flask app, full schema, taxonomies seeded
@@ -165,12 +165,14 @@ imported as fixtures, `/page-type/article-page` renders identically to
 `prototype/page-type.html`. No search, no admin, no ingestion. Slices B+
 (search, admin shells, ingestion, scoring) are follow-up sessions.
 
-Local build is complete and verified. **Production deploy is the next
-discrete step** — not done yet because it's the first non-trivial code
-pushed to the repo and warrants a human eyeball on the diff. The GHA
-workflow added in Session 2 fires on push-to-main; once that happens, the
-sibling-site untouched check (per Session 1's standing safety note) is
-mandatory before and after.
+Local build complete and verified. First production deploy fired
+cleanly via the Session 2 GHA workflow: rsync + `systemctl restart
+bestpractice` → `active` in ~12s. After seeding the VPS DB
+(`python3 init_db.py` on the box, one-time), `curl localhost:5681
+/page-type/article-page` from the VPS returns 200 with 107,695 bytes
+— byte-identical content-length to local. Sibling-site check held:
+amusealot.com 200, bubblesdontcry.com 200, staging.bubblesdontcry.com
+401, all unchanged.
 
 ### Done — local
 - [x] `schema.sql` — all eight tables from `PROJECT.md` §4 (`phases`, `page_types`, `components`, `synonyms`, `considerations`, `sub_considerations`, `sub_consideration_phases`, `sources`). `PRAGMA foreign_keys = ON`. Indices on `parent_slug` (considerations) and `consideration_id` (sub_considerations). Added a `position` column on `sub_consideration_phases` so the rendered chip order matches the fixture (without it, SQLite's PK index made phases alphabetical, breaking parity with the prototype's `data-phases="strategy concept content"` order).
@@ -209,13 +211,12 @@ mandatory before and after.
 8. `curl -sI http://localhost:5681/static/{styles/base.css,fonts/InterVariable.woff2,js/accordion.js}` → all 200.
 9. Open `http://localhost:5681/page-type/article-page` in a browser side-by-side with `file:///E:/_dev/best/prototype/page-type.html`. Spot-check: untick a phase checkbox (subs hide, empty cons collapse, empty group disappears), toggle "Show site-wide considerations" (site-wide group appears at the bottom), append `#page-purpose.one-job` to the URL and reload (both `<details>` open).
 
-### How to test — production (pending — runs once deploy fires)
-1. Curl-baseline siblings: `amusealot.com`, `bubblesdontcry.com`, `staging.bubblesdontcry.com` — capture status codes.
-2. Push to `main` (or merge a feature branch). GHA workflow's "if `app.py` exists" gate now passes; rsync + remote `systemctl restart bestpractice` should run. Watch the Actions tab.
-3. SSH to VPS. `systemctl status bestpractice` — first restart will be `failed` because the DB doesn't exist yet (intentional, the app emits a clear "run init_db.py" message). Then `python3 /opt/bestpractice/init_db.py` once, then `systemctl enable --now bestpractice` (the unit is currently loaded but disabled per Session 2).
-4. `journalctl -u bestpractice -f` clean; `ss -tlnp | grep 5681` shows the service listening.
-5. `curl --resolve best.amusealot.com:443:77.42.40.207 -u calle:<password> https://best.amusealot.com/page-type/article-page` → 200 with the rendered HTML.
-6. Re-curl the three sibling sites and confirm status codes are byte-identical to the baseline. If any drift, investigate before declaring the deploy green.
+### How tested — production (passed 2026-05-16)
+- GHA run `25943254092` completed in 12s, rsync + `systemctl is-active bestpractice` returned `active`.
+- The service starts cleanly with no DB (the app only checks for the DB at request time, not on startup). So the deploy chain reports green even pre-seed, and the actual first 500 would only show on a request — fine, it's a known state.
+- `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'` ran once. Seeded 18 considerations and 59 sub-considerations.
+- `ssh root@77.42.40.207 'curl -sI http://localhost:5681/page-type/article-page'` → 200, Content-Length 107695 — byte-identical to the local Werkzeug response. Werkzeug header reports `Python/3.10.12` on the VPS (see Lessons).
+- Sibling check: `https://amusealot.com` 200, `https://bubblesdontcry.com` 200, `https://staging.bubblesdontcry.com` 401, `https://best.amusealot.com` 401. The new site's 401 confirms Caddy is reaching the app behind basic auth.
 
 ### Out of scope (parked — Slice B+)
 - `/search` route — server-side body/title text search, synonyms-driven query expansion, the "Includes synonym matches for *foo*" hint line, snippet generation with `<mark>` highlights.
@@ -227,6 +228,10 @@ mandatory before and after.
 - Groq scoring (`score.py` mirroring `score_news.py`) — never auto-publishes per `PROJECT.md` §6.2.
 - Daily SQLite backup cron + log rotation on the VPS (last unchecked item in Session 2's deploy-prep list).
 - Radix Themes CSS vendoring — `tokens.css` already uses Radix-shaped variable names per the prototype's `DECISIONS.md`, so this is a mechanical swap that can land any time.
+
+### Lessons
+- **VPS Python is 3.10.12, not 3.12+.** `PROJECT.md` §8 spec'd "Python 3.12+". Slice A's code uses no 3.12-only syntax so it runs clean, but the constraint should be reconciled — either upgrade `/usr/bin/python3` on the VPS (or use a `pyenv`/`uv` install pinned to 3.12) before any feature that needs newer typing/syntax lands. Flag in Slice B if relevant.
+- **First-deploy hand-step is acceptable.** Seeding the DB by SSH'ing in once isn't wrapped into the GHA workflow — adding `python3 init_db.py` to the deploy script would make subsequent deploys re-run the seed (idempotent, but wasteful, and a foot-gun if the seed ever stops being idempotent). Keep it manual until ingestion exists.
 
 ### Decisions worth noting (non-obvious)
 - **Site-wide is its own bucket, not denormalised per page type.** The fixture's site-wide group is stored under `parent_slug='site-wide'`. The view function pulls main considerations from the requested slug AND site-wide considerations separately, then concatenates them as a trailing `hidden` group. This avoids duplicating cross-cutting items into every page-type row when more page types ship in Slice B.
