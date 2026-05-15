@@ -253,10 +253,7 @@ pre code {
     padding: var(--space-5) var(--space-4) var(--space-9);
   }
   .rail {
-    position: static;
-    max-height: none;
-    overflow: visible;
-    padding-right: 0;
+    display: none;
   }
   .site-header__inner {
     grid-template-columns: auto 1fr auto;

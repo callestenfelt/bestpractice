@@ -45,19 +45,51 @@
   }
 
   function bindBulk() {
-    var all = document.querySelector('[data-action="select-all"]');
-    var none = document.querySelector('[data-action="clear-all"]');
-    if (all) all.addEventListener('click', function () {
-      document.querySelectorAll('input[name="phase"]').forEach(function (cb) { cb.checked = true; });
-      applyFilters();
+    [['[data-action="select-all"]', true], ['[data-action="clear-all"]', false]].forEach(function (p) {
+      document.querySelectorAll(p[0]).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('input[name="phase"]').forEach(function (cb) { cb.checked = p[1]; });
+          applyFilters();
+        });
+      });
     });
-    if (none) none.addEventListener('click', function () {
-      document.querySelectorAll('input[name="phase"]').forEach(function (cb) { cb.checked = false; });
-      applyFilters();
+  }
+
+  function setupMobileDialog() {
+    var trigger = document.querySelector('[data-action="open-filters"]');
+    var dialog = document.querySelector('#filters-dialog');
+    if (!trigger || !dialog || !dialog.showModal) return;
+    var body = dialog.querySelector('[data-role="filters-body"]');
+    var rail = document.querySelector('.rail');
+    if (!body || !rail) return;
+    var mq = window.matchMedia('(max-width: 960px)');
+
+    function syncLocation() {
+      if (mq.matches && body.childElementCount === 0) {
+        while (rail.firstChild) body.appendChild(rail.firstChild);
+      } else if (!mq.matches && body.childElementCount > 0) {
+        if (dialog.open) dialog.close();
+        while (body.firstChild) rail.appendChild(body.firstChild);
+      }
+    }
+    syncLocation();
+    if (mq.addEventListener) mq.addEventListener('change', syncLocation);
+
+    trigger.addEventListener('click', function () { dialog.showModal(); });
+    dialog.querySelectorAll('[data-action="close-filters"]').forEach(function (b) {
+      b.addEventListener('click', function () { dialog.close(); });
+    });
+    dialog.addEventListener('click', function (e) {
+      if (e.target !== dialog) return;
+      var r = dialog.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+        dialog.close();
+      }
     });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    setupMobileDialog();
     document.querySelectorAll('input[name="phase"]').forEach(function (cb) {
       cb.addEventListener('change', applyFilters);
     });
