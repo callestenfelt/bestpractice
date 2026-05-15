@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-15 (Session 2 — Design prototype in progress with Claude Design)
+Last updated: 2026-05-15 (Session 2 — Design in progress + deploy prep)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -104,7 +104,32 @@ than fixing it in the build session — the prototype is a hard input to the
 build agent and shouldn't be redesigned downstream.
 
 ### Files changed (so far this session)
-- `nextstep.md` — added this Session 2 block, ready for Claude Design's commits to land alongside.
+- `nextstep.md` — Session 2 block + this deploy-prep sub-section, ready for Claude Design's commits to land alongside.
+
+### Deploy prep — done in parallel with design work
+Done while waiting on the design prototype so the build session has fewer
+blockers. No secret values appear in this repo; only names and structure.
+
+- [x] GitHub Actions secrets added to `callestenfelt/bestpractice` (Settings → Secrets and variables → Actions):
+  - `SSH_PRIVATE_KEY` — same ED25519 key musemaniac's `deploy.sh` uses
+  - `SSH_HOST` — VPS IP (already public in `docs/PROJECT.md` §7)
+  - `SSH_USER` — `root`
+  - `SSH_KNOWN_HOSTS` — three host key lines pulled from the local `~/.ssh/known_hosts` (Windows' shipped `ssh-keyscan` couldn't negotiate the VPS's post-quantum KEX `sntrup761x25519-sha512@openssh.com`; pulling from existing trusted entries is the cleaner path anyway)
+- [x] SSH auth verified end-to-end: `ssh -i ~/.ssh/id_ed25519 root@77.42.40.207 "echo ok; hostname"` returns `ok` and the VPS hostname.
+- [x] DNS: `A` record `best.amusealot.com → 77.42.40.207` added at Namecheap (Advanced DNS tab, Host = `best`). Verify with `nslookup best.amusealot.com` once propagated. No Cloudflare in front, so Caddy will get a Let's Encrypt cert directly via HTTP-01 on first request.
+
+### Deploy prep — still pending (build agent will handle)
+- [ ] `/opt/bestpractice/.env` on the VPS — at minimum: `GROQ_API_KEY` (reuse musemaniac's value or generate a new one in Groq Console).
+- [ ] Confirm port `5681` is free on the VPS: `ss -tlnp | grep 5681` (musemaniac uses 5680, see musemaniac/CLAUDE.md).
+- [ ] Add Caddy site block for `best.amusealot.com` on the VPS — basic auth via `caddy hash-password`.
+- [ ] `bestpractice.service` systemd unit on the VPS — port 5681, working dir `/opt/bestpractice/`, env file `/opt/bestpractice/.env`.
+- [ ] `.github/workflows/deploy.yml` triggered on push to `main` — rsync source to `/opt/bestpractice/`, then SSH `systemctl restart bestpractice`. Adapt from bubble's `deploy.yml` (theirs triggers on `master`, ours on `main`; theirs syncs static assets to a webroot, ours syncs a Python app to `/opt/`).
+- [ ] Daily SQLite backup cron and log rotation on the VPS.
+
+### Lessons
+- Windows' built-in OpenSSH `ssh-keyscan` (in `C:\Windows\System32\OpenSSH\`) is too old for the VPS's modern KEX list. When you need host keys on Windows, pull them from your existing `~/.ssh/known_hosts` instead of running keyscan. Anyone you've previously SSHed to is already a trusted entry.
+- Musemaniac is the repo name for what `docs/PROJECT.md` calls "AmuseAlot". Local path: `E:\_dev\musemaniac`. When the briefs reference `collect_news.py`, `score_news.py`, or `run_newsletter.sh`, look there.
+- Musemaniac deploys via local `deploy.sh` (scp + ssh systemctl restart), **not** GitHub Actions. Bestpractice will be the first Python-on-VPS project to use GHA-on-push — no existing workflow to copy.
 
 ---
 
