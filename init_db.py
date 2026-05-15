@@ -119,17 +119,28 @@ def apply_schema(conn: sqlite3.Connection) -> None:
 
 
 def migrate(conn: sqlite3.Connection) -> None:
-    """Idempotent column additions for DBs that predate a schema change.
+    """Idempotent column additions + data fixes for DBs that predate a change.
 
     CREATE TABLE IF NOT EXISTS doesn't touch existing tables, so any new
     column added to schema.sql needs an explicit ALTER here for prod boxes
-    that already have the file.
+    that already have the file. Data fixes follow the same shape.
     """
     cur = conn.cursor()
     # PRAGMA table_info columns: (cid, name, type, notnull, dflt_value, pk)
     existing = {row[1] for row in cur.execute("PRAGMA table_info(sub_considerations)").fetchall()}
     if "relevance_score" not in existing:
         cur.execute("ALTER TABLE sub_considerations ADD COLUMN relevance_score INTEGER")
+
+    # 2026-05-16 data fix: an unescaped <title> in the article-page fixture
+    # closed the head's title tag mid-body, swallowing every later element
+    # including the <script> tags. Replace with an escaped <code>&lt;title&gt;</code>.
+    bad = "Match the H1 to the <title> element unless SEO demands a longer title."
+    good = "Match the H1 to the <code>&lt;title&gt;</code> element unless SEO demands a longer title."
+    cur.execute(
+        "UPDATE sub_considerations SET one_liner = ? WHERE one_liner = ?",
+        (good, bad),
+    )
+
     conn.commit()
 
 

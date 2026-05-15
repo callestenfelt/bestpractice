@@ -271,7 +271,7 @@
             },
             {
               "slug": "match",
-              "one_liner": "Match the H1 to the <title> element unless SEO demands a longer title.",
+              "one_liner": "Match the H1 to the <code>&lt;title&gt;</code> element unless SEO demands a longer title.",
               "body": "<p>The on-page H1 and the document <code>&lt;title&gt;</code> are usually the same. When they diverge, the title carries the search-engine load — site name suffix, secondary keyword — and the H1 carries the editorial load.</p>\n<p><strong>On mobile.</strong> Browser tabs truncate at ~25 characters. Front-load the most distinctive word.</p>\n<p><strong>On desktop.</strong> Titles up to ~60 characters render in full in Google's SERP. Suffix style: <code>Title — Site name</code>.</p>",
               "phases": [
                 "seo",
