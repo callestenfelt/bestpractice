@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}bestpractice{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles/tokens.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles/base.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles/components.css') }}" />
+  <link rel="stylesheet" href="{{ asset('styles/tokens.css') }}" />
+  <link rel="stylesheet" href="{{ asset('styles/base.css') }}" />
+  <link rel="stylesheet" href="{{ asset('styles/components.css') }}" />
   {% block head_extra %}{% endblock %}
 </head>
 <body style="font-size: 15px">
@@ -37,9 +37,9 @@
 </div>
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/filters.js') }}"></script>
-<script src="{{ url_for('static', filename='js/accordion.js') }}"></script>
-<script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script src="{{ asset('js/filters.js') }}"></script>
+<script src="{{ asset('js/accordion.js') }}"></script>
+<script src="{{ asset('js/search.js') }}"></script>
 {% endblock %}
 </body>
 </html>

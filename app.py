@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -17,6 +18,18 @@ app = Flask(__name__, root_path=str(ROOT))
 # Single-user admin tool; cheap to revalidate. Avoids the 12-hour stale-cache
 # window where users see old JS/CSS after a deploy until they hard-refresh.
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+# Bumped on every process start (deploy restarts the service). Used as
+# ?v=... on static asset URLs so a deploy guarantees a cache-miss even if
+# the browser still has the old asset under the un-bumped URL.
+ASSET_VERSION = str(int(time.time()))
+
+
+@app.context_processor
+def _inject_asset_helper():
+    def asset(filename: str) -> str:
+        return url_for("static", filename=filename, v=ASSET_VERSION)
+    return {"asset": asset}
 
 
 def get_db() -> sqlite3.Connection:
