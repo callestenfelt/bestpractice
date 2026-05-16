@@ -237,6 +237,29 @@ SITE_WIDE_SCAFFOLDS: list[dict] = [
 ]
 
 
+# Page-type categories — virtual umbrellas grouping several page_types so a
+# consideration can attach to "all pages with a header" rather than picking
+# each page_type. (slug, label, definition, [member page_type slugs]).
+# Membership is editorial; tweak via SQL if the heuristic feels wrong.
+PAGE_TYPE_CATEGORIES: list[tuple[str, str, str, list[str]]] = [
+    ("has-header", "Has a header", "Pages that render a top-of-page header with title/H1 and primary nav. Almost every page-type except thin system shells.",
+     ["start-page", "landing-page", "auth-page", "article-page", "collection-page",
+      "item-page", "pricing-page", "profile-page", "search-results-page", "faq-page",
+      "about-page", "contact-page", "checkout-page", "confirmation-page",
+      "event-page", "legal-page", "cookie-page", "dashboard-page"]),
+    ("transactional", "Transactional flow", "Pages that complete a transaction or session boundary — sign up, pay, confirm, manage. Strong overlap with form components and security considerations.",
+     ["auth-page", "checkout-page", "confirmation-page", "dashboard-page"]),
+    ("content-rich", "Long-form content", "Pages built around readable narrative or reference text. Heading hierarchy, typography, source attribution, reading length all matter most here.",
+     ["article-page", "faq-page", "about-page", "legal-page", "cookie-page"]),
+    ("index-style", "Lists / indexes", "Pages whose primary content is a collection or list — empty states, sort/filter, pagination, item-card density.",
+     ["start-page", "landing-page", "collection-page", "search-results-page"]),
+    ("system-page", "System / utility", "Pages that exist for site mechanics rather than core product content — error states, legal notices, cookie consent details. Thin chrome, no engagement metrics.",
+     ["error-page", "404-page", "cookie-page", "legal-page"]),
+    ("authenticated", "Behind authentication", "Pages users only see after signing in. Session handling, identity surfaces, and privacy considerations weigh heaviest here.",
+     ["dashboard-page", "profile-page", "auth-page"]),
+]
+
+
 def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -285,6 +308,22 @@ def migrate(conn: sqlite3.Connection) -> None:
     cur.execute(
         "UPDATE sub_considerations SET one_liner = ? WHERE one_liner = ?",
         (good, bad),
+    )
+
+    # Session 12: backfill consideration_destinations from the legacy
+    # (parent_type, parent_slug) pair on considerations. Idempotent —
+    # INSERT OR IGNORE keyed on the composite primary key. Only runs
+    # for rows that don't have a destination row yet, so future edits
+    # via the admin UI aren't clobbered. The columns stay on
+    # considerations for backward-compat reads; new code reads the join.
+    cur.execute(
+        """INSERT OR IGNORE INTO consideration_destinations
+               (consideration_id, dest_kind, dest_slug)
+           SELECT id, parent_type, parent_slug
+             FROM considerations
+            WHERE id NOT IN (
+                  SELECT consideration_id FROM consideration_destinations
+            )"""
     )
 
     conn.commit()
@@ -372,6 +411,42 @@ def seed_inbox(conn: sqlite3.Connection) -> int:
     )
     conn.commit()
     return cur.lastrowid
+
+
+def seed_categories(conn: sqlite3.Connection) -> tuple[int, int]:
+    """Seed PAGE_TYPE_CATEGORIES + their memberships idempotently.
+
+    Categories: upsert by slug (label/definition/display_order are owned by
+    PAGE_TYPE_CATEGORIES; re-running keeps them in sync if the source list
+    changes).
+
+    Memberships: clear-then-fill per category so a removed page-type
+    actually disappears from the category on next seed. Mirrors the
+    synonyms-seed pattern in seed_taxonomies().
+
+    Returns (categories_count, memberships_count) for logging."""
+    cur = conn.cursor()
+    cat_count = 0
+    mem_count = 0
+    for order, (slug, label, definition, members) in enumerate(PAGE_TYPE_CATEGORIES, start=1):
+        cur.execute(
+            "INSERT OR IGNORE INTO page_type_categories (slug, label, definition, display_order) VALUES (?, ?, ?, ?)",
+            (slug, label, definition, order),
+        )
+        cur.execute(
+            "UPDATE page_type_categories SET label=?, definition=?, display_order=? WHERE slug=?",
+            (label, definition, order, slug),
+        )
+        cat_count += 1
+        cur.execute("DELETE FROM page_type_in_category WHERE category_slug=?", (slug,))
+        for pt_slug in members:
+            cur.execute(
+                "INSERT OR IGNORE INTO page_type_in_category (category_slug, page_type_slug) VALUES (?, ?)",
+                (slug, pt_slug),
+            )
+            mem_count += 1
+    conn.commit()
+    return cat_count, mem_count
 
 
 def seed_site_wide_scaffolds(conn: sqlite3.Connection) -> int:
@@ -534,6 +609,9 @@ def main() -> None:
         apply_schema(conn)
         print("seeding taxonomies...")
         seed_taxonomies(conn)
+        print("seeding page-type categories...")
+        cat_count, mem_count = seed_categories(conn)
+        print(f"  categories: {cat_count}  memberships: {mem_count}")
         print("seeding ingest inbox...")
         inbox_id = seed_inbox(conn)
         print(f"  inbox consideration id={inbox_id}")

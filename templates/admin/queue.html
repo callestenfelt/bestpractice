@@ -139,7 +139,42 @@
               <option value="{{ opt.id }}">{{ opt.label }}</option>
             {% endfor %}
           </select>
+          <span class="edit-dialog__hint">The umbrella this item belongs under. Where it appears (page-types, components, categories) is set below.</span>
         </div>
+
+        <fieldset class="edit-dialog__destinations" id="edit-destinations" hidden>
+          <legend>Where should this consideration appear? <span class="edit-dialog__hint">(checked rows = current; uncheck to remove)</span></legend>
+
+          <div class="edit-dialog__dest-group">
+            <h4>Categories</h4>
+            {% for cat in dest_palette.categories %}
+              <label class="edit-dialog__dest">
+                <input type="checkbox" name="dest_category" value="{{ cat.slug }}" data-dest="category:{{ cat.slug }}">
+                <span>{{ cat.label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+
+          <div class="edit-dialog__dest-group">
+            <h4>Page types</h4>
+            {% for pt in dest_palette.page_types %}
+              <label class="edit-dialog__dest">
+                <input type="checkbox" name="dest_page_type" value="{{ pt.slug }}" data-dest="page_type:{{ pt.slug }}">
+                <span>{{ pt.label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+
+          <div class="edit-dialog__dest-group">
+            <h4>Components</h4>
+            {% for cmp in dest_palette.components %}
+              <label class="edit-dialog__dest">
+                <input type="checkbox" name="dest_component" value="{{ cmp.slug }}" data-dest="component:{{ cmp.slug }}">
+                <span>{{ cmp.label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </fieldset>
 
         <fieldset class="edit-dialog__phases">
           <legend>Phases <span class="edit-dialog__hint">(zero = applies to all)</span></legend>
@@ -150,6 +185,9 @@
             </label>
           {% endfor %}
         </fieldset>
+
+        {# Per-consideration current destinations, consumed by queue.js #}
+        <script type="application/json" id="edit-cons-destinations">{{ cons_destinations | tojson }}</script>
 
         <footer class="edit-dialog__footer">
           <button type="button" class="btn" data-action="dialog-close">Cancel</button>

@@ -156,24 +156,57 @@ def load_parent_view(parent_type: str, parent_slug: str):
         "SELECT slug, label FROM phases ORDER BY display_order"
     ).fetchall()
 
-    cons_rows = db.execute(
-        """SELECT id, slug, title, intro, group_label, group_slug, group_order, display_order
-             FROM considerations
-            WHERE parent_type = ? AND parent_slug = ? AND status = 'approved'
-            ORDER BY group_order, display_order""",
-        (parent_type, parent_slug),
-    ).fetchall()
+    # Considerations destined to this parent — directly (dest_kind matches the
+    # parent_type, dest_slug matches the parent_slug) OR via a category that
+    # contains this page_type. The Session 12 consideration_destinations
+    # join is the authoritative source; the legacy parent_type/parent_slug
+    # columns are kept for migration backward-compat but no longer queried.
+    if parent_type == "page_type":
+        cons_rows = db.execute(
+            """SELECT DISTINCT c.id, c.slug, c.title, c.intro,
+                               c.group_label, c.group_slug, c.group_order, c.display_order
+                 FROM considerations c
+                 JOIN consideration_destinations d ON d.consideration_id = c.id
+            LEFT JOIN page_type_in_category pic ON d.dest_kind = 'category'
+                                              AND d.dest_slug = pic.category_slug
+                WHERE c.status = 'approved'
+                  AND (   (d.dest_kind = 'page_type' AND d.dest_slug = ?)
+                       OR (d.dest_kind = 'category'  AND pic.page_type_slug = ?))
+                ORDER BY c.group_order, c.display_order""",
+            (parent_slug, parent_slug),
+        ).fetchall()
+    else:
+        cons_rows = db.execute(
+            """SELECT DISTINCT c.id, c.slug, c.title, c.intro,
+                               c.group_label, c.group_slug, c.group_order, c.display_order
+                 FROM considerations c
+                 JOIN consideration_destinations d ON d.consideration_id = c.id
+                WHERE c.status = 'approved'
+                  AND d.dest_kind = 'component' AND d.dest_slug = ?
+                ORDER BY c.group_order, c.display_order""",
+            (parent_slug,),
+        ).fetchall()
 
-    # Site-wide is always its own page_type bucket; layer it onto every
-    # other parent (page types AND components) as a trailing hidden group.
+    # Site-wide remains a special page_type bucket: any consideration destined
+    # to (page_type, site-wide) layers onto every other parent's view as a
+    # trailing group. The category mechanism doesn't change this — a
+    # consideration that's only attached to a category (not site-wide) won't
+    # show in the overlay; it'll show directly on the matching pages.
     is_sitewide_self = parent_type == "page_type" and parent_slug == "site-wide"
     if not is_sitewide_self:
-        sw_rows = db.execute(
-            """SELECT id, slug, title, intro, group_label, group_slug, group_order, display_order
-                 FROM considerations
-                WHERE parent_type = 'page_type' AND parent_slug = 'site-wide' AND status = 'approved'
-                ORDER BY group_order, display_order"""
+        already_ids = {r["id"] for r in cons_rows}
+        sw_rows_raw = db.execute(
+            """SELECT DISTINCT c.id, c.slug, c.title, c.intro,
+                               c.group_label, c.group_slug, c.group_order, c.display_order
+                 FROM considerations c
+                 JOIN consideration_destinations d ON d.consideration_id = c.id
+                WHERE c.status = 'approved'
+                  AND d.dest_kind = 'page_type' AND d.dest_slug = 'site-wide'
+                ORDER BY c.group_order, c.display_order"""
         ).fetchall()
+        # De-dupe: if a consideration is already in cons_rows (via direct or
+        # category match), don't double-render it in the overlay.
+        sw_rows = [r for r in sw_rows_raw if r["id"] not in already_ids]
     else:
         sw_rows = []
 
@@ -555,9 +588,16 @@ def load_queue_view(db: sqlite3.Connection):
 
 
 def load_queue_catalog(db: sqlite3.Connection):
-    """Picker data for the edit-and-approve dialog: every approved
-    consideration (excluding the ingest-inbox placeholder) grouped by
-    parent, plus the canonical phase list."""
+    """Picker data for the edit-and-approve dialog:
+
+    - cons_options: every approved consideration (excluding ingest-inbox),
+      labeled by parent. Used by the single "Destination consideration" picker.
+    - cons_destinations: { consideration_id: [{kind, slug, label}] } so the
+      dialog can pre-populate the destinations checkboxes with the chosen
+      consideration's current destinations when the user picks one.
+    - dest_palette: { categories: [{slug,label}], page_types: [...], components: [...] }
+      — the full set of available destinations to render as checkboxes.
+    - phases: the canonical phase list."""
     rows = db.execute(
         """SELECT c.id, c.title, c.parent_type, c.parent_slug, c.group_label,
                   COALESCE(pt.label, cmp.label) AS parent_label,
@@ -574,18 +614,51 @@ def load_queue_catalog(db: sqlite3.Connection):
         "label": (f"{r['parent_label']} · {r['group_label']} → {r['title']}"
                   if r["group_label"] else f"{r['parent_label']} → {r['title']}"),
     } for r in rows]
+
+    # Per-consideration current destinations, keyed by id. JS reads this
+    # when the user picks a consideration so the checkboxes reflect what
+    # destinations that consideration is currently attached to.
+    cons_destinations: dict[int, list[dict]] = {r["id"]: [] for r in rows}
+    for d in db.execute(
+        """SELECT consideration_id, dest_kind, dest_slug
+             FROM consideration_destinations
+            WHERE consideration_id IN (SELECT id FROM considerations
+                                        WHERE status='approved' AND slug!='ingest-inbox')"""
+    ).fetchall():
+        cons_destinations.setdefault(d["consideration_id"], []).append({
+            "kind": d["dest_kind"], "slug": d["dest_slug"],
+        })
+
+    # Destination palette: every checkbox the dialog might render.
+    categories = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
+        "SELECT slug, label FROM page_type_categories ORDER BY display_order"
+    ).fetchall()]
+    page_types_pal = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
+        "SELECT slug, label FROM page_types ORDER BY display_order"
+    ).fetchall()]
+    components_pal = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
+        "SELECT slug, label FROM components ORDER BY display_order"
+    ).fetchall()]
+    dest_palette = {
+        "categories": categories,
+        "page_types": page_types_pal,
+        "components": components_pal,
+    }
+
     phases = db.execute(
         "SELECT slug, label FROM phases ORDER BY display_order"
     ).fetchall()
-    return cons_options, phases
+    return cons_options, cons_destinations, dest_palette, phases
 
 
 @app.route("/admin/queue")
 def admin_queue():
     db = get_db()
     view = load_queue_view(db)
-    cons_options, all_phases = load_queue_catalog(db)
+    cons_options, cons_destinations, dest_palette, all_phases = load_queue_catalog(db)
     view["cons_options"] = cons_options
+    view["cons_destinations"] = cons_destinations
+    view["dest_palette"] = dest_palette
     view["all_phases"] = all_phases
     view["error"] = request.args.get("error", "").strip()
     return render_template("admin/queue.html", **view)
@@ -674,6 +747,26 @@ def admin_queue_edit_approve(sub_id):
     valid_phases = {r["slug"] for r in db.execute("SELECT slug FROM phases").fetchall()}
     phase_slugs = [p for p in phase_slugs if p in valid_phases]
 
+    # Destinations: form fields named "dest_category", "dest_page_type",
+    # "dest_component" each carry slug values. Validate against the actual
+    # taxonomy tables before writing. If the user didn't submit any of
+    # these, leave the consideration's destinations unchanged.
+    submitted_dests = (
+        bool(request.form.getlist("dest_category"))
+        or bool(request.form.getlist("dest_page_type"))
+        or bool(request.form.getlist("dest_component"))
+    )
+    valid_cats = {r["slug"] for r in db.execute("SELECT slug FROM page_type_categories").fetchall()}
+    valid_pts = {r["slug"] for r in db.execute("SELECT slug FROM page_types").fetchall()}
+    valid_comps = {r["slug"] for r in db.execute("SELECT slug FROM components").fetchall()}
+    new_dests: list[tuple[str, str]] = []
+    for s in request.form.getlist("dest_category"):
+        if s in valid_cats: new_dests.append(("category", s))
+    for s in request.form.getlist("dest_page_type"):
+        if s in valid_pts: new_dests.append(("page_type", s))
+    for s in request.form.getlist("dest_component"):
+        if s in valid_comps: new_dests.append(("component", s))
+
     # Body coming from a plain-text <textarea> — wrap in <p> if non-empty.
     body_html = f"<p>{body_text}</p>" if body_text else ""
 
@@ -692,6 +785,17 @@ def admin_queue_edit_approve(sub_id):
             "INSERT INTO sub_consideration_phases (sub_consideration_id, phase_slug, position) VALUES (?, ?, ?)",
             (sub_id, slug, pos),
         )
+    # Update destinations of the consideration the sub now lives under.
+    # Replace-all only when the form actually submitted destinations; an
+    # empty submit means "don't touch" — protects against accidental
+    # wipes if JS misbehaves or the user clears all by mistake.
+    if submitted_dests and new_dests:
+        db.execute("DELETE FROM consideration_destinations WHERE consideration_id = ?", (cons_id,))
+        for kind, slug in new_dests:
+            db.execute(
+                "INSERT OR IGNORE INTO consideration_destinations (consideration_id, dest_kind, dest_slug) VALUES (?, ?, ?)",
+                (cons_id, kind, slug),
+            )
     _sync_fts_row(db, sub_id)
     db.commit()
     return redirect(url_for("admin_queue"))

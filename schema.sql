@@ -84,6 +84,36 @@ CREATE TABLE IF NOT EXISTS sub_consideration_phases (
 );
 CREATE INDEX IF NOT EXISTS idx_scp_phase ON sub_consideration_phases(phase_slug);
 
+-- Page-type categories — virtual umbrellas that group several page_types.
+-- A consideration can be attached to a category (via consideration_destinations
+-- with dest_kind='category'); the read view expands the membership at query
+-- time so the consideration surfaces on every page_type in the category.
+CREATE TABLE IF NOT EXISTS page_type_categories (
+  slug          TEXT PRIMARY KEY,
+  label         TEXT NOT NULL,
+  definition    TEXT NOT NULL DEFAULT '',
+  display_order INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS page_type_in_category (
+  category_slug   TEXT NOT NULL REFERENCES page_type_categories(slug),
+  page_type_slug  TEXT NOT NULL REFERENCES page_types(slug),
+  PRIMARY KEY (category_slug, page_type_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_pt_in_cat_by_page ON page_type_in_category(page_type_slug);
+
+-- A consideration can have many destinations. dest_kind is one of
+-- 'page_type' | 'component' | 'category'. Replaces the single-parent
+-- (parent_type, parent_slug) pair on considerations; those columns stay
+-- during the migration window for backward compatibility but the join
+-- table is the authoritative source going forward.
+CREATE TABLE IF NOT EXISTS consideration_destinations (
+  consideration_id INTEGER NOT NULL REFERENCES considerations(id) ON DELETE CASCADE,
+  dest_kind        TEXT NOT NULL CHECK (dest_kind IN ('page_type','component','category')),
+  dest_slug        TEXT NOT NULL,
+  PRIMARY KEY (consideration_id, dest_kind, dest_slug)
+);
+CREATE INDEX IF NOT EXISTS idx_cons_dest_lookup ON consideration_destinations(dest_kind, dest_slug);
+
 CREATE TABLE IF NOT EXISTS sources (
   id             INTEGER PRIMARY KEY,
   name           TEXT NOT NULL,

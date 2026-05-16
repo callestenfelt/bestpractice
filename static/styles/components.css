@@ -1125,6 +1125,53 @@ mark {
   font-size: var(--fs-13);
   color: var(--gray-11);
 }
+
+.edit-dialog__destinations {
+  border: 1px solid var(--gray-5);
+  border-radius: var(--radius-2);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.edit-dialog__destinations legend {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-11);
+  padding: 0 6px;
+}
+.edit-dialog__destinations[hidden] { display: none; }
+.edit-dialog__dest-group h4 {
+  font-size: var(--fs-11);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-10);
+  margin: 0 0 6px 0;
+}
+.edit-dialog__dest-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px 12px;
+  /* keep the h4 spanning the full row */
+}
+.edit-dialog__dest-group h4 {
+  grid-column: 1 / -1;
+}
+.edit-dialog__dest {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-12);
+  color: var(--gray-11);
+  min-width: 0;
+}
+.edit-dialog__dest span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .edit-dialog__footer {
   display: flex;
   justify-content: flex-end;
