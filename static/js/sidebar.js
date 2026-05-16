@@ -94,23 +94,19 @@
     var badge = document.querySelector('.topbar__toggle-count');
     var railCount = document.querySelector('[data-role="filters-count"]');
     var boxes = document.querySelectorAll('input[name="phase"]');
-    var off = 0;
-    boxes.forEach(function (b) { if (!b.checked) off += 1; });
+    var on = 0;
+    boxes.forEach(function (b) { if (b.checked) on += 1; });
     var sw = document.querySelector('#toggle-sitewide');
-    var swOn = sw && sw.checked;
+    if (sw && sw.checked) on += 1;
 
-    var parts = [];
-    if (off > 0) parts.push(off + ' off');
-    if (swOn) parts.push('+ site-wide');
-    var label = parts.join(' · ');
-
+    var label = on > 0 ? String(on) : '';
     if (badge) {
-      if (!label) { badge.hidden = true; badge.textContent = ''; }
-      else { badge.hidden = false; badge.textContent = label; }
+      badge.hidden = !label;
+      badge.textContent = label;
     }
     if (railCount) {
-      if (!label) { railCount.hidden = true; railCount.textContent = ''; }
-      else { railCount.hidden = false; railCount.textContent = label; }
+      railCount.hidden = !label;
+      railCount.textContent = label;
     }
   }
 

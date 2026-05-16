@@ -51,6 +51,26 @@
   background: #fff;
   pointer-events: none;
 }
+.search__clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-2);
+  color: var(--gray-10);
+  cursor: pointer;
+  font-size: 14px;
+}
+.search__clear:hover { background: var(--gray-3); color: var(--gray-12); }
+.search:has(.search__clear:not([hidden])) .search__kbd { display: none; }
+.search:has(.search__clear:not([hidden])) .search__input { padding-right: 34px; }
 
 /* =========================================================
    Filter rail

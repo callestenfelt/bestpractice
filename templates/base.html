@@ -24,13 +24,31 @@
       <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
     </button>
     <a class="topbar__brand" href="{{ url_for('home') }}">bestpractice</a>
-    <form class="search-form search" role="search" action="{{ url_for('search') }}" method="get">
+    <form class="search-form search topbar__search" role="search" action="{{ url_for('search') }}" method="get">
       <i class="ph ph-magnifying-glass search__icon" aria-hidden="true"></i>
       <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" value="{{ q|default('', true) }}" />
+      <button class="search__clear" type="button" data-action="search-clear" aria-label="Clear search" hidden>
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
       <kbd class="search__kbd">⌘K</kbd>
     </form>
+    <button class="topbar__toggle topbar__search-icon" type="button"
+            data-action="toggle-search" aria-label="Open search"
+            aria-controls="search-drawer" aria-expanded="false">
+      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+    </button>
     {% block topbar_filters_toggle %}{% endblock %}
   </header>
+
+  <div class="search-drawer" id="search-drawer">
+    <form class="search-form search search--drawer" role="search" action="{{ url_for('search') }}" method="get">
+      <i class="ph ph-magnifying-glass search__icon" aria-hidden="true"></i>
+      <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" value="{{ q|default('', true) }}" />
+      <button class="search__clear" type="button" data-action="search-clear" aria-label="Clear search" hidden>
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
+    </form>
+  </div>
 
   <div class="sidebar-scrim" aria-hidden="true"></div>
   <div class="filters-scrim" aria-hidden="true"></div>
