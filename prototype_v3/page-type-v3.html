@@ -1,0 +1,2126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Article Page · bestpractice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+  <link rel="stylesheet" href="styles/sidebar.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css" />
+  <style>
+    /* v3 — Phosphor icons in the sidebar.
+       Default weight set on .sidebar__nav; flip data-icon-weight to compare. */
+    .sidebar__nav { font-feature-settings: "ss01"; }
+    .sidebar__link {
+      gap: 10px;
+    }
+    .sidebar__link i.ph,
+    .sidebar__link i.ph-bold,
+    .sidebar__link i.ph-duotone {
+      font-size: 16px;
+      line-height: 1;
+      color: var(--gray-10);
+      flex: 0 0 auto;
+      width: 16px;
+      text-align: center;
+      transition: color 80ms;
+    }
+    .sidebar__link:hover i.ph,
+    .sidebar__link:hover i.ph-bold,
+    .sidebar__link:hover i.ph-duotone {
+      color: var(--gray-12);
+    }
+    .sidebar__link[aria-current="page"] i.ph,
+    .sidebar__link[aria-current="page"] i.ph-bold,
+    .sidebar__link[aria-current="page"] i.ph-duotone {
+      color: var(--blue-11);
+    }
+    /* "New" dot floats to the right of the label */
+    .sidebar__link .dot { margin-left: auto; }
+
+    /* Topbar icons (sidebar toggle, search, filters) match the sidebar set */
+    .topbar__toggle i.ph,
+    .topbar__toggle i.ph-bold,
+    .topbar__toggle i.ph-duotone {
+      font-size: 18px;
+      line-height: 1;
+    }
+    .search__icon.ph,
+    .search__icon.ph-bold,
+    .search__icon.ph-duotone {
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    /* Tiny weight selector at the bottom of the sidebar */
+    .icon-weight {
+      display: flex;
+      gap: 2px;
+      padding: 6px;
+      border-top: 1px solid var(--gray-5);
+      background: var(--gray-2);
+    }
+    .icon-weight__btn {
+      flex: 1;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--gray-10);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-2);
+      padding: 5px 6px;
+      cursor: pointer;
+    }
+    .icon-weight__btn:hover { color: var(--gray-12); background: var(--gray-3); }
+    .icon-weight__btn[aria-pressed="true"] {
+      color: var(--gray-12);
+      background: #fff;
+      border-color: var(--gray-6);
+      font-weight: var(--fw-medium);
+    }
+  </style>
+</head>
+<body style="font-size: 15px">
+<div class="app" data-sidebar-open="true" data-filters-open="true">
+
+  <!-- ===================== Top bar ===================== -->
+  <header class="topbar">
+    <button class="topbar__toggle" type="button" data-action="toggle-sidebar"
+            aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true"
+            title="Toggle sidebar (Ctrl + .)">
+      <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+    </button>
+    <a class="topbar__brand" href="index.html">
+      bestpractice
+    </a>
+    <form class="search-form search" role="search" action="search.html" method="get">
+      <i class="ph ph-magnifying-glass search__icon" aria-hidden="true"></i>
+      <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" />
+      <kbd class="search__kbd">⌘K</kbd>
+    </form>
+    <button class="topbar__toggle topbar__toggle--filters" type="button" data-action="toggle-filters"
+            aria-label="Toggle filters" aria-controls="filters-rail" aria-expanded="true"
+            title="Toggle filters (Ctrl + ,)">
+      <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
+      <span class="topbar__toggle-count" hidden></span>
+    </button>
+  </header>
+
+  <div class="sidebar-scrim" aria-hidden="true"></div>
+  <div class="filters-scrim" aria-hidden="true"></div>
+
+  <div class="layout">
+
+    <!-- ===================== Sidebar ===================== -->
+    <aside class="sidebar" id="sidebar" aria-label="Browse">
+      <div class="sidebar__inner">
+        <nav class="sidebar__nav" aria-label="Pages and components">
+
+          <section class="sidebar__section">
+            <h2 class="sidebar__heading">Page types <span class="count">21</span></h2>
+            <ul class="sidebar__list">
+              <li><a class="sidebar__link" href="#start-page"><i class="ph ph-house"></i>Start Page</a></li>
+              <li><a class="sidebar__link" href="#landing-page"><i class="ph ph-flag-banner"></i>Landing Page</a></li>
+              <li><a class="sidebar__link" href="#auth-page"><i class="ph ph-sign-in"></i>Authentication Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#article-page" aria-current="page"><i class="ph ph-article"></i>Article Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#collection-page"><i class="ph ph-squares-four"></i>Collection Page</a></li>
+              <li><a class="sidebar__link" href="#item-page"><i class="ph ph-package"></i>Item Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#pricing-page"><i class="ph ph-currency-circle-dollar"></i>Pricing Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#profile-page"><i class="ph ph-user-circle"></i>Profile Page</a></li>
+              <li><a class="sidebar__link" href="#search-results-page"><i class="ph ph-list-magnifying-glass"></i>Search Results</a></li>
+              <li><a class="sidebar__link" href="#faq-page"><i class="ph ph-question"></i>FAQ Page</a></li>
+              <li><a class="sidebar__link" href="#about-page"><i class="ph ph-info"></i>About Page</a></li>
+              <li><a class="sidebar__link" href="#contact-page"><i class="ph ph-envelope-simple"></i>Contact Page</a></li>
+              <li><a class="sidebar__link" href="#checkout-page"><i class="ph ph-shopping-cart-simple"></i>Checkout Page</a></li>
+              <li><a class="sidebar__link" href="#confirmation-page"><i class="ph ph-check-circle"></i>Confirmation Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#event-page"><i class="ph ph-calendar-check"></i>Event Page</a></li>
+              <li><a class="sidebar__link" href="#legal-page"><i class="ph ph-scales"></i>Legal Page</a></li>
+              <li><a class="sidebar__link" href="#cookie-page"><i class="ph ph-cookie"></i>Cookie Page</a></li>
+              <li><a class="sidebar__link" href="#error-page"><i class="ph ph-warning-octagon"></i>Error Page</a></li>
+              <li><a class="sidebar__link" href="#404-page"><i class="ph ph-binoculars"></i>404 Page<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#dashboard-page"><i class="ph ph-gauge"></i>Dashboard</a></li>
+              <li><a class="sidebar__link" href="#site-wide"><i class="ph ph-globe"></i>Site-wide</a></li>
+            </ul>
+          </section>
+
+          <section class="sidebar__section">
+            <h2 class="sidebar__heading">Components <span class="count">63</span></h2>
+            <ul class="sidebar__list">
+              <li><a class="sidebar__link" href="#header"><i class="ph ph-text-h-one"></i>Header</a></li>
+              <li><a class="sidebar__link" href="#footer"><i class="ph ph-arrow-line-down"></i>Footer</a></li>
+              <li><a class="sidebar__link" href="#navigation"><i class="ph ph-compass"></i>Navigation</a></li>
+              <li><a class="sidebar__link" href="#menu-bar"><i class="ph ph-list"></i>Menu Bar</a></li>
+              <li><a class="sidebar__link" href="#breadcrumb"><i class="ph ph-caret-right"></i>Breadcrumb</a></li>
+              <li><a class="sidebar__link" href="#hero"><i class="ph ph-image-square"></i>Hero</a></li>
+              <li><a class="sidebar__link" href="#eyebrow"><i class="ph ph-text-aa"></i>Eyebrow</a></li>
+              <li><a class="sidebar__link" href="#card"><i class="ph ph-cards"></i>Card<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#list"><i class="ph ph-list-bullets"></i>List<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#button"><i class="ph ph-cursor-click"></i>Button</a></li>
+              <li><a class="sidebar__link" href="#copy-link-button"><i class="ph ph-copy"></i>Copy Link Button<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#link"><i class="ph ph-link-simple"></i>Link</a></li>
+              <li><a class="sidebar__link" href="#form"><i class="ph ph-clipboard-text"></i>Form</a></li>
+              <li><a class="sidebar__link" href="#input-field"><i class="ph ph-text-t"></i>Input Field</a></li>
+              <li><a class="sidebar__link" href="#textarea"><i class="ph ph-text-align-left"></i>Textarea<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#select"><i class="ph ph-caret-down"></i>Select</a></li>
+              <li><a class="sidebar__link" href="#combobox"><i class="ph ph-magnifying-glass-plus"></i>Combobox<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#file-upload"><i class="ph ph-upload-simple"></i>File Upload<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#checkbox"><i class="ph ph-check-square"></i>Checkbox</a></li>
+              <li><a class="sidebar__link" href="#radio-group"><i class="ph ph-radio-button"></i>Radio Group</a></li>
+              <li><a class="sidebar__link" href="#toggle"><i class="ph ph-toggle-left"></i>Toggle</a></li>
+              <li><a class="sidebar__link" href="#toggle-group"><i class="ph ph-toggle-right"></i>Toggle Group</a></li>
+              <li><a class="sidebar__link" href="#slider"><i class="ph ph-sliders"></i>Slider</a></li>
+              <li><a class="sidebar__link" href="#date-picker"><i class="ph ph-calendar-blank"></i>Date Picker</a></li>
+              <li><a class="sidebar__link" href="#modal"><i class="ph ph-app-window"></i>Modal</a></li>
+              <li><a class="sidebar__link" href="#popover"><i class="ph ph-chat-circle"></i>Popover</a></li>
+              <li><a class="sidebar__link" href="#dropdown-menu"><i class="ph ph-dots-three-vertical"></i>Dropdown Menu</a></li>
+              <li><a class="sidebar__link" href="#tooltip"><i class="ph ph-info"></i>Tooltip</a></li>
+              <li><a class="sidebar__link" href="#tabs"><i class="ph ph-rows"></i>Tabs</a></li>
+              <li><a class="sidebar__link" href="#stepper"><i class="ph ph-list-numbers"></i>Stepper<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#accordion"><i class="ph ph-caret-circle-down"></i>Accordion</a></li>
+              <li><a class="sidebar__link" href="#table"><i class="ph ph-table"></i>Table</a></li>
+              <li><a class="sidebar__link" href="#chart"><i class="ph ph-chart-line-up"></i>Chart<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#stat"><i class="ph ph-trend-up"></i>Stat<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#pagination"><i class="ph ph-caret-double-right"></i>Pagination</a></li>
+              <li><a class="sidebar__link" href="#filter"><i class="ph ph-funnel"></i>Filter</a></li>
+              <li><a class="sidebar__link" href="#sort"><i class="ph ph-arrows-down-up"></i>Sort</a></li>
+              <li><a class="sidebar__link" href="#search"><i class="ph ph-magnifying-glass"></i>Search</a></li>
+              <li><a class="sidebar__link" href="#scroll-area"><i class="ph ph-arrows-vertical"></i>Scroll Area</a></li>
+              <li><a class="sidebar__link" href="#separator"><i class="ph ph-minus"></i>Separator</a></li>
+              <li><a class="sidebar__link" href="#toast"><i class="ph ph-bell"></i>Toast</a></li>
+              <li><a class="sidebar__link" href="#alert"><i class="ph ph-warning"></i>Alert</a></li>
+              <li><a class="sidebar__link" href="#service-message"><i class="ph ph-megaphone"></i>Service Message</a></li>
+              <li><a class="sidebar__link" href="#cookie-banner"><i class="ph ph-shield-check"></i>Cookie Banner<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#micro-feedback"><i class="ph ph-thumbs-up"></i>Micro Feedback<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#progress-bar"><i class="ph ph-spinner-gap"></i>Progress Bar</a></li>
+              <li><a class="sidebar__link" href="#spinner"><i class="ph ph-circle-notch"></i>Spinner<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#loader"><i class="ph ph-hourglass"></i>Loader<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#badge"><i class="ph ph-seal-check"></i>Badge</a></li>
+              <li><a class="sidebar__link" href="#chip"><i class="ph ph-tag"></i>Chip</a></li>
+              <li><a class="sidebar__link" href="#rating"><i class="ph ph-star"></i>Rating<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#video"><i class="ph ph-play-circle"></i>Video</a></li>
+              <li><a class="sidebar__link" href="#audio"><i class="ph ph-speaker-high"></i>Audio<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#image"><i class="ph ph-image"></i>Image</a></li>
+              <li><a class="sidebar__link" href="#icon"><i class="ph ph-shapes"></i>Icon</a></li>
+              <li><a class="sidebar__link" href="#carousel"><i class="ph ph-slideshow"></i>Carousel</a></li>
+              <li><a class="sidebar__link" href="#gallery"><i class="ph ph-images"></i>Image Gallery</a></li>
+              <li><a class="sidebar__link" href="#map"><i class="ph ph-map-trifold"></i>Map<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#code-block"><i class="ph ph-code"></i>Code Block<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#calendar"><i class="ph ph-calendar-dots"></i>Calendar</a></li>
+              <li><a class="sidebar__link" href="#avatar"><i class="ph ph-user"></i>Avatar</a></li>
+              <li><a class="sidebar__link" href="#shopping-cart"><i class="ph ph-shopping-cart"></i>Shopping Cart<span class="dot" aria-label="New items"></span></a></li>
+              <li><a class="sidebar__link" href="#skeleton"><i class="ph ph-rectangle-dashed"></i>Skeleton</a></li>
+            </ul>
+          </section>
+
+        </nav>
+
+        <div class="icon-weight" role="group" aria-label="Icon weight">
+          <button class="icon-weight__btn" type="button" data-weight="ph" aria-pressed="true">Regular</button>
+          <button class="icon-weight__btn" type="button" data-weight="ph-bold" aria-pressed="false">Bold</button>
+          <button class="icon-weight__btn" type="button" data-weight="ph-duotone" aria-pressed="false">Duotone</button>
+        </div>
+
+        <footer class="sidebar__footer">
+          <a href="admin-queue.html">Review queue</a>
+          <a href="admin-sources.html">Sources</a>
+        </footer>
+      </div>
+    </aside>
+
+    <!-- ===================== Main content ===================== -->
+    <main class="content">
+      <div class="reading">
+
+        <div class="page-heading">
+          <div class="page-heading__eyebrow">Page type · <code>Article</code></div>
+          <h1 class="page-heading__title">Article Page</h1>
+          <p class="page-heading__definition">
+            A single piece of editorial content, usually long-form. The reader is here to read; everything else
+            on the page either supports that or gets in the way.
+          </p>
+        </div>
+
+        <hr class="hr" />
+
+        <!-- ============ Group: Before you start ============ -->
+        <section class="group" data-group="before-you-start">
+          <header class="group__header">
+            <h2 class="group__title">Before you start</h2>
+          </header>
+
+          <details class="consideration" id="page-purpose">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Page purpose &amp; audience</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="page-purpose.one-job" data-phases="strategy concept content" style="border-width: 0px; border-radius: 3px; padding: 6px 0px 5px">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner" style="font-size: 16px; font-weight: 600">Decide the one thing this article should accomplish before opening the editor.</span>
+                      <div class="sub__metarow">
+                        <span class="chip" style="font-size: 12px; gap: 4px; height: 22px">strategy</span>
+                        <span class="chip">concept</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-04-08</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p style="font-size: 14px">Articles that try to inform, persuade and convert in equal measure usually do none of them well. Pick the primary user task — read for understanding, follow a how-to, evaluate a position — and let it shape every other decision: title length, lead structure, where (if anywhere) a CTA sits.</p>
+                    <p style="font-size: 14px">If you cannot finish the sentence "after reading this, the user should be able to ___" in fewer than 12 words, the brief isn't done yet.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>How users read on the web</em></span>
+                      <a href="https://www.nngroup.com/articles/how-users-read-on-the-web/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="page-purpose.search-intent" data-phases="seo content strategy">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Map the article to a single dominant search intent — informational, navigational, transactional, or commercial.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="chip">strategy</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>web.dev</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-11-02</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Search engines and increasingly LLM-based answer engines route queries to pages by best-matching intent. A page that mixes intents (e.g. a how-to with three paragraphs of brand history before the steps) competes for nothing well.</p>
+                    <p>Write a one-line intent statement next to the working title. If the body drifts, either fix the body or fork the article.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> web.dev · <em>Content and SEO</em></span>
+                      <a href="https://web.dev/learn/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="page-purpose.reading-level" data-phases="content ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Aim for a reading level one or two grades below your audience's expected literacy ceiling.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 3.1.5</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>WCAG SC 3.1.5 (Reading Level, AAA) suggests that when text requires reading ability more advanced than lower-secondary, a simpler version or supplemental content should be available. In practice: short sentences, common words, glossed jargon.</p>
+                    <p>Hemingway, Datayze, or built-in word processor tools all approximate this. Don't tune for the score — tune for the reader.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 Understanding 3.1.5</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/reading-level.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="editorial-brief">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Editorial brief &amp; angle</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub sub--new" id="editorial-brief.angle-first" data-phases="content concept">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner"><span class="sub__newdot" aria-hidden="true"></span><span class="sr-only">New. </span>Lead with the angle in the brief, not the topic. "Why X is overrated" beats "Notes on X".</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">concept</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>A List Apart</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2026-05-06</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A topic ("typography on mobile") is the room; an angle ("variable fonts make the case for fewer breakpoints") is what you do in it. The brief should commit to the angle before a single paragraph is drafted.</p>
+                    <p>Editors test this with the "and so?" question. If the angle survives three of them, ship the brief.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> A List Apart · <em>The angle test</em></span>
+                      <a href="https://alistapart.com/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="editorial-brief.length" data-phases="content seo strategy">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Length follows argument, not the other way around. Don't pad to hit a target word count.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">seo</span>
+                        <span class="chip">strategy</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-02-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The "1,500 words for SEO" rule of thumb is a misreading of correlation studies. Search engines reward articles that satisfy intent fully; an intent satisfied in 400 words doesn't get more satisfied by 1,100 more words.</p>
+                    <p>Inverse rule: if your draft is short, ask whether you've over-trimmed structure. If it's long, ask whether you've under-edited argument.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Long vs short articles as content strategy</em></span>
+                      <a href="https://www.nngroup.com/articles/long-vs-short-articles/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="editorial-brief.tov" data-phases="content design strategy">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Pin tone of voice to two or three adjectives in the brief, with one anti-adjective for each.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">design</span>
+                        <span class="chip">strategy</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>GOV.UK Design System</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-07-30</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>"Confident but not arrogant; clear but not patronising; warm but not cute." The anti-adjective is the work — without it, "confident" drifts to "shouty" without anyone noticing.</p>
+                    <p>If two writers in the team disagree on whether a paragraph fits, the brief's anti-adjectives are usually the missing referee.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> GOV.UK · <em>Content design: planning, writing and managing content</em></span>
+                      <a href="https://www.gov.uk/guidance/content-design" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+
+        <!-- ============ Group: Top of page ============ -->
+        <section class="group" data-group="top-of-page">
+          <header class="group__header">
+            <h2 class="group__title">Top of page</h2>
+          </header>
+
+          <details class="consideration" id="url-structure">
+            <summary class="consideration__summary">
+              <span class="consideration__title">URL structure</span>
+              <span class="consideration__meta" data-role="count">4 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+                <details class="sub" id="url.kebab" data-phases="seo frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use lowercase kebab-case. Hyphens separate words; underscores do not.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Central</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-14</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Google's URL structure guide explicitly recommends hyphens over underscores for word boundaries. Underscores are treated as word-joiners; <code>type_inference</code> is one token, <code>type-inference</code> is two.</p>
+                    <p>Capitals work but introduce case-sensitivity surprises on some servers and in user expectations. Lowercase everything.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google Search Central · <em>URL structure best practices</em></span>
+                      <a href="https://developers.google.com/search/docs/crawling-indexing/url-structure" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="url.no-dates" data-phases="seo strategy maintenance">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Keep dates out of the URL unless the article is genuinely time-bound (e.g. an annual report).</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">strategy</span>
+                        <span class="chip">maintenance</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Moz</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-01-15</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A URL like <code>/2021/05/typography-on-mobile/</code> ages the article by definition. When you update it in 2026, you either lie via the URL or break every existing link.</p>
+                    <p>Flat slugs (<code>/typography-on-mobile/</code>) are durable. Use <code>datePublished</code> and <code>dateModified</code> in structured data for the date facts.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Moz · <em>URL best practices</em></span>
+                      <a href="https://moz.com/learn/seo/url" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="url.length" data-phases="seo content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Keep slugs under ~60 characters; truncate the working title, don't extend it.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Central</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-14</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Long URLs get truncated in shared previews and look untrustworthy. Strip stop words ("a", "the", "and", "of") from the slug; the title element can keep them.</p>
+                    <p>If you can drop a word from the slug and a reader who pasted only the URL still understands the topic, drop it.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google Search Central · <em>URL structure best practices</em></span>
+                      <a href="https://developers.google.com/search/docs/crawling-indexing/url-structure" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="url.redirects" data-phases="seo backend maintenance">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">When you change a slug, ship a 301 from the old URL. Always. No exceptions.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">backend</span>
+                        <span class="chip">maintenance</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-03-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A 301 transfers PageRank, signals permanence to crawlers, and preserves backlinks. 302s don't — they say "we'll be back". Use 302 only for genuine temporary redirects (A/B tests, geo-routing).</p>
+                    <p>Keep a redirect map under version control. Stale redirects pile up; review once a year.</p>
+                    <pre><code>RewriteEngine On
+Redirect 301 /old-slug /new-slug</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>HTTP redirections</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="eyebrow">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Eyebrow / kicker</span>
+              <span class="consideration__meta" data-role="count">2 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="eyebrow.section" data-phases="content design ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use the eyebrow for section or topic, not as a second headline.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">design</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-10-08</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The eyebrow ("Opinion", "Tutorial", "Long read", "Performance") tells the reader what kind of article they're about to read. It's a frame, not content. Two to four words. ALL CAPS or letterspaced small caps both work.</p>
+                    <p>Semantically the eyebrow is part of the heading group. Use a <code>&lt;p&gt;</code> with role context, or wrap title and eyebrow in <code>&lt;hgroup&gt;</code> (now well-supported in WHATWG HTML).</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Eyebrow text in editorial design</em></span>
+                      <a href="https://www.nngroup.com/articles/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="eyebrow.a11y" data-phases="frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">If the eyebrow only repeats the section name from the breadcrumb, drop it; visual hierarchy beats redundancy.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>The A11y Project</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-12-11</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Screen reader users get the breadcrumb and the eyebrow back-to-back; two pieces of the same information feels like a stutter. Audit content so eyebrow earns its row.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> The A11y Project · <em>Headings posts</em></span>
+                      <a href="https://www.a11yproject.com/posts/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="page-title-h1">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Page title &amp; H1</span>
+              <span class="consideration__meta" data-role="count">5 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="page-title-h1.wcag-246" data-phases="ux frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">WCAG 2.4.6 requires headings and labels to describe topic or purpose.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 2.4.6</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>SC 2.4.6 (AA) is the rule against clever, opaque headings. Screen reader users navigate by heading; cute titles that hide the topic ("Down the rabbit hole") force a full read just to know what the page is.</p>
+                    <p>Article H1: state the subject. Reserve cleverness for the lead.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 2.4.6 Headings and Labels</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="page-title-h1.match" data-phases="seo content frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Match the H1 to the &lt;title&gt; element unless SEO demands a longer title.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-09-12</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The on-page H1 and the document <code>&lt;title&gt;</code> are usually the same. When they diverge, the title carries the search-engine load — site name suffix, secondary keyword — and the H1 carries the editorial load.</p>
+                    <p><strong>On mobile.</strong> Browser tabs truncate at ~25 characters. Front-load the most distinctive word.</p>
+                    <p><strong>On desktop.</strong> Titles up to ~60 characters render in full in Google's SERP. Suffix style: <code>Title — Site name</code>.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Page titles</em></span>
+                      <a href="https://www.nngroup.com/articles/page-titles/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub sub--new" id="page-title-h1.one-h1" data-phases="frontend seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner"><span class="sub__newdot" aria-hidden="true"></span><span class="sr-only">New. </span>One H1 per page. Google has tolerated multiple H1s since 2019; that doesn't make it a good idea.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>web.dev</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2026-05-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Assistive tech still uses the document outline to convey "what page is this". Multiple H1s flatten it. The HTML5 outline algorithm that promised <code>&lt;section&gt;</code>-scoped H1s never shipped in browsers or screen readers — write H1–H6 manually.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> web.dev · <em>Document outline and headings</em></span>
+                      <a href="https://web.dev/learn/html/headings-and-sections" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="page-title-h1.length" data-phases="content design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Aim for ~50–70 characters in the H1. Long enough to be specific, short enough to scan.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-09-12</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Headings that exceed two display lines stop being scannable. Use <code>text-wrap: balance;</code> to keep the break point graceful at narrow widths.</p>
+                    <pre><code>h1 { text-wrap: balance; }</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Microcontent: a few words go a long way</em></span>
+                      <a href="https://www.nngroup.com/articles/microcontent-how-to-write-headlines-page-titles-and-subject-lines/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="page-title-h1.front-load" data-phases="ux content seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Front-load distinctive words. The reader's eye and the SERP both lose attention left-to-right.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">content</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-09-12</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Eye-tracking work going back to the early F-pattern studies shows that the first two words of a heading do disproportionate work. "An introduction to variable fonts" buries the lede; "Variable fonts: an introduction" earns the click.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>F-shaped pattern of reading</em></span>
+                      <a href="https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="lead">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Lead / standfirst</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="lead.purpose" data-phases="content ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">The lead's job is to make the reader continue. Don't summarize the article — promise it.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-06-30</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Standfirsts that summarize give the reader permission to leave. Standfirsts that tease commit to a payoff the body has to deliver. Bias toward tease, then make the body keep the promise.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Inverted pyramid: writing for comprehension</em></span>
+                      <a href="https://www.nngroup.com/articles/inverted-pyramid/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="lead.length" data-phases="content design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">One or two sentences, around 25–40 words. Set in a larger size than body copy.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>The Economist style guide</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-11-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A larger size (1.2×–1.4× body) and slightly tighter line height visually distinguish the lead from the body. Resist the urge to colour it; weight and size carry enough.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> The Economist · <em>Style guide: introductions</em></span>
+                      <a href="https://www.economist.com/style-guide" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="lead.no-h2" data-phases="frontend seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Don't mark the lead up as an H2. It's display-styled body text — use a <code>&lt;p&gt;</code> with a class.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-12-01</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A heading announces a section. The lead doesn't start a section, it sits inside the article's implicit "intro". Marking it H2 splits the outline and confuses screen reader navigation.</p>
+                    <p>If you want a sub-headline above the lead, use <code>&lt;hgroup&gt;</code>:</p>
+                    <pre><code>&lt;hgroup&gt;
+  &lt;h1&gt;Variable fonts: an introduction&lt;/h1&gt;
+  &lt;p class="lead"&gt;One file, every weight, every width…&lt;/p&gt;
+&lt;/hgroup&gt;</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>&lt;hgroup&gt;: the heading group element</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hgroup" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="byline">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Byline &amp; dateline</span>
+              <span class="consideration__meta" data-role="count">4 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="byline.real-person" data-phases="content strategy seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Attribute to a named human. Generic "Editorial team" bylines hurt trust signals and EEAT.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">strategy</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Quality Guidelines</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-11-20</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>EEAT (Experience, Expertise, Authoritativeness, Trustworthiness) weighs author identity. Link the byline to a profile page with credentials. AI-assisted articles should still carry the human editor's byline; disclose the assistance in the body.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google · <em>Search Quality Rater Guidelines</em></span>
+                      <a href="https://developers.google.com/search/docs/fundamentals/creating-helpful-content" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="byline.published-updated" data-phases="content seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Show both <code>Published</code> and <code>Updated</code> when they differ — and explain in the body what changed.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-01-22</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Stealth-republishing an old article with a fresh date is dishonest and Google penalises the pattern. Show both dates; if the update was substantive (>20% rewrite), add a brief changelog line at the bottom.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Updated content and trust</em></span>
+                      <a href="https://www.nngroup.com/articles/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="byline.time-element" data-phases="frontend seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Wrap dates in <code>&lt;time datetime="…"&gt;</code> with ISO 8601 in the attribute.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-02-18</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The <code>datetime</code> attribute carries the unambiguous machine value; the element's text can be the prettified human form. Crawlers, calendars, and assistive tech all read the attribute.</p>
+                    <pre><code>&lt;time datetime="2026-05-15T09:30:00+02:00"&gt;15 May 2026&lt;/time&gt;</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>&lt;time&gt;: the time element</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="byline.read-time" data-phases="ux content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Reading-time estimates help, but use them honestly: 220–250 wpm for technical reading, not 300.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Medium engineering blog</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-08-15</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The classic Medium formula assumed 265 wpm at average reading difficulty. Technical articles slow down; round up. Display as "~7 min read", not "6 min 42 s" — false precision suggests false confidence.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Medium · <em>Read time and Medium</em></span>
+                      <a href="https://medium.engineering/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+
+        <!-- ============ Group: Body ============ -->
+        <section class="group" data-group="body">
+          <header class="group__header">
+            <h2 class="group__title">Body</h2>
+          </header>
+
+          <details class="consideration" id="body-typography">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Body typography &amp; readability</span>
+              <span class="consideration__meta" data-role="count">5 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="body-type.measure" data-phases="design frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Cap measure at 60–75 characters per line. Wider needs leading; narrower hurts rhythm.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Butterick's Practical Typography</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-03-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Use the <code>ch</code> unit and let the browser do the work:</p>
+                    <pre><code>.prose { max-width: 66ch; }</code></pre>
+                    <p>Beyond ~75 characters the eye loses the next line; below ~45 it scans more than it reads.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Butterick · <em>Practical Typography: line length</em></span>
+                      <a href="https://practicaltypography.com/line-length.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="body-type.base-size" data-phases="design frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Base font size 16–18px. Anything smaller fails AA-level readability for many users.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 1.4.4</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Use <code>rem</code> for body sizing so the user's browser zoom preference takes effect. WCAG SC 1.4.4 requires text to resize to 200% without loss of content; that fails if the layout is built in <code>px</code> with fixed containers.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 1.4.4 Resize Text</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/resize-text.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="body-type.line-height" data-phases="design frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Set body line-height between 1.5 and 1.7 (unitless). Tight leading is for headings.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 1.4.12</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>SC 1.4.12 (Text Spacing) requires the page to survive user-applied line-height of 1.5× body size. Building to that floor is the simplest path to compliance.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 1.4.12 Text Spacing</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub sub--new" id="body-type.text-wrap" data-phases="frontend design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner"><span class="sub__newdot" aria-hidden="true"></span><span class="sr-only">New. </span><code>text-wrap: pretty</code> is now Baseline newly available — use it on body prose for better orphans.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>caniuse</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2026-05-08</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Browsers do a final-line balance pass to avoid single-word last lines. Cheap, no JS, no harm if unsupported.</p>
+                    <pre><code>.prose p { text-wrap: pretty; }
+.prose h1, .prose h2, .prose h3 { text-wrap: balance; }</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> caniuse · <em>CSS text-wrap: pretty</em></span>
+                      <a href="https://caniuse.com/mdn-css_properties_text-wrap_pretty" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="body-type.hyphenation" data-phases="frontend design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Enable hyphenation only with a language attribute on <code>&lt;html&gt;</code>, and only with a justified or narrow column.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-07-09</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Hyphenation rules are language-specific. Without <code>lang="en"</code> the browser falls back to nothing or to the wrong dictionary, producing ugly breaks. At ragged-right widths above ~60ch hyphenation usually loses; turn it on for narrow columns only.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>CSS hyphens</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/hyphens" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="in-article-media">
+            <summary class="consideration__summary">
+              <span class="consideration__title">In-article media</span>
+              <span class="consideration__meta" data-role="count">4 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="media.dimensions" data-phases="frontend measurement">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Always set <code>width</code> and <code>height</code> attributes on <code>&lt;img&gt;</code>. Eliminates CLS.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">measurement</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>web.dev</strong> · Core Web Vitals</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-09-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The attributes give the browser an aspect ratio to reserve space before bytes arrive. Setting <code>height: auto</code> in CSS preserves responsive scaling. CLS often drops by an order of magnitude after this single change.</p>
+                    <pre><code>&lt;img src="hero.jpg" width="1600" height="900" alt="…" /&gt;</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> web.dev · <em>Optimize Cumulative Layout Shift</em></span>
+                      <a href="https://web.dev/articles/optimize-cls" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="media.lazy" data-phases="frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use <code>loading="lazy"</code> for below-the-fold images. Never on the hero — it delays LCP.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>web.dev</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-04-22</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Pair <code>loading="lazy"</code> with <code>decoding="async"</code> to free up the main thread. For the LCP candidate image, do the opposite: <code>fetchpriority="high"</code>, <code>loading="eager"</code>, preconnect to the image origin.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> web.dev · <em>Use lazy-loading to improve loading speed</em></span>
+                      <a href="https://web.dev/articles/lazy-loading-images" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="media.alt" data-phases="content frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Alt text describes function, not appearance. A photo of a developer at a laptop is "a developer pair-programming", not "a man at a computer".</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>The A11y Project</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-10-14</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The test: read the article aloud with the image replaced by its alt text. Does it make sense? Decorative images that add nothing to the prose take <code>alt=""</code> (not missing — empty), removing them from the accessibility tree.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> The A11y Project · <em>Write alternative text</em></span>
+                      <a href="https://www.a11yproject.com/posts/alt-text/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="media.figure" data-phases="frontend content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Captioned media goes in <code>&lt;figure&gt;</code>/<code>&lt;figcaption&gt;</code>. Captions are not alt text; they complement it.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-05-30</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Alt text describes what the image is; the caption adds editorial context, attribution, or interpretation. They can repeat, but should not duplicate verbatim.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>&lt;figure&gt;: the figure with optional caption element</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/figure" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="inline-links">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Inline links</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="links.descriptive" data-phases="content ux frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Link the words that describe the destination. Never "click here", "read more", "this".</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">ux</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 2.4.4</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Screen readers can list every link on the page in isolation. "Click here" eleven times is unusable. The link text alone should answer "where does this go?"</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 2.4.4 Link Purpose</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="links.underline" data-phases="design frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Underline inline links. Colour alone is not a sufficient signal (WCAG 1.4.1).</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 1.4.1</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Use <code>text-underline-offset</code> and <code>text-decoration-thickness</code> to dial in an underline that respects descenders without looking heavy.</p>
+                    <pre><code>a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 1.4.1 Use of Color</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="links.new-tab" data-phases="ux content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Don't force <code>target="_blank"</code> for editorial links. Users own that decision; respect them.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-03-31</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The middle-click and cmd-click conventions exist; they're discoverable; users use them. Forcing a new tab breaks the back button, surprises keyboard users, and bypasses the user's preference. Reserve <code>target="_blank"</code> for true tool-style escape hatches (PDF previews, embedded forms).</p>
+                    <p>When you do use it, pair with <code>rel="noopener"</code> to close the window-reference vector. Modern browsers default this; setting it explicitly is harmless.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Opening links in new browser windows</em></span>
+                      <a href="https://www.nngroup.com/articles/new-browser-windows-and-tabs/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="pull-quotes">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Pull quotes &amp; callouts</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="pq.aside" data-phases="frontend content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Pull quotes belong in <code>&lt;aside&gt;</code>, not in <code>&lt;blockquote&gt;</code>. They're an editorial flourish, not a citation.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>A pull quote duplicates body content for emphasis. A blockquote cites external content. Confusing the two creates duplicate text for screen readers; <code>&lt;aside&gt;</code> with <code>aria-hidden="true"</code> on the pull quote is the cleanest pattern.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>&lt;aside&gt;: the aside element</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/aside" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="pq.cite" data-phases="frontend content seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use <code>&lt;blockquote cite="…"&gt;</code> for actual quotations; pair with a <code>&lt;cite&gt;</code> element for attribution.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">content</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <pre><code>&lt;blockquote cite="https://www.w3.org/TR/WCAG22/"&gt;
+  &lt;p&gt;Provide ways to help users navigate…&lt;/p&gt;
+  &lt;footer&gt;— &lt;cite&gt;WCAG 2.2&lt;/cite&gt;&lt;/footer&gt;
+&lt;/blockquote&gt;</code></pre>
+                    <p>The <code>cite</code> attribute carries a URL machines can parse; the <code>&lt;cite&gt;</code> element carries the human-readable source name.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>&lt;blockquote&gt;: the block quotation element</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/blockquote" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="pq.callout-roles" data-phases="frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Editorial callouts ("Tip", "Note", "Warning") don't need ARIA <code>role="alert"</code> — they're not interactive.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>The A11y Project</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-02-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>ARIA <code>role="alert"</code> is for transient, dynamic messages screen readers should interrupt for. Static editorial callouts are body content with a visual treatment; mark them up as <code>&lt;aside&gt;</code> or <code>&lt;div&gt;</code> with a clear textual label ("Note:").</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> The A11y Project · <em>ARIA</em></span>
+                      <a href="https://www.a11yproject.com/posts/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+
+        <!-- ============ Group: End of page ============ -->
+        <section class="group" data-group="end-of-page">
+          <header class="group__header">
+            <h2 class="group__title">End of page</h2>
+          </header>
+
+          <details class="consideration" id="related-content">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Related content</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="related.editorial" data-phases="content strategy">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Editor-curated "related" beats algorithmic. Recency and topical-affinity feeds bury the best content.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">strategy</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-11-12</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>"Most recent" is a recency filter, not a relevance filter. For a 1,200-article archive, automated relatedness produces predictable misses. The cheapest fix is two manually-picked links per article in the CMS.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>Related items in editorial design</em></span>
+                      <a href="https://www.nngroup.com/articles/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="related.count" data-phases="ux design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Show 3–5 related items. Beyond five and the user disengages; below three feels token.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Baymard Institute</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-06-04</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Baymard's editorial-site testing puts the engagement sweet spot at four. Below three the section looks unfinished; above five it becomes a list, which gets skimmed and skipped.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Baymard Institute · <em>Article page related content</em></span>
+                      <a href="https://baymard.com/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="related.context" data-phases="content ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Each related item needs context: a one-sentence "why this is here", not a bare title.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">content</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>A List Apart</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-05-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Bare titles ask the reader to evaluate "is this worth my time?" with too little signal. A line of context is editorial work that pays for itself in click-through.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> A List Apart · <em>Editing related content</em></span>
+                      <a href="https://alistapart.com/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="social-sharing">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Social sharing</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="share.web-share" data-phases="frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Prefer <code>navigator.share()</code> on mobile; fall back to a copy-link button.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong> · Web Share API</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-08-12</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>The Web Share API hands off to the user's native share sheet — every app they use, ordered by their habits. It's better than any custom button row.</p>
+                    <p>Feature-detect:</p>
+                    <pre><code>if ('share' in navigator) {
+  // show share button
+} else {
+  // show copy-link button
+}</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>Navigator.share()</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/API/Navigator/share" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="share.no-buttons" data-phases="strategy ux measurement">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">A wall of platform-specific share buttons usually hurts performance more than it helps reach.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">strategy</span>
+                        <span class="chip">ux</span>
+                        <span class="chip">measurement</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Smashing Magazine</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-04-26</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Most third-party share widgets ship tracking, fonts, and 100kB+ of JS. Measure click-through before optimising visual prominence; you'll likely find a copy-link button outperforms a six-button strip.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Smashing Magazine · <em>The hidden cost of share buttons</em></span>
+                      <a href="https://www.smashingmagazine.com/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="share.copy-feedback" data-phases="ux frontend design">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Confirm "link copied" with a toast or in-place text change. Silent success feels broken.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">design</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Nielsen Norman Group</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-10-29</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>For screen reader users, fire an <code>aria-live="polite"</code> region with "Link copied" so the action announces. Visual confirmation alone fails non-sighted users.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Nielsen Norman Group · <em>System status visibility</em></span>
+                      <a href="https://www.nngroup.com/articles/visibility-system-status/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+
+        <!-- ============ Group: Behind the scenes ============ -->
+        <section class="group" data-group="behind-the-scenes">
+          <header class="group__header">
+            <h2 class="group__title">Behind the scenes</h2>
+          </header>
+
+          <details class="consideration" id="meta-description">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Meta description</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="meta.length" data-phases="seo content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Aim for ~150–160 characters. Google routinely truncates beyond ~158, and longer values get rewritten.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Central</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-14</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Google selects the snippet at query time. If your description is too long, irrelevant to the query, or absent, Google generates one from the page body. Write it for humans; the bot will use it if it matches intent.</p>
+                    <p><strong>On mobile.</strong> Snippets render shorter — front-load the first 60 characters with the answer.</p>
+                    <p><strong>On desktop.</strong> You get the full ~158 characters in most layouts.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google Search Central · <em>Create good meta descriptions</em></span>
+                      <a href="https://developers.google.com/search/docs/appearance/snippet" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="meta.no-keywords" data-phases="seo maintenance">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Don't stuff keywords into the meta description. It's a snippet, not a ranking factor.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">maintenance</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Moz</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-01-15</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Meta descriptions haven't been a ranking signal since 2009. Their only job is to win the click. Write them like the back of a book.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Moz · <em>Meta description</em></span>
+                      <a href="https://moz.com/learn/seo/meta-description" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="meta.uniqueness" data-phases="seo content maintenance">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Every page gets a unique description. Duplicates trigger "duplicate meta description" warnings in Search Console.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="chip">maintenance</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Console docs</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2025-06-30</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>If you can't write a unique one, omit it and let Google generate. An auto-generated snippet from real body content beats a templated one that lies.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google · <em>Search Console: meta descriptions</em></span>
+                      <a href="https://support.google.com/webmasters/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="structured-data">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Structured data (Article schema)</span>
+              <span class="consideration__meta" data-role="count">4 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="sd.required-fields" data-phases="seo frontend backend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Required Article fields for Google: <code>headline</code>, <code>image</code>, <code>datePublished</code>, <code>author</code>.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">backend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>schema.org</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-12-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Google's Article rich result requires these four; everything else (<code>publisher</code>, <code>dateModified</code>, <code>description</code>) is recommended. Validate before deploying with Google's Rich Results Test.</p>
+                    <pre><code>&lt;script type="application/ld+json"&gt;
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Variable fonts: an introduction",
+  "image": "https://example.com/hero.jpg",
+  "datePublished": "2026-05-15",
+  "author": { "@type": "Person", "name": "J. Riley" }
+}
+&lt;/script&gt;</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> schema.org · <em>Article</em></span>
+                      <a href="https://schema.org/Article" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="sd.json-ld" data-phases="seo frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use JSON-LD, not microdata or RDFa. Google has preferred it since 2017.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Central</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-14</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>JSON-LD lives in a single <code>&lt;script type="application/ld+json"&gt;</code> tag, separate from your markup. It survives template refactors. Microdata couples structured data to specific tags and tends to drift out of sync.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google · <em>Introduction to structured data</em></span>
+                      <a href="https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="sd.types" data-phases="seo content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Pick the most specific type: <code>NewsArticle</code>, <code>BlogPosting</code>, <code>TechArticle</code> — not generic <code>Article</code>.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>schema.org</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-12-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Subtypes inherit Article's fields and add their own. <code>NewsArticle</code> unlocks the Top Stories carousel; <code>TechArticle</code> hints at documentation context for AI summarisation. Picking the right one is a small lift with disproportionate effect.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> schema.org · <em>NewsArticle, BlogPosting, TechArticle</em></span>
+                      <a href="https://schema.org/Article" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub sub--new" id="sd.author-person" data-phases="seo content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner"><span class="sub__newdot" aria-hidden="true"></span><span class="sr-only">New. </span>Author must be a <code>Person</code> with at minimum <code>name</code>; add <code>url</code> to a stable author page.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Google Search Central</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2026-05-10</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Google's 2024 update to the Article guidelines hardened the <code>author</code> requirement: it should be a <code>Person</code> (not <code>Organization</code>) with a name, ideally a stable URL the crawler can revisit. EEAT signals depend on this.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Google · <em>Article structured data</em></span>
+                      <a href="https://developers.google.com/search/docs/appearance/structured-data/article" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="og-twitter">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Open Graph &amp; Twitter Cards</span>
+              <span class="consideration__meta" data-role="count">3 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+
+                <details class="sub" id="og.required" data-phases="seo frontend content">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Four required OG fields: <code>og:title</code>, <code>og:type</code>, <code>og:url</code>, <code>og:image</code>.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">seo</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">content</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Open Graph protocol</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-12-01</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>For articles, <code>og:type</code> is <code>article</code>. Add <code>og:description</code> for the preview snippet. Most LLM-based answer engines (Perplexity, ChatGPT search, Claude) read OG as the canonical title/description; treat it as first-class metadata.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Open Graph protocol · <em>The Open Graph protocol</em></span>
+                      <a href="https://ogp.me/" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="og.image-spec" data-phases="design frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner"><code>og:image</code> at 1200×630px, under 5MB, in PNG or JPEG. Text on the image should be ≥40px.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>Open Graph protocol</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-12-01</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>1200×630 is the safe aspect ratio across LinkedIn, Slack, Facebook, X, Discord. Some platforms crop to square; keep the focal subject inside the centre 630×630 region.</p>
+                    <p>Auto-generate per-article OG images server-side. The investment pays back across years of shares.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> Open Graph protocol · <em>Image best practices</em></span>
+                      <a href="https://ogp.me/#types_image" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="og.twitter-card" data-phases="frontend seo">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">For X / Twitter, set <code>twitter:card</code> to <code>summary_large_image</code>. Don't duplicate fields OG already covers.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">frontend</span>
+                        <span class="chip">seo</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>X Developer Platform</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-04-02</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>X falls back to the corresponding OG tag for any Twitter field you omit (image, title, description). The only Twitter-specific tags worth setting are <code>twitter:card</code> and <code>twitter:site</code>.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> X · <em>Twitter Cards documentation</em></span>
+                      <a href="https://developer.x.com/en/docs/twitter-for-websites/cards" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+
+        <!-- ============ Site-wide group (hidden by default) ============ -->
+        <section class="group" data-group="site-wide" hidden>
+          <header class="group__header">
+            <h2 class="group__title">Site-wide considerations</h2>
+            <span class="group__count">Layered onto every page</span>
+          </header>
+
+          <details class="consideration" id="sw-contrast">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Colour contrast</span>
+              <span class="consideration__meta" data-role="count">2 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+                <details class="sub" id="sw-contrast.text" data-phases="design frontend ux">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Body text contrast ≥ 4.5:1 (AA), ≥ 7:1 (AAA). Large text ≥ 3:1.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="chip">ux</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 1.4.3</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>WCAG 2.2 still uses the relative-luminance formula; WCAG 3 (draft) will replace it with APCA. For now design to the established floor and validate with a tool that reports both, so you're not surprised when WCAG 3 ships.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 1.4.3 Contrast (Minimum)</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="sw-contrast.nontext" data-phases="design frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Non-text contrast ≥ 3:1. Catches: form borders, focus rings, chart strokes, icon-only buttons.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 1.4.11</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>This rule retroactively makes the popular pale-grey-on-white input border illegal. If a control's edge is the only thing distinguishing it from the page, it needs the 3:1 floor.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 1.4.11 Non-text Contrast</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </details>
+
+          <details class="consideration" id="sw-keyboard">
+            <summary class="consideration__summary">
+              <span class="consideration__title">Keyboard navigation</span>
+              <span class="consideration__meta" data-role="count">2 items</span>
+              <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+            </summary>
+            <div class="consideration__body">
+              <div class="subs">
+                <details class="sub" id="sw-keyboard.tab-order" data-phases="ux frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Tab order follows visual reading order. Don't use positive <code>tabindex</code>; rearrange the DOM instead.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">ux</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>W3C / WCAG 2.2</strong> · SC 2.4.3</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2023-09-21</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Positive <code>tabindex</code> overrides natural order and tends to drift out of sync with future edits. <code>tabindex="0"</code> and <code>tabindex="-1"</code> stay useful.</p>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> W3C · <em>WCAG 2.2 SC 2.4.3 Focus Order</em></span>
+                      <a href="https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="sub" id="sw-keyboard.focus-visible" data-phases="design frontend">
+                  <summary class="sub__summary">
+                    <div class="sub__top">
+                      <span class="sub__one-liner">Use <code>:focus-visible</code>, not <code>:focus</code>. Mouse clicks shouldn't paint the focus ring.</span>
+                      <div class="sub__metarow">
+                        <span class="chip">design</span>
+                        <span class="chip">frontend</span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span class="sub__source"><strong>MDN</strong></span>
+                        <span class="sub__dot" aria-hidden="true"></span>
+                        <span>2024-08-19</span>
+                      </div>
+                    </div>
+                    <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6,3 11,8 6,13"/></svg>
+                  </summary>
+                  <div class="sub__body">
+                    <p>Baseline-supported since 2022. The browser decides when focus is "keyboard-style" and paints the ring only then. Pair with <code>:focus</code> for older browsers if needed.</p>
+                    <pre><code>button:focus-visible {
+  outline: 2px solid var(--blue-9);
+  outline-offset: 2px;
+}</code></pre>
+                    <div class="sub__footer">
+                      <span><strong>Source.</strong> MDN · <em>:focus-visible</em></span>
+                      <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible" rel="noopener">View source ↗</a>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </details>
+
+        </section>
+
+      </div><!-- /.reading -->
+    </main><!-- /.content -->
+
+    <!-- ===================== Filters drawer ===================== -->
+    <aside class="filters-rail" id="filters-rail" aria-label="Filters">
+      <div class="filters-rail__inner">
+        <header class="filters-rail__header">
+          <h2 class="filters-rail__title">Filters</h2>
+          <span class="filters-rail__count" data-role="filters-count" hidden></span>
+        </header>
+        <div class="filters-rail__body">
+          <div class="rail__section">
+            <div class="rail__heading">
+              <span>Filter by phase</span>
+              <span class="rail__actions">
+                <button class="linkbtn" data-action="select-all" type="button">all</button>
+                <span aria-hidden="true">·</span>
+                <button class="linkbtn" data-action="clear-all" type="button">none</button>
+              </span>
+            </div>
+            <ul class="checklist">
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="strategy" checked /><span>Strategy</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="concept" checked /><span>Concept</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="ux" checked /><span>UX</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="design" checked /><span>Design</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="frontend" checked /><span>Frontend</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="backend" checked /><span>Backend</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="content" checked /><span>Content</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="seo" checked /><span>SEO</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="legal" checked /><span>Legal</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="measurement" checked /><span>Measurement</span></label></li>
+              <li><label class="checklist__item"><input type="checkbox" name="phase" value="maintenance" checked /><span>Maintenance</span></label></li>
+            </ul>
+          </div>
+          <hr class="hr hr--tight" />
+          <div class="rail__section">
+            <label class="toggle-row">
+              <input type="checkbox" class="toggle" id="toggle-sitewide" />
+              <span>Show site-wide considerations</span>
+            </label>
+            <p class="filters-rail__hint">
+              Mixes alt text, contrast, keyboard nav, and other cross-cutting items into this view.
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /.layout -->
+
+</div><!-- /.app -->
+
+<script src="js/filters.js"></script>
+<script src="js/accordion.js"></script>
+<script src="js/search.js"></script>
+<script src="js/sidebar.js"></script>
+<script>
+  // Phosphor icon weight switcher (v3 only) — persists choice.
+  (function () {
+    var KEY = 'bp:icon-weight';
+    var WEIGHTS = ['ph', 'ph-bold', 'ph-duotone'];
+    var btns = document.querySelectorAll('.icon-weight__btn');
+    function apply(w) {
+      if (WEIGHTS.indexOf(w) < 0) w = 'ph';
+      document.querySelectorAll('i.ph, i.ph-bold, i.ph-duotone').forEach(function (el) {
+        var name = '';
+        for (var i = 0; i < el.classList.length; i++) {
+          var c = el.classList[i];
+          if (c.indexOf('ph-') === 0 && WEIGHTS.indexOf(c) < 0) { name = c; break; }
+        }
+        // Preserve any non-Phosphor classes (e.g. search__icon)
+        var extras = [];
+        el.classList.forEach(function (c) {
+          if (c.indexOf('ph') !== 0 || (c.indexOf('ph-') === 0 && c === name)) {
+            if (WEIGHTS.indexOf(c) < 0 && c !== name) extras.push(c);
+          }
+        });
+        el.className = (w + ' ' + name + (extras.length ? ' ' + extras.join(' ') : '')).trim();
+      });
+      btns.forEach(function (b) {
+        b.setAttribute('aria-pressed', b.dataset.weight === w ? 'true' : 'false');
+      });
+      try { localStorage.setItem(KEY, w); } catch (e) {}
+    }
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () { apply(b.dataset.weight); });
+    });
+    var stored = 'ph';
+    try { stored = localStorage.getItem(KEY) || 'ph'; } catch (e) {}
+    apply(stored);
+  })();
+</script>
+</body>
+</html>

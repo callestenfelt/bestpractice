@@ -32,6 +32,56 @@ def _inject_asset_helper():
     return {"asset": asset}
 
 
+@app.context_processor
+def _inject_nav():
+    """Sidebar nav data for every render: all page types + components in
+    display_order, each tagged with whether it has at least one approved
+    sub-consideration whose last_updated is within the 14-day "new" window.
+    Also injects current_kind and current_slug so the sidebar can mark the
+    active link via aria-current="page" from inside base.html.
+    """
+    db = get_db()
+    cutoff = (datetime.now(timezone.utc) - NEW_WINDOW).isoformat(timespec="seconds").replace("+00:00", "Z")
+    # EXISTS subquery: any approved sub under this parent updated within window.
+    nav_query = """
+        SELECT t.slug, t.label, t.icon,
+               EXISTS(
+                   SELECT 1 FROM sub_considerations s
+                   JOIN considerations c ON c.id = s.consideration_id
+                   WHERE c.parent_type = ?
+                     AND c.parent_slug = t.slug
+                     AND s.status = 'approved'
+                     AND c.status = 'approved'
+                     AND s.last_updated >= ?
+               ) AS has_new
+          FROM {table} t
+         ORDER BY t.display_order
+    """
+    nav_page_types = db.execute(
+        nav_query.format(table="page_types"), ("page_type", cutoff)
+    ).fetchall()
+    nav_components = db.execute(
+        nav_query.format(table="components"), ("component", cutoff)
+    ).fetchall()
+
+    # Active-link inference from the current request endpoint.
+    current_kind = None
+    current_slug = None
+    if request.endpoint == "page_type":
+        current_kind = "page_type"
+        current_slug = request.view_args.get("slug") if request.view_args else None
+    elif request.endpoint == "component":
+        current_kind = "component"
+        current_slug = request.view_args.get("slug") if request.view_args else None
+
+    return {
+        "nav_page_types": nav_page_types,
+        "nav_components": nav_components,
+        "current_kind": current_kind,
+        "current_slug": current_slug,
+    }
+
+
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         if not DB_PATH.exists():
@@ -79,13 +129,13 @@ def load_parent_view(parent_type: str, parent_slug: str):
     db = get_db()
     if parent_type == "page_type":
         row = db.execute(
-            "SELECT slug, label, definition, schema_org_type FROM page_types WHERE slug = ?",
+            "SELECT slug, label, definition, schema_org_type, icon FROM page_types WHERE slug = ?",
             (parent_slug,),
         ).fetchone()
         parent_kind_label = "Page type"
     else:
         row = db.execute(
-            "SELECT slug, label, definition FROM components WHERE slug = ?",
+            "SELECT slug, label, definition, icon FROM components WHERE slug = ?",
             (parent_slug,),
         ).fetchone()
         parent_kind_label = "Component"
@@ -95,6 +145,7 @@ def load_parent_view(parent_type: str, parent_slug: str):
         "slug": row["slug"],
         "label": row["label"],
         "definition": row["definition"],
+        "icon": row["icon"],
         "schema_org_type": row["schema_org_type"] if parent_type == "page_type" else None,
     }
 

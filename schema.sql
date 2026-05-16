@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS page_types (
   label           TEXT NOT NULL,
   definition      TEXT NOT NULL DEFAULT '',
   schema_org_type TEXT,
+  icon            TEXT,
   display_order   INTEGER NOT NULL
 );
 
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS components (
   slug          TEXT PRIMARY KEY,
   label         TEXT NOT NULL,
   definition    TEXT NOT NULL DEFAULT '',
+  icon          TEXT,
   display_order INTEGER NOT NULL
 );
 

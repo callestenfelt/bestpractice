@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Review queue · bestpractice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+</head>
+<body>
+<div class="app">
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-header__brand" href="index.html">
+        <span class="site-header__brand-mark" aria-hidden="true"></span>
+        bestpractice
+      </a>
+      <form class="search-form search" role="search" action="search.html" method="get">
+        <svg class="search__icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m14 14-3.2-3.2"/></svg>
+        <input class="search__input" type="search" name="q" placeholder="Search…" aria-label="Search" />
+        <kbd class="search__kbd">⌘K</kbd>
+      </form>
+      <nav class="site-header__nav" aria-label="Admin">
+        <a href="admin-queue.html" aria-current="page"><span class="label">Review queue</span></a>
+        <a href="admin-sources.html"><span class="label">Sources</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="shell shell--narrow">
+      <div class="main" style="max-width: none;">
+
+        <div class="page-heading">
+          <div class="page-heading__eyebrow">Admin · queue</div>
+          <h1 class="page-heading__title">Review queue</h1>
+          <p class="page-heading__definition">
+            AI-suggested sub-accordions waiting for editorial approval. Nothing here is visible to readers
+            until you approve it.
+          </p>
+        </div>
+
+        <div class="queue-toolbar">
+          <div class="queue-toolbar__count">
+            <strong>7</strong> pending · <strong>23</strong> approved this week · <strong>4</strong> rejected
+          </div>
+          <div class="queue-toolbar__actions">
+            <button class="btn btn--quiet btn--sm">Clear all rejected</button>
+            <button class="btn btn--sm">Last sync: 2h ago</button>
+          </div>
+        </div>
+
+        <div class="queue-list">
+
+          <!-- ============ Item 1 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>web.dev</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-13</span>
+                <span class="qcard__score" title="AI relevance score, 1–10">●●●●●●●●○○ 8/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">Speculation Rules API now Baseline newly available — preload &amp; prerender future navigations for sub-100ms LCP.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">frontend<button class="chip__x" aria-label="Remove frontend tag">×</button></span>
+                <span class="chip chip--editable">measurement<button class="chip__x" aria-label="Remove measurement tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Article Page · Body · In-article media</option>
+                  <option>Site-wide · Performance</option>
+                  <option>Site-wide · Core Web Vitals</option>
+                  <option>Start Page · Performance</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                The Speculation Rules API lets you declaratively prerender future navigations the user is likely to take. As of April 2026 it has reached Baseline newly available status — supported in Chrome, Edge, Firefox 138+, and Safari 18.4. The performance win is significant: prerendered pages report LCP in the tens of milliseconds…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 2 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>Nielsen Norman Group</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-11</span>
+                <span class="qcard__score">●●●●●●●●●○ 9/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">Search results pages: when the query returns zero results, show the query parsed into facets rather than a bare "no results" message.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">ux<button class="chip__x" aria-label="Remove ux tag">×</button></span>
+                <span class="chip chip--editable">content<button class="chip__x" aria-label="Remove content tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Search Results Page · Empty state</option>
+                  <option>Search Results Page · Result presentation</option>
+                  <option>Search component · Empty state</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                A common pattern observed across e-commerce and editorial sites: the empty state for search hides why no results appeared. Showing the parsed query — "red", "size: M", "category: shoes" — as removable chips lets users recover by relaxing one facet at a time, rather than retyping the whole query…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 3 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>The A11y Project</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-09</span>
+                <span class="qcard__score">●●●●●●●○○○ 7/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">Skip links must be visible on keyboard focus, not only at first tab. A skip link that only appears after the user's already navigated past the menu is no skip link.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">ux<button class="chip__x" aria-label="Remove ux tag">×</button></span>
+                <span class="chip chip--editable">frontend<button class="chip__x" aria-label="Remove frontend tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Site-wide · Keyboard navigation</option>
+                  <option>Header component · Skip link</option>
+                  <option>Navigation component · Skip patterns</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                A pattern still seen too often in the wild: the skip-to-main-content link is positioned off-screen, but only animates back into view on the very first tab. After the user tabs past it, the link is gone for the rest of the session. The correct pattern is to position it off-screen and bring it into view on every focus…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 4 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>caniuse</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-08</span>
+                <span class="qcard__score">●●●●●●○○○○ 6/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">CSS <code>field-sizing: content</code> is now in Chrome 137+, Edge 137+ and Firefox 139+. Auto-grow textareas without JS.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">frontend<button class="chip__x" aria-label="Remove frontend tag">×</button></span>
+                <span class="chip chip--editable">design<button class="chip__x" aria-label="Remove design tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Form component · Textarea</option>
+                  <option>Input field component · Sizing</option>
+                  <option>Site-wide · Progressive enhancement</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                The <code>field-sizing</code> property lets form controls size to their content. For <code>&lt;textarea&gt;</code> this means no more JavaScript-based auto-grow libraries. Set <code>field-sizing: content</code> with a sensible <code>min-height</code> and <code>max-height</code>, and the textarea grows and shrinks as the user types…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 5 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>W3C · WCAG 2.2 errata</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-06</span>
+                <span class="qcard__score">●●●●●●●●●○ 9/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">WCAG 2.2 SC 2.4.11 (Focus Not Obscured, Minimum, AA) — sticky headers must not hide the focused element.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">ux<button class="chip__x" aria-label="Remove ux tag">×</button></span>
+                <span class="chip chip--editable">frontend<button class="chip__x" aria-label="Remove frontend tag">×</button></span>
+                <span class="chip chip--editable">design<button class="chip__x" aria-label="Remove design tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Header component · Sticky behaviour</option>
+                  <option>Site-wide · Keyboard navigation</option>
+                  <option>Site-wide · Focus management</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                Success Criterion 2.4.11 (Focus Not Obscured, Minimum) is new in WCAG 2.2 at the AA level. When a component receives keyboard focus, it must not be entirely hidden by author-created content. The most common failure is a fixed-position site header occluding form fields below the fold as the user tabs down the page…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 6 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>web.dev</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-04</span>
+                <span class="qcard__score">●●●●●○○○○○ 5/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner">INP (Interaction to Next Paint) replaces FID as a Core Web Vital — the 75th-percentile threshold is 200 ms.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">measurement<button class="chip__x" aria-label="Remove measurement tag">×</button></span>
+                <span class="chip chip--editable">frontend<button class="chip__x" aria-label="Remove frontend tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Site-wide · Core Web Vitals</option>
+                  <option>Site-wide · Performance budget</option>
+                  <option>Dashboard · Monitoring</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                Since March 2024 INP has been a Core Web Vital, replacing First Input Delay. Where FID only measured the delay before the first interaction, INP measures the latency of every interaction in the session and reports the 98th percentile (or worst). Sites pass when the 75th percentile of INP across page loads is at or below 200 milliseconds…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+          <!-- ============ Item 7 ============ -->
+          <article class="qcard">
+            <div class="qcard__main">
+              <div class="qcard__source">
+                <strong>schema.org</strong>
+                <span class="sub__dot" aria-hidden="true"></span>
+                <span>2026-05-02</span>
+                <span class="qcard__score">●●●●●●●○○○ 7/10</span>
+              </div>
+
+              <textarea class="editable" rows="2" aria-label="One-liner"><code>SearchAction</code> entries in <code>WebSite</code> JSON-LD enable the in-SERP search box for branded queries.</textarea>
+
+              <div class="qcard__chips">
+                <span class="chip chip--editable">seo<button class="chip__x" aria-label="Remove seo tag">×</button></span>
+                <button class="chip chip--add" type="button">+ add phase</button>
+              </div>
+
+              <div class="qcard__assoc">
+                <span class="qcard__assoc-label">Suggested home</span>
+                <select class="select" aria-label="Suggested consideration">
+                  <option>Start Page · Structured data</option>
+                  <option>Site-wide · Structured data</option>
+                  <option>Search Results Page · Discoverability</option>
+                </select>
+              </div>
+
+              <div class="qcard__extract">
+                <span class="qcard__extract-label">Source extract</span>
+                Adding a <code>potentialAction</code> of type <code>SearchAction</code> to your homepage <code>WebSite</code> entity tells search engines you have a working search; Google may then show a search input below your branded SERP listing. The action's <code>target</code> must point to a URL template containing <code>{search_term_string}</code>…
+              </div>
+            </div>
+
+            <aside class="qcard__aside">
+              <button class="btn btn--primary">Approve</button>
+              <button class="btn">Edit &amp; approve</button>
+              <button class="btn btn--danger btn--sm">Reject</button>
+            </aside>
+          </article>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="js/search.js"></script>
+</body>
+</html>

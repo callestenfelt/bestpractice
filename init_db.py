@@ -38,96 +38,104 @@ PHASES: list[tuple[str, str, str]] = [
     ("legal",       "Legal",       "Privacy, terms, consent, accessibility statements, and other regulatory considerations"),
 ]
 
-# (slug, label, definition, schema_org_type, synonyms)
-PAGE_TYPES: list[tuple[str, str, str, str | None, list[str]]] = [
-    ("start-page",          "Start Page",           "The site's main entry point, broad in scope, multiple audiences", None,                 ["Homepage", "front page"]),
-    ("landing-page",        "Landing Page",         "Focused single-purpose page for a campaign or referral source",   None,                 ["Campaign page"]),
-    ("article-page",        "Article Page",         "A single piece of editorial content, usually long-form",           "Article",            ["Post", "blog post", "story"]),
-    ("collection-page",     "Collection Page",      "A list or grid of items (articles, products, cases)",              "CollectionPage",     ["List page", "index", "archive"]),
-    ("item-page",           "Item Page",            "Detail view of a single thing (product, project, person)",         "ItemPage",           ["Detail page", "product page"]),
-    ("profile-page",        "Profile Page",         "A page representing a person, team, or org",                       "ProfilePage",        ["Bio page", "team member"]),
-    ("search-results-page", "Search Results Page",  "Results returned from a user query",                                "SearchResultsPage",  ["SERP", "search page"]),
-    ("faq-page",            "FAQ Page",             "Structured Q&A page",                                                "FAQPage",            ["Help", "support page"]),
-    ("about-page",          "About Page",           "Information about the organization",                                 "AboutPage",          ["Company", "who-we-are"]),
-    ("contact-page",        "Contact Page",         "Contact information and forms",                                      "ContactPage",        ["Get in touch"]),
-    ("checkout-page",       "Checkout Page",        "Multi-step purchase or signup completion",                            "CheckoutPage",       ["Cart", "conversion flow"]),
-    ("event-page",          "Event Page",           "Detail page for a single event",                                      "Event",              ["Event detail", "happening"]),
-    ("legal-page",          "Legal Page",           "Privacy, terms, accessibility statements",                            None,                 ["Policy page"]),
-    ("cookie-page",         "Cookie Page",          "Cookie policy and consent details",                                   None,                 ["Cookie policy", "cookie notice"]),
-    ("error-page",          "Error Page",           "500, offline, maintenance and other non-404 error states",            None,                 ["Empty state page"]),
-    ("404-page",            "404 Page",             "Page shown when a requested URL doesn't exist, with discovery aids",  None,                 ["Not found page", "Page not found", "missing page"]),
-    ("dashboard-page",      "Dashboard",            "Authenticated overview with personalized data",                       None,                 ["Account home"]),
-    ("pricing-page",        "Pricing Page",         "Plan comparison and price presentation, usually with CTA per tier",  None,                 ["Plans page", "tariffs", "subscription page"]),
-    ("confirmation-page",   "Confirmation Page",    "Post-action page confirming a completed transaction or submission",  None,                 ["Thank-you page", "receipt page", "success page", "order complete"]),
-    ("auth-page",           "Authentication Page",  "Authentication flow — login, sign-up, password reset",                None,                 ["Login page", "sign-in page", "sign-up page", "register page", "password reset"]),
-    ("site-wide",           "Site-wide",            "Considerations that apply across all pages",                          None,                 ["Global", "cross-cutting"]),
+# (slug, label, definition, schema_org_type, synonyms, icon)
+# Order mirrors the prototype v3 sidebar: design's intentional grouping
+# (auth near landing; confirmation after checkout; etc.). Seed display_order
+# follows this order via Session 8's upsert in seed_taxonomies().
+PAGE_TYPES: list[tuple[str, str, str, str | None, list[str], str]] = [
+    ("start-page",          "Start Page",           "The site's main entry point, broad in scope, multiple audiences",    None,                 ["Homepage", "front page"],                                                          "ph-house"),
+    ("landing-page",        "Landing Page",         "Focused single-purpose page for a campaign or referral source",      None,                 ["Campaign page"],                                                                   "ph-flag-banner"),
+    ("auth-page",           "Authentication Page",  "Authentication flow — login, sign-up, password reset",                None,                 ["Login page", "sign-in page", "sign-up page", "register page", "password reset"],   "ph-sign-in"),
+    ("article-page",        "Article Page",         "A single piece of editorial content, usually long-form",              "Article",            ["Post", "blog post", "story"],                                                      "ph-article"),
+    ("collection-page",     "Collection Page",      "A list or grid of items (articles, products, cases)",                 "CollectionPage",     ["List page", "index", "archive"],                                                   "ph-squares-four"),
+    ("item-page",           "Item Page",            "Detail view of a single thing (product, project, person)",            "ItemPage",           ["Detail page", "product page"],                                                     "ph-package"),
+    ("pricing-page",        "Pricing Page",         "Plan comparison and price presentation, usually with CTA per tier",   None,                 ["Plans page", "tariffs", "subscription page"],                                      "ph-currency-circle-dollar"),
+    ("profile-page",        "Profile Page",         "A page representing a person, team, or org",                          "ProfilePage",        ["Bio page", "team member"],                                                         "ph-user-circle"),
+    ("search-results-page", "Search Results Page",  "Results returned from a user query",                                  "SearchResultsPage",  ["SERP", "search page"],                                                             "ph-list-magnifying-glass"),
+    ("faq-page",            "FAQ Page",             "Structured Q&A page",                                                 "FAQPage",            ["Help", "support page"],                                                            "ph-question"),
+    ("about-page",          "About Page",           "Information about the organization",                                  "AboutPage",          ["Company", "who-we-are"],                                                           "ph-info"),
+    ("contact-page",        "Contact Page",         "Contact information and forms",                                       "ContactPage",        ["Get in touch"],                                                                    "ph-envelope-simple"),
+    ("checkout-page",       "Checkout Page",        "Multi-step purchase or signup completion",                            "CheckoutPage",       ["Cart", "conversion flow"],                                                         "ph-shopping-cart-simple"),
+    ("confirmation-page",   "Confirmation Page",    "Post-action page confirming a completed transaction or submission",   None,                 ["Thank-you page", "receipt page", "success page", "order complete"],                "ph-check-circle"),
+    ("event-page",          "Event Page",           "Detail page for a single event",                                      "Event",              ["Event detail", "happening"],                                                       "ph-calendar-check"),
+    ("legal-page",          "Legal Page",           "Privacy, terms, accessibility statements",                            None,                 ["Policy page"],                                                                     "ph-scales"),
+    ("cookie-page",         "Cookie Page",          "Cookie policy and consent details",                                   None,                 ["Cookie policy", "cookie notice"],                                                  "ph-cookie"),
+    ("error-page",          "Error Page",           "500, offline, maintenance and other non-404 error states",            None,                 ["Empty state page"],                                                                "ph-warning-octagon"),
+    ("404-page",            "404 Page",             "Page shown when a requested URL doesn't exist, with discovery aids",  None,                 ["Not found page", "Page not found", "missing page"],                                "ph-binoculars"),
+    ("dashboard-page",      "Dashboard",            "Authenticated overview with personalized data",                       None,                 ["Account home"],                                                                    "ph-gauge"),
+    ("site-wide",           "Site-wide",            "Considerations that apply across all pages",                          None,                 ["Global", "cross-cutting"],                                                         "ph-globe"),
 ]
 
 # (slug, label, definition, synonyms)
-COMPONENTS: list[tuple[str, str, str, list[str]]] = [
-    ("header",         "Header",         "Top-of-page site bar, usually persistent",                              ["Masthead", "top bar"]),
-    ("footer",         "Footer",         "Bottom-of-page persistent content",                                     ["Bottom bar"]),
-    ("navigation",     "Navigation",     "Primary site navigation",                                                ["Nav", "menu", "main nav"]),
-    ("menu-bar",       "Menu Bar",       "Horizontal bar of top-level menus, desktop-style",                       ["Application menu", "command bar"]),
-    ("breadcrumb",     "Breadcrumb",     "Path-style location indicator",                                          ["Breadcrumbs", "trail"]),
-    ("hero",           "Hero",           "Large lead block at top of page",                                        ["Banner", "splash", "jumbotron"]),
-    ("eyebrow",        "Eyebrow",        "Short label above a heading",                                            ["Kicker", "supertitle", "overline"]),
-    ("card",           "Card",           "Self-contained content tile with title, body, optional media",          ["Tile", "panel"]),
-    ("shopping-cart",  "Shopping Cart",  "Summary of items selected for purchase, with quantity and price",        ["Cart", "basket", "bag", "mini cart"]),
-    ("button",         "Button",         "Triggerable action element",                                             ["CTA", "action"]),
-    ("copy-link-button","Copy Link Button","Button that copies a URL or text to the clipboard, usually with confirmation feedback", ["Share link button", "copy URL", "copy to clipboard"]),
-    ("link",           "Link",           "Inline navigation element",                                              ["Anchor"]),
-    ("form",           "Form",           "Grouped input fields with submission",                                   []),
-    ("input-field",    "Input Field",    "Single text/number/etc. input",                                          ["Text input", "field"]),
-    ("textarea",       "Textarea",       "Multi-line text input",                                                   ["Multiline input", "text area", "long text"]),
-    ("select",         "Select",         "Single-choice dropdown",                                                  ["Dropdown", "picker"]),
-    ("combobox",       "Combobox",       "Text input with filterable suggestion list",                              ["Autocomplete", "type-ahead", "search select"]),
-    ("checkbox",       "Checkbox",       "Multi-select option",                                                     ["Tickbox"]),
-    ("radio-group",    "Radio Group",    "Single-select from visible options",                                      ["Radio buttons"]),
-    ("toggle",         "Toggle",         "On/off switch",                                                            ["Switch"]),
-    ("toggle-group",   "Toggle Group",   "Set of toggle buttons where one or more can be active",                   ["Button group", "segmented control"]),
-    ("slider",         "Slider",         "Input control for selecting a value within a range",                      ["Range input", "range slider"]),
-    ("date-picker",    "Date Picker",    "Input control for selecting a date or date range",                        ["Date input", "date field"]),
-    ("file-upload",    "File Upload",    "Input control for selecting and uploading files",                         ["File input", "uploader", "drop zone", "dropzone"]),
-    ("modal",          "Modal",          "Overlay that blocks the page until dismissed",                            ["Dialog", "popup", "lightbox"]),
-    ("popover",        "Popover",        "Floating panel anchored to a trigger element",                            ["Flyout", "floating panel"]),
-    ("dropdown-menu",  "Dropdown Menu",  "Menu of actions or links revealed by clicking a trigger",                 ["Action menu", "context menu", "kebab menu"]),
-    ("tooltip",        "Tooltip",        "Hover/focus-triggered short hint",                                         ["Hint"]),
-    ("tabs",           "Tabs",           "Switchable panels in the same space",                                      ["Tab group"]),
-    ("stepper",        "Stepper",        "Multi-step process indicator with per-step navigation",                    ["Wizard", "step indicator", "progress steps"]),
-    ("accordion",      "Accordion",      "Expandable/collapsible content section",                                   ["Disclosure", "expander"]),
-    ("list",           "List",           "Vertical sequence of related items, ordered or unordered",                 ["Bullet list", "numbered list", "ordered list", "unordered list", "ul", "ol"]),
-    ("code-block",     "Code Block",     "Formatted block of code, usually monospaced and syntax-highlighted",       ["Code snippet", "pre block", "syntax block"]),
-    ("table",          "Table",          "Tabular data display",                                                     ["Data grid"]),
-    ("chart",          "Chart",          "Visual representation of data — bars, lines, pies, scatter, etc.",         ["Graph", "data visualization", "data viz", "plot"]),
-    ("pagination",     "Pagination",     "Page-by-page navigation through a list",                                   ["Pager"]),
-    ("filter",         "Filter",         "Narrow a list by criteria",                                                ["Faceted search", "refinement"]),
-    ("sort",           "Sort",           "Reorder a list by criteria",                                               ["Sorting controls"]),
-    ("search",         "Search",         "Query input and result trigger",                                            ["Site search"]),
-    ("scroll-area",    "Scroll Area",    "Container with styled scrollbars for overflowing content",                 ["Scroll container"]),
-    ("separator",      "Separator",      "Visual divider between content or controls",                               ["Divider", "rule", "hr"]),
-    ("toast",          "Toast",          "Transient non-blocking message",                                            ["Snackbar", "notification"]),
-    ("alert",          "Alert",          "Persistent in-page status message",                                          ["Banner alert", "callout"]),
-    ("service-message","Service Message","Site-wide informational banner about temporary status",                     ["Site banner", "announcement banner", "VMA"]),
-    ("cookie-banner",  "Cookie Banner",  "Consent UI for cookie or tracking preferences",                              ["Consent banner", "consent dialog", "cookie consent", "cookie notice"]),
-    ("progress-bar",   "Progress Bar",   "Visual indicator of completion or determinate state",                       ["Progress indicator"]),
-    ("spinner",        "Spinner",        "Small indeterminate animated indicator, usually inline",                     ["Loading spinner", "activity indicator", "throbber"]),
-    ("loader",         "Loader",         "Page or section-level loading state, often blocking with optional message", ["Page loader", "loading overlay", "loading screen", "full-page loader"]),
-    ("badge",          "Badge",          "Small read-only status or label indicator",                                  ["Pill", "label"]),
-    ("chip",           "Chip",           "Compact interactive element representing an input, attribute, or filter",   ["Token", "tag (interactive)"]),
-    ("stat",           "Stat",           "Single-metric display with value, label, and optional delta",                ["Metric", "KPI", "stat tile", "number"]),
-    ("rating",         "Rating",         "User-facing rating control or display, usually star-based",                  ["Star rating", "score", "stars"]),
-    ("micro-feedback", "Micro Feedback", "Lightweight feedback prompt for a single binary or short-tap response",      ["Was this helpful", "thumbs up/down", "quick feedback", "reaction"]),
-    ("video",          "Video",          "Embedded or hosted video",                                                    []),
-    ("audio",          "Audio",          "Embedded audio player with transport controls",                              ["Audio player", "podcast player", "sound clip"]),
-    ("image",          "Image",          "Static image with semantics (alt, caption)",                                   ["Picture"]),
-    ("icon",           "Icon",           "Small symbolic graphic",                                                        ["Glyph", "symbol"]),
-    ("carousel",       "Carousel",       "Horizontally scrollable sequence of content slides",                            ["Slider", "slideshow", "rotator"]),
-    ("gallery",        "Image Gallery",  "Grid or lightbox collection of images for browsing",                            ["Image grid", "photo gallery", "lightbox"]),
-    ("map",            "Map",            "Embedded geographic map, usually interactive",                                  ["Map embed", "location map"]),
-    ("calendar",       "Calendar",       "View of dates in month/week/day format, often with events",                     ["Schedule view", "agenda view"]),
-    ("avatar",         "Avatar",         "Circular or rounded image representing a person or entity",                      ["Profile picture", "user image"]),
-    ("skeleton",       "Skeleton",       "Loading placeholder shape",                                                       ["Shimmer", "loader"]),
+# (slug, label, definition, synonyms, icon)
+# Order mirrors prototype v3 sidebar (form controls clustered; data-display
+# clustered; loading-state cluster; etc.). Seed display_order follows.
+# "Loader" dropped from skeleton's synonyms since `loader` is its own slug now
+# (same cleanup as the spinner/Loader split in Session 8).
+COMPONENTS: list[tuple[str, str, str, list[str], str]] = [
+    ("header",         "Header",         "Top-of-page site bar, usually persistent",                                ["Masthead", "top bar"],                                                                  "ph-text-h-one"),
+    ("footer",         "Footer",         "Bottom-of-page persistent content",                                       ["Bottom bar"],                                                                           "ph-arrow-line-down"),
+    ("navigation",     "Navigation",     "Primary site navigation",                                                 ["Nav", "menu", "main nav"],                                                              "ph-compass"),
+    ("menu-bar",       "Menu Bar",       "Horizontal bar of top-level menus, desktop-style",                        ["Application menu", "command bar"],                                                      "ph-list"),
+    ("breadcrumb",     "Breadcrumb",     "Path-style location indicator",                                           ["Breadcrumbs", "trail"],                                                                 "ph-caret-right"),
+    ("hero",           "Hero",           "Large lead block at top of page",                                         ["Banner", "splash", "jumbotron"],                                                        "ph-image-square"),
+    ("eyebrow",        "Eyebrow",        "Short label above a heading",                                             ["Kicker", "supertitle", "overline"],                                                     "ph-text-aa"),
+    ("card",           "Card",           "Self-contained content tile with title, body, optional media",           ["Tile", "panel"],                                                                        "ph-cards"),
+    ("list",           "List",           "Vertical sequence of related items, ordered or unordered",               ["Bullet list", "numbered list", "ordered list", "unordered list", "ul", "ol"],           "ph-list-bullets"),
+    ("button",         "Button",         "Triggerable action element",                                              ["CTA", "action"],                                                                        "ph-cursor-click"),
+    ("copy-link-button","Copy Link Button","Button that copies a URL or text to the clipboard, usually with confirmation feedback", ["Share link button", "copy URL", "copy to clipboard"],                       "ph-copy"),
+    ("link",           "Link",           "Inline navigation element",                                               ["Anchor"],                                                                               "ph-link-simple"),
+    ("form",           "Form",           "Grouped input fields with submission",                                    [],                                                                                       "ph-clipboard-text"),
+    ("input-field",    "Input Field",    "Single text/number/etc. input",                                           ["Text input", "field"],                                                                  "ph-text-t"),
+    ("textarea",       "Textarea",       "Multi-line text input",                                                   ["Multiline input", "text area", "long text"],                                            "ph-text-align-left"),
+    ("select",         "Select",         "Single-choice dropdown",                                                  ["Dropdown", "picker"],                                                                   "ph-caret-down"),
+    ("combobox",       "Combobox",       "Text input with filterable suggestion list",                              ["Autocomplete", "type-ahead", "search select"],                                          "ph-magnifying-glass-plus"),
+    ("file-upload",    "File Upload",    "Input control for selecting and uploading files",                         ["File input", "uploader", "drop zone", "dropzone"],                                      "ph-upload-simple"),
+    ("checkbox",       "Checkbox",       "Multi-select option",                                                     ["Tickbox"],                                                                              "ph-check-square"),
+    ("radio-group",    "Radio Group",    "Single-select from visible options",                                      ["Radio buttons"],                                                                        "ph-radio-button"),
+    ("toggle",         "Toggle",         "On/off switch",                                                           ["Switch"],                                                                               "ph-toggle-left"),
+    ("toggle-group",   "Toggle Group",   "Set of toggle buttons where one or more can be active",                   ["Button group", "segmented control"],                                                    "ph-toggle-right"),
+    ("slider",         "Slider",         "Input control for selecting a value within a range",                      ["Range input", "range slider"],                                                          "ph-sliders"),
+    ("date-picker",    "Date Picker",    "Input control for selecting a date or date range",                        ["Date input", "date field"],                                                             "ph-calendar-blank"),
+    ("modal",          "Modal",          "Overlay that blocks the page until dismissed",                            ["Dialog", "popup", "lightbox"],                                                          "ph-app-window"),
+    ("popover",        "Popover",        "Floating panel anchored to a trigger element",                            ["Flyout", "floating panel"],                                                             "ph-chat-circle"),
+    ("dropdown-menu",  "Dropdown Menu",  "Menu of actions or links revealed by clicking a trigger",                 ["Action menu", "context menu", "kebab menu"],                                            "ph-dots-three-vertical"),
+    ("tooltip",        "Tooltip",        "Hover/focus-triggered short hint",                                        ["Hint"],                                                                                 "ph-info"),
+    ("tabs",           "Tabs",           "Switchable panels in the same space",                                     ["Tab group"],                                                                            "ph-rows"),
+    ("stepper",        "Stepper",        "Multi-step process indicator with per-step navigation",                   ["Wizard", "step indicator", "progress steps"],                                           "ph-list-numbers"),
+    ("accordion",      "Accordion",      "Expandable/collapsible content section",                                  ["Disclosure", "expander"],                                                               "ph-caret-circle-down"),
+    ("table",          "Table",          "Tabular data display",                                                    ["Data grid"],                                                                            "ph-table"),
+    ("chart",          "Chart",          "Visual representation of data — bars, lines, pies, scatter, etc.",         ["Graph", "data visualization", "data viz", "plot"],                                      "ph-chart-line-up"),
+    ("stat",           "Stat",           "Single-metric display with value, label, and optional delta",             ["Metric", "KPI", "stat tile", "number"],                                                 "ph-trend-up"),
+    ("pagination",     "Pagination",     "Page-by-page navigation through a list",                                  ["Pager"],                                                                                "ph-caret-double-right"),
+    ("filter",         "Filter",         "Narrow a list by criteria",                                               ["Faceted search", "refinement"],                                                         "ph-funnel"),
+    ("sort",           "Sort",           "Reorder a list by criteria",                                              ["Sorting controls"],                                                                     "ph-arrows-down-up"),
+    ("search",         "Search",         "Query input and result trigger",                                          ["Site search"],                                                                          "ph-magnifying-glass"),
+    ("scroll-area",    "Scroll Area",    "Container with styled scrollbars for overflowing content",                ["Scroll container"],                                                                     "ph-arrows-vertical"),
+    ("separator",      "Separator",      "Visual divider between content or controls",                              ["Divider", "rule", "hr"],                                                                "ph-minus"),
+    ("toast",          "Toast",          "Transient non-blocking message",                                          ["Snackbar", "notification"],                                                             "ph-bell"),
+    ("alert",          "Alert",          "Persistent in-page status message",                                       ["Banner alert", "callout"],                                                              "ph-warning"),
+    ("service-message","Service Message","Site-wide informational banner about temporary status",                   ["Site banner", "announcement banner", "VMA"],                                            "ph-megaphone"),
+    ("cookie-banner",  "Cookie Banner",  "Consent UI for cookie or tracking preferences",                           ["Consent banner", "consent dialog", "cookie consent", "cookie notice"],                  "ph-shield-check"),
+    ("micro-feedback", "Micro Feedback", "Lightweight feedback prompt for a single binary or short-tap response",   ["Was this helpful", "thumbs up/down", "quick feedback", "reaction"],                     "ph-thumbs-up"),
+    ("progress-bar",   "Progress Bar",   "Visual indicator of completion or determinate state",                     ["Progress indicator"],                                                                   "ph-spinner-gap"),
+    ("spinner",        "Spinner",        "Small indeterminate animated indicator, usually inline",                  ["Loading spinner", "activity indicator", "throbber"],                                    "ph-circle-notch"),
+    ("loader",         "Loader",         "Page or section-level loading state, often blocking with optional message", ["Page loader", "loading overlay", "loading screen", "full-page loader"],                "ph-hourglass"),
+    ("badge",          "Badge",          "Small read-only status or label indicator",                               ["Pill", "label"],                                                                        "ph-seal-check"),
+    ("chip",           "Chip",           "Compact interactive element representing an input, attribute, or filter", ["Token", "tag (interactive)"],                                                           "ph-tag"),
+    ("rating",         "Rating",         "User-facing rating control or display, usually star-based",               ["Star rating", "score", "stars"],                                                        "ph-star"),
+    ("video",          "Video",          "Embedded or hosted video",                                                [],                                                                                       "ph-play-circle"),
+    ("audio",          "Audio",          "Embedded audio player with transport controls",                           ["Audio player", "podcast player", "sound clip"],                                         "ph-speaker-high"),
+    ("image",          "Image",          "Static image with semantics (alt, caption)",                              ["Picture"],                                                                              "ph-image"),
+    ("icon",           "Icon",           "Small symbolic graphic",                                                  ["Glyph", "symbol"],                                                                      "ph-shapes"),
+    ("carousel",       "Carousel",       "Horizontally scrollable sequence of content slides",                      ["Slider", "slideshow", "rotator"],                                                       "ph-slideshow"),
+    ("gallery",        "Image Gallery",  "Grid or lightbox collection of images for browsing",                      ["Image grid", "photo gallery", "lightbox"],                                              "ph-images"),
+    ("map",            "Map",            "Embedded geographic map, usually interactive",                            ["Map embed", "location map"],                                                            "ph-map-trifold"),
+    ("code-block",     "Code Block",     "Formatted block of code, usually monospaced and syntax-highlighted",      ["Code snippet", "pre block", "syntax block"],                                            "ph-code"),
+    ("calendar",       "Calendar",       "View of dates in month/week/day format, often with events",               ["Schedule view", "agenda view"],                                                         "ph-calendar-dots"),
+    ("avatar",         "Avatar",         "Circular or rounded image representing a person or entity",               ["Profile picture", "user image"],                                                        "ph-user"),
+    ("shopping-cart",  "Shopping Cart",  "Summary of items selected for purchase, with quantity and price",         ["Cart", "basket", "bag", "mini cart"],                                                   "ph-shopping-cart"),
+    ("skeleton",       "Skeleton",       "Loading placeholder shape",                                               ["Shimmer"],                                                                              "ph-rectangle-dashed"),
 ]
 
 
@@ -152,6 +160,14 @@ def migrate(conn: sqlite3.Connection) -> None:
     existing = {row[1] for row in cur.execute("PRAGMA table_info(sub_considerations)").fetchall()}
     if "relevance_score" not in existing:
         cur.execute("ALTER TABLE sub_considerations ADD COLUMN relevance_score INTEGER")
+
+    # Session 9: icon column on page_types and components (Phosphor glyph slug).
+    existing_pt = {row[1] for row in cur.execute("PRAGMA table_info(page_types)").fetchall()}
+    if "icon" not in existing_pt:
+        cur.execute("ALTER TABLE page_types ADD COLUMN icon TEXT")
+    existing_cmp = {row[1] for row in cur.execute("PRAGMA table_info(components)").fetchall()}
+    if "icon" not in existing_cmp:
+        cur.execute("ALTER TABLE components ADD COLUMN icon TEXT")
 
     # 2026-05-16 data fix: an unescaped <title> in the article-page fixture
     # closed the head's title tag mid-body, swallowing every later element
@@ -183,14 +199,14 @@ def seed_taxonomies(conn: sqlite3.Connection) -> None:
             (label, definition, order, slug),
         )
 
-    for order, (slug, label, definition, schema_org, syns) in enumerate(PAGE_TYPES, start=1):
+    for order, (slug, label, definition, schema_org, syns, icon) in enumerate(PAGE_TYPES, start=1):
         cur.execute(
-            "INSERT OR IGNORE INTO page_types (slug, label, definition, schema_org_type, display_order) VALUES (?, ?, ?, ?, ?)",
-            (slug, label, definition, schema_org, order),
+            "INSERT OR IGNORE INTO page_types (slug, label, definition, schema_org_type, icon, display_order) VALUES (?, ?, ?, ?, ?, ?)",
+            (slug, label, definition, schema_org, icon, order),
         )
         cur.execute(
-            "UPDATE page_types SET label=?, definition=?, schema_org_type=?, display_order=? WHERE slug=?",
-            (label, definition, schema_org, order, slug),
+            "UPDATE page_types SET label=?, definition=?, schema_org_type=?, icon=?, display_order=? WHERE slug=?",
+            (label, definition, schema_org, icon, order, slug),
         )
         cur.execute(
             "DELETE FROM synonyms WHERE entity_type=? AND entity_slug=?",
@@ -202,14 +218,14 @@ def seed_taxonomies(conn: sqlite3.Connection) -> None:
                 ("page_type", slug, s),
             )
 
-    for order, (slug, label, definition, syns) in enumerate(COMPONENTS, start=1):
+    for order, (slug, label, definition, syns, icon) in enumerate(COMPONENTS, start=1):
         cur.execute(
-            "INSERT OR IGNORE INTO components (slug, label, definition, display_order) VALUES (?, ?, ?, ?)",
-            (slug, label, definition, order),
+            "INSERT OR IGNORE INTO components (slug, label, definition, icon, display_order) VALUES (?, ?, ?, ?, ?)",
+            (slug, label, definition, icon, order),
         )
         cur.execute(
-            "UPDATE components SET label=?, definition=?, display_order=? WHERE slug=?",
-            (label, definition, order, slug),
+            "UPDATE components SET label=?, definition=?, icon=?, display_order=? WHERE slug=?",
+            (label, definition, icon, order, slug),
         )
         cur.execute(
             "DELETE FROM synonyms WHERE entity_type=? AND entity_slug=?",

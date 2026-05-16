@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Search · bestpractice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" />
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/base.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+</head>
+<body>
+<div class="app">
+
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-header__brand" href="index.html">
+        <span class="site-header__brand-mark" aria-hidden="true"></span>
+        bestpractice
+      </a>
+      <form class="search-form search" role="search" action="search.html" method="get">
+        <svg class="search__icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m14 14-3.2-3.2"/></svg>
+        <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" value="alt text" />
+        <kbd class="search__kbd">⌘K</kbd>
+      </form>
+      <nav class="site-header__nav" aria-label="Admin">
+        <a href="admin-queue.html"><span class="label">Review queue</span></a>
+        <a href="admin-sources.html"><span class="label">Sources</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <div class="shell shell--narrow">
+      <div class="main" style="max-width: none;">
+
+        <div class="page-heading">
+          <div class="page-heading__eyebrow">Search results</div>
+          <h1 class="page-heading__title">“<span data-role="query-echo">alt text</span>”</h1>
+        </div>
+
+        <p class="results-meta">
+          <strong>28</strong> matches in <strong>4</strong> page types and <strong>6</strong> components.
+          Includes <em>synonym</em> matches for <em>alternative text</em>, <em>image description</em>.
+        </p>
+
+        <!-- ============ Group: Article Page ============ -->
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              Article Page <span class="chip chip--ghost">7 hits</span>
+            </div>
+            <span class="result-group__kind">Page type</span>
+          </header>
+
+          <a class="result" href="page-type.html#in-article-media.media-alt">
+            <div class="result__breadcrumb">Article Page <span class="sep">›</span> Body <span class="sep">›</span> In-article media</div>
+            <div class="result__title">Write <mark>alt text</mark> that describes function, not appearance</div>
+            <div class="result__snippet">"…a photo of a developer at a laptop is 'a developer pair-programming', not 'a man at a computer'. The test: read the article aloud with the image replaced by its <mark>alt text</mark>…"</div>
+          </a>
+
+          <a class="result" href="page-type.html#in-article-media.media-figure">
+            <div class="result__breadcrumb">Article Page <span class="sep">›</span> Body <span class="sep">›</span> In-article media</div>
+            <div class="result__title">Captioned media goes in <code>&lt;figure&gt;</code>/<code>&lt;figcaption&gt;</code></div>
+            <div class="result__snippet">"…captions are not <mark>alt text</mark>; they complement it. Alt text describes what the image is; the caption adds editorial context…"</div>
+          </a>
+
+          <a class="result" href="page-type.html#og-twitter.og-image-spec">
+            <div class="result__breadcrumb">Article Page <span class="sep">›</span> Behind the scenes <span class="sep">›</span> Open Graph &amp; Twitter Cards</div>
+            <div class="result__title"><code>og:image</code> at 1200×630px, with on-image text ≥ 40px</div>
+            <div class="result__snippet">"…some platforms have no equivalent to <mark>alt text</mark> for OG images, so any text on the image must be reproduced in <code>og:description</code>…"</div>
+          </a>
+        </section>
+
+        <!-- ============ Group: Item Page ============ -->
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              Item Page <span class="chip chip--ghost">4 hits</span>
+            </div>
+            <span class="result-group__kind">Page type</span>
+          </header>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Item Page <span class="sep">›</span> Product media</div>
+            <div class="result__title">Product <mark>alt text</mark> includes the SKU descriptor, not the marketing name</div>
+            <div class="result__snippet">"…'Acme Pro 6-quart cast-iron Dutch oven, navy blue' beats 'Storm Skipper II'. Search and screen readers both prefer the former…"</div>
+          </a>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Item Page <span class="sep">›</span> Variant gallery</div>
+            <div class="result__title">Each variant image gets its own <mark>alt text</mark> describing the variant</div>
+            <div class="result__snippet">"…not 'product image 1, 2, 3'. The variant — colour, size, angle — is the relevant differentiator for non-sighted users…"</div>
+          </a>
+        </section>
+
+        <!-- ============ Group: Image component ============ -->
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              Image <span class="chip chip--ghost">6 hits</span>
+            </div>
+            <span class="result-group__kind">Component</span>
+          </header>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Image <span class="sep">›</span> Accessibility</div>
+            <div class="result__title">Decorative images take <code>alt=""</code>, not missing <mark>alt</mark></div>
+            <div class="result__snippet">"…empty alt removes the image from the accessibility tree. Missing alt is read by screen readers as the file name…"</div>
+          </a>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Image <span class="sep">›</span> Markup</div>
+            <div class="result__title">Background images via CSS skip <mark>alt text</mark> entirely</div>
+            <div class="result__snippet">"…if the image carries meaning, it belongs in HTML as <code>&lt;img&gt;</code>. CSS backgrounds are for decoration; they have no <mark>alt</mark> attribute…"</div>
+          </a>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Image <span class="sep">›</span> SVG</div>
+            <div class="result__title">Inline SVG needs <code>&lt;title&gt;</code> or <code>aria-label</code> as its <mark>alt</mark> equivalent</div>
+            <div class="result__snippet">"…the <code>alt</code> attribute is HTML-only. For inline SVG, use a <code>&lt;title&gt;</code> child as the first element, or <code>role='img' aria-label='…'</code>…"</div>
+          </a>
+        </section>
+
+        <!-- ============ Group: Card component ============ -->
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              Card <span class="chip chip--ghost">3 hits</span>
+            </div>
+            <span class="result-group__kind">Component</span>
+          </header>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Card <span class="sep">›</span> Image</div>
+            <div class="result__title">Card thumbnails reuse the article's hero <mark>alt text</mark></div>
+            <div class="result__snippet">"…don't write a second alt; it duplicates the announcement for users browsing a list. If the thumbnail is decorative within the card, mark it empty…"</div>
+          </a>
+        </section>
+
+        <!-- ============ Site-wide ============ -->
+        <section class="result-group">
+          <header class="result-group__header">
+            <div class="result-group__title">
+              Site-wide <span class="chip chip--ghost">5 hits</span>
+            </div>
+            <span class="result-group__kind">Cross-cutting</span>
+          </header>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Site-wide <span class="sep">›</span> Accessibility</div>
+            <div class="result__title">Every meaningful image gets <mark>alt text</mark>. No exceptions.</div>
+            <div class="result__snippet">"…WCAG 1.1.1 (Non-text Content) is the most-failed success criterion in the WebAIM Million audit. Most failures are missing <mark>alt</mark>, not bad <mark>alt</mark>…"</div>
+          </a>
+
+          <a class="result" href="#">
+            <div class="result__breadcrumb">Site-wide <span class="sep">›</span> Content</div>
+            <div class="result__title">Audit existing <mark>alt text</mark> annually; image meaning drifts</div>
+            <div class="result__snippet">"…a product photo from 2019 might still carry its 2019 <mark>alt</mark> while the product has been renamed twice. Schedule a content audit…"</div>
+          </a>
+        </section>
+
+        <!-- ============ Empty-state preview (commented for the user) ============ -->
+        <!-- For zero-result query, the empty state below replaces the result groups -->
+        <hr class="hr" />
+        <details>
+          <summary style="cursor: pointer; font-size: var(--fs-13); color: var(--gray-10); padding: var(--space-3) 0;">Preview: empty state (when no matches)</summary>
+          <div class="empty">
+            <div class="empty__title">No matches for that query.</div>
+            <p class="empty__body">Search runs over titles, one-liners, body content, and synonyms. Try a broader term, or browse from the start page.</p>
+            <ul class="empty__list">
+              <li>Try <code>image</code> instead of <code>img</code></li>
+              <li>Try <code>navigation</code> instead of <code>nav</code></li>
+              <li>Browse <a href="page-type.html">page types</a></li>
+            </ul>
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="js/search.js"></script>
+</body>
+</html>
