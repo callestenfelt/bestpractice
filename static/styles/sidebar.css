@@ -358,7 +358,7 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  line-height: 2;
   white-space: nowrap;
 }
 
