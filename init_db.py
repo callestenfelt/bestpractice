@@ -169,6 +169,9 @@ DEFAULT_SOURCES: list[tuple[str, str, str, dict]] = [
     ("OWASP Top 10", "structured",
      "https://raw.githubusercontent.com/OWASP/Top10/master/2021/docs/en/",
      {"adapter": "owasp"}),
+    ("GOV.UK Design System", "structured",
+     "https://github.com/alphagov/govuk-design-system",
+     {"adapter": "govuk"}),
 ]
 
 # The ingest inbox is a placeholder consideration that pending sub_considerations

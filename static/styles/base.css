@@ -105,101 +105,12 @@ pre code {
   flex-direction: column;
 }
 
-.app-main {
-  flex: 1;
-  width: 100%;
-}
-
-/* ---- header ---- */
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: rgba(252, 252, 253, 0.85);
-  backdrop-filter: saturate(180%) blur(8px);
-  -webkit-backdrop-filter: saturate(180%) blur(8px);
-  border-bottom: 1px solid var(--gray-5);
-}
-
-.site-header__inner {
-  display: grid;
-  grid-template-columns: 1fr minmax(280px, 480px) 1fr;
-  align-items: center;
-  gap: var(--space-5);
-  height: var(--header-height);
-  padding: 0 var(--space-6);
-  max-width: 1440px;
-  margin: 0 auto;
-}
-
-.site-header__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-14);
-  color: var(--gray-12);
-  text-decoration: none;
-  letter-spacing: -0.005em;
-}
-
-.site-header__brand-mark {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--radius-2);
-  background:
-    linear-gradient(135deg, var(--gray-12) 0%, var(--gray-12) 50%, transparent 50%),
-    var(--gray-4);
-  border: 1px solid var(--gray-6);
-}
-
-.site-header__nav {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-5);
-  font-size: var(--fs-13);
-}
-
-.site-header__nav a {
-  color: var(--gray-11);
-  text-decoration: none;
-}
-.site-header__nav a:hover {
-  color: var(--gray-12);
-}
-.site-header__nav a[aria-current="page"] {
-  color: var(--gray-12);
-}
-
-/* ---- shell grid ---- */
-.shell {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: var(--space-7) var(--space-6) var(--space-10);
-  display: grid;
-  grid-template-columns: var(--rail-width) minmax(0, 1fr);
-  gap: var(--gutter);
-}
-
-.shell--narrow {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 980px;
-}
-
-.rail {
-  position: sticky;
-  top: calc(var(--header-height) + var(--space-5));
-  align-self: start;
-  max-height: calc(100vh - var(--header-height) - var(--space-7));
-  overflow: auto;
-  padding-right: var(--space-2);
-}
-
-.main {
-  max-width: var(--content-max);
-  min-width: 0;
-}
+/* The .app-main / .site-header / .shell / .shell--narrow / standalone
+   .rail / .main rules from Sessions 1-7 chrome were superseded by the
+   v3 chrome (Session 9): topbar + sidebar + content grid living in
+   sidebar.css. Pruned here so a future reader doesn't try to revive
+   them. .app and .rail__section are still in use (.rail__section
+   lives inside .filters-rail__body — defined in sidebar.css). */
 
 /* ---- page title block ---- */
 .page-heading {

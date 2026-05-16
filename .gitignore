@@ -13,6 +13,7 @@ env/
 
 # Claude Code personal settings (per-repo, not shared)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # SQLite / Flask instance
 instance/

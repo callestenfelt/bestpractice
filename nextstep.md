@@ -626,10 +626,29 @@ subtree, caniuse, OWASP Top 10).
       markers, wraps body in `<p>`. 10 categories ingested in one
       pass (A01–A10). Cheat Sheet Series (~100 sheets) parked for a
       future capped adapter.
-- [x] **GOV.UK Design System — deferred** to Session 12. Repo
-      structure needs more investigation (component pages aren't in a
-      single predictable layout; nunjucks templates + per-component
-      markdown). Stub in [[session-12-pointer]].
+- [x] **`ingestors/govuk.py`** — added during the autonomous
+      extension at end of session after the initial Session 11
+      summary was delivered. Walks `alphagov/govuk-design-system`'s
+      `src/components/` (34 dirs) and `src/patterns/` (35 dirs) via
+      the GitHub Contents API, then fetches each subdir's `index.md`
+      from `raw.githubusercontent.com`. Parses the YAML frontmatter
+      (title, description) + extracts the intro paragraph and the
+      first "When to use…" section; strips nunjucks `{% ... %}` /
+      `{{ ... }}` markers and markdown link/emphasis. 68 candidates
+      ingested + scored (66 at 8/10, 2 at 4/10). Maps strongly to
+      bestpractice's component taxonomy (gov.uk's `button` →
+      component/button, `breadcrumb` → component/breadcrumb, etc).
+      All 5 PROJECT.md §5.1 structured sources now ingested.
+- [x] **Dead-chrome CSS prune + `placeholder.html` deletion.** Done
+      in the same autonomous-extension commit. Removed the legacy
+      `.site-header / .site-header__* / .app-main / .shell /
+      .shell--narrow / standalone .rail / .main` rules from
+      `static/styles/base.css` (Session 7 chrome, superseded by
+      Session 9's v3 chrome which lives in `sidebar.css`). Verified
+      first via `grep` that no template references those classes
+      anymore. Also deleted `templates/placeholder.html` — uses
+      `.shell` and `.main`, never referenced from `app.py`, true
+      dead code.
 
 ### Done — surgical doc merges
 - [x] **`docs/PROJECT.md` §5** — wholesale replacement: 4 structured
@@ -782,41 +801,34 @@ prod box is still on Session 9 chrome. Merge plan:
 
 **After deploy, the parked items in priority order:**
 
-1. **GOV.UK Design System adapter** (`ingestors/govuk.py`). The
-   sixth structured source per PROJECT.md §5.1. Repo is
-   `github.com/alphagov/govuk-design-system`. Components live under
-   `src/components/<name>/` with one or more markdown / nunjucks
-   files. Discovery work: walk the components directory via the
-   GitHub contents API, pick the canonical doc per component, regex
-   the H1 + intro section similar to `ingestors/owasp.py`.
-2. **MDN browser-compat-data adapter** (`ingestors/mdn_bcd.py`).
+1. **MDN browser-compat-data adapter** (`ingestors/mdn_bcd.py`).
    Larger than caniuse — thousands of compat entries. Strong cap
    essential (`MAX_NEW_PER_RUN = 15` probably). Maps to component
    considerations like caniuse.
-3. **Per-source-type threshold for scoring.** Right now `score.py`
-   uses a single threshold (`<4 = auto-reject`) for all sources.
-   Structured items shouldn't be auto-rejected — they're all
-   primary-source. Add a `--structured-threshold 0` option, or
-   detect by source.type and never reject structured items.
-4. **`/admin/sources` UX gaps:**
+2. **Per-source-type threshold for scoring.** Right now `score.py`
+   uses a single threshold (`<4 = auto-reject`) for all sources. Two
+   GOV.UK items scored 4 in this session's autonomous extension and
+   stayed pending (correctly — primary-source content). But the
+   safeguard is brittle: a single 3-score from Groq on a WCAG SC
+   would currently auto-reject it. Add a `--structured-threshold 0`
+   option, or detect by source.type and never reject structured items.
+3. **`/admin/sources` UX gaps:**
    - Show last error message + retry button when `status='error'`.
    - Expose `config_json` for editing (load-bearing for structured
      adapters; currently DB-level only).
    - Show source type (rss/structured) more prominently.
-5. **Content-diff for structured sources.** Adapters cache to
+4. **Content-diff for structured sources.** Adapters cache to
    `data/cache/` but only URL-dedup, not content-diff. Means an
    in-place change to a caniuse feature's description won't surface
    as a new candidate. Add hash-comparison in adapters for the
    "updated" case.
-6. **Inline auto-save edits on queue cards** (textarea blur debounce,
+5. **Inline auto-save edits on queue cards** (textarea blur debounce,
    chip × buttons, association change auto-POST). User wanted to
    shape this themselves; defer until they've reviewed Edit-and-approve.
-7. **Cron / scheduled ingestion.** systemd timer for `collect.py +
+6. **Cron / scheduled ingestion.** systemd timer for `collect.py +
    collect_structured.py + score.py`. Also: daily SQLite backup +
    log rotation (parked since Session 2; now critical given the DB
    mutates on every run).
-8. **CSS pruning sweep** — Session 9 left dead `.site-header / .shell
-   / .filters-dialog` rules. Worth one cleanup commit.
 
 ### Parked feature ideas (potential Slice E+)
 - **Google Programmable Search Engine integration.** Build a whitelisted
