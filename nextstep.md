@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-16 (Session 7 — visual polish, mobile dialog, asset versioning, fixture HTML-escape fix)
+Last updated: 2026-05-16 (Session 8 — taxonomy audit + additions: legal phase, 4 page types, 17 components)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -443,7 +443,129 @@ article-page fixture. Four follow-on deploys (GHA `25946314260`,
 
 ---
 
-## Next session — Session 8 starts here
+## Session 8 — taxonomy audit + additions ✅ shipped 2026-05-16
+
+Triggered while user worked on the navigation design. Audited the locked
+taxonomies (`PROJECT.md` §2.1–§2.3) for gaps and overlaps, then layered
+in user-approved additions across two rounds of discussion. Total
+additions: 1 phase, 4 page types, 17 components. `error-page` definition
+narrowed; `spinner` definition sharpened and "Loader" synonym removed
+when `loader` got its own slug.
+
+### Done
+- [x] **PROJECT.md §2.1** — added `legal` phase ("Privacy, terms,
+      consent, accessibility statements, and other regulatory
+      considerations"). First addition to the previously "locked"
+      phase taxonomy.
+- [x] **PROJECT.md §2.2** — added `pricing-page`, `confirmation-page`,
+      `auth-page`, `404-page`. Narrowed `error-page` definition to
+      "500, offline, maintenance and other non-404 error states" since
+      404 has its own slug now.
+- [x] **PROJECT.md §2.3** — added 17 components:
+      `list`, `textarea`, `combobox`, `file-upload`, `stepper`,
+      `code-block`, `chart`, `cookie-banner`, `spinner`, `loader`,
+      `stat`, `rating`, `micro-feedback`, `audio`, `map`,
+      `shopping-cart`, `copy-link-button`. Positioned by cluster
+      (form-input, data-display, feedback, loading, media) to match
+      existing §2.3 ordering. Sharpened `spinner` to "Small
+      indeterminate animated indicator, usually inline" once `loader`
+      got the page/section-level slot.
+- [x] **`init_db.py`** — mirrored every PROJECT.md addition into
+      `PHASES` / `PAGE_TYPES` / `COMPONENTS`. Also refactored
+      `seed_taxonomies()`:
+      - After `INSERT OR IGNORE`, run an `UPDATE` on `label`,
+        `definition`, `display_order` (and `schema_org_type` for
+        page-types). Source-of-truth lists now win on every re-seed;
+        mid-list inserts no longer scramble `display_order` on
+        existing DBs.
+      - Synonyms now `DELETE FROM synonyms WHERE entity_type=? AND
+        entity_slug=?` before re-inserting, so removed synonyms
+        (e.g. dropping "Loader" off `spinner`) actually disappear.
+- [x] **`CLAUDE.md`** — softened the "taxonomies are locked" line to
+      "do not invent new entries autonomously; additions require
+      explicit user approval." Phase count 10→11, page-type count
+      17→21, component count ~45→~63.
+- [x] **`taxonomy-additions.md` (new)** — working-session snapshot
+      of the additions, with definitions. Points back to
+      `docs/PROJECT.md` §2.1–§2.3 as the canonical source.
+
+### Files changed
+- `docs/PROJECT.md` — §2.1 (+1 row), §2.2 (+4 rows, 1 def edit),
+  §2.3 (+17 rows, 1 def edit)
+- `init_db.py` — `PHASES` / `PAGE_TYPES` / `COMPONENTS` lists +
+  upsert/synonym-clear refactor of `seed_taxonomies()`
+- `CLAUDE.md` — domain-model essentials reflect new counts
+- `nextstep.md` — Session 8 block (this entry)
+- `taxonomy-additions.md` (new) — session snapshot
+
+### How to test — local (passed 2026-05-16)
+1. `python init_db.py` — runs clean; second run is idempotent.
+2. Row counts (`python -c "import sqlite3; …"`): `phases` 11,
+   `page_types` 21, `components` 63.
+3. Display order in DB matches `PROJECT.md` §2.x ordering exactly
+   (verified by `SELECT display_order, slug FROM components ORDER BY
+   display_order`).
+4. `python app.py`. New routes resolve to 200 + Session 6 empty
+   state: `/page-type/{pricing-page,confirmation-page,auth-page,
+   404-page}` and `/component/{list,textarea,combobox,file-upload,
+   stepper,code-block,chart,cookie-banner,spinner,loader,stat,rating,
+   micro-feedback,audio,map,shopping-cart,copy-link-button}`.
+5. Phase filter rail on `/page-type/article-page` shows all 11
+   checkboxes including the new `Legal`. `/page-type/article-page`
+   Content-Length 108855 (was 108614 in Session 7; +241 from the
+   `Legal` checkbox in both rail and mobile dialog).
+6. `/page-type/nonexistent` still 404. `/search?q=image` still 200.
+7. Search synonym hygiene: searching `loader` no longer expands to
+   `spinner` (verified by `SELECT synonym FROM synonyms WHERE
+   entity_slug='spinner'` — no "Loader" row).
+
+### Out of scope (parked — Session 9)
+- VPS deploy of this session. Pushing to `main` triggers GHA rsync.
+  **Manual step on the VPS:** `ssh root@77.42.40.207 'cd
+  /opt/bestpractice && python3 init_db.py'` to land the new rows
+  and apply the `seed_taxonomies()` upsert (otherwise prod DB has
+  stale labels and scrambled display_order on rows whose position
+  shifted).
+- Slice C (ingestion + Groq scoring) — still queued, see prior
+  Session 8 pointer below.
+- Fixture content for any new slug — all 21 new routes render the
+  empty state until fixtures or Slice C ingestion lands.
+- Re-tagging existing article-page sub-considerations with the new
+  `legal` phase — editorial work, deferred.
+
+### Lessons / decisions worth noting (non-obvious)
+- **`INSERT OR IGNORE` + canonical-list ordering is a foot-gun.**
+  Inserting a new row in the middle of `COMPONENTS` left every
+  later existing row with its old `display_order` while new rows
+  got fresh sequential numbers, producing duplicates and a scrambled
+  order. The upsert pattern (`INSERT OR IGNORE` → unconditional
+  `UPDATE`) keeps slug-as-PK semantics while letting the source-of-
+  truth list dictate ordering. Worth the extra cursor call.
+- **Synonyms decay silently.** Dropping "Loader" from `spinner`'s
+  synonyms list does nothing on its own because the seed never
+  DELETEd. Clear-then-fill per `(entity_type, entity_slug)` makes
+  the list authoritative the same way the upsert does for the row
+  itself. Switched the synonym INSERT from `OR IGNORE` to plain
+  `INSERT` since the prior DELETE guarantees no conflict.
+- **"Locked" taxonomies aren't forever.** `CLAUDE.md` framed all
+  three taxonomies as locked; in practice the user wanted controlled
+  additions when real gaps surfaced (cookie consent had no phase
+  fit; lists/tables/notifications had design-stage ambiguity). New
+  wording: "do not invent new entries autonomously; additions
+  require explicit user approval." That preserves the guardrail
+  against drift while admitting reality.
+- **Distinguishing near-synonyms matters.** `spinner` vs `loader`,
+  `rating` vs `micro-feedback`, `progress-bar` vs `spinner` vs
+  `skeleton` — the temptation is to collapse, but each has
+  meaningfully different considerations (size, semantics, what it
+  signals). Definitions need to call out the distinction or the
+  taxonomy degrades into vague overlap. Pattern: when adding a new
+  slug near an existing one, sharpen the older definition in the
+  same edit.
+
+---
+
+## Next session — Session 9 starts here
 
 **Slice C — ingestion + Groq scoring.** First user-facing payoff is
 real pending rows in `/admin/queue`. Reference the §6 ingestion
@@ -453,7 +575,12 @@ dedup, langdetect) + `score_news.py` (retry/rate-limit, prompt
 shape). Local path per Session 1's reference memory:
 `E:\_dev\musemaniac`.
 
-Order of operations:
+The navigation design that triggered Session 8's taxonomy audit is
+still in progress at the user end — when it lands, building the
+nav (selector to jump between page-types/components from any view)
+is the natural pair-up before Slice C content fills in.
+
+Order of operations for Slice C:
 1. **`collect.py`** — iterate active `sources` rows, fetch feeds with
    ETag/Last-Modified caching, hash-dedup against
    `sub_considerations.body`, write candidates into
@@ -466,7 +593,7 @@ Order of operations:
 3. **`/admin/queue` write paths** — approve / reject / edit-and-
    approve POST handlers. The `<dialog>` from `BUILD_NOTES.md` §2.3
    is the prototype contract for edit-and-approve. The
-   `setupMobileDialog` pattern from this session is reusable; the
+   `setupMobileDialog` pattern from Session 7 is reusable; the
    edit modal probably wants its own dedicated dialog rather than
    sharing.
 

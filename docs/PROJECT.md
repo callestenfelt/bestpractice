@@ -51,6 +51,7 @@ the user toggles them on and off via checkboxes to narrow what they see.
 | seo | SEO | Technical SEO, on-page, search intent, GEO |
 | measurement | Measurement | Analytics, tracking, CRO, dashboards |
 | maintenance | Maintenance | Audits, security updates, CI/CD, monitoring |
+| legal | Legal | Privacy, terms, consent, accessibility statements, and other regulatory considerations |
 
 ### 2.2 Page types
 
@@ -73,8 +74,12 @@ of the tool. Schema.org alignment is noted where present.
 | event-page | Event Page | `Event` | Detail page for a single event | Event detail, happening |
 | legal-page | Legal Page | (none) | Privacy, terms, accessibility statements | Policy page |
 | cookie-page | Cookie Page | (none) | Cookie policy and consent details | Cookie policy, cookie notice |
-| error-page | Error Page | (none) | 404, 500, offline, maintenance states | Empty state page |
+| error-page | Error Page | (none) | 500, offline, maintenance and other non-404 error states | Empty state page |
+| 404-page | 404 Page | (none) | Page shown when a requested URL doesn't exist, with discovery aids | Not found page, Page not found, missing page |
 | dashboard-page | Dashboard | (none) | Authenticated overview with personalized data | Account home |
+| pricing-page | Pricing Page | (none) | Plan comparison and price presentation, usually with CTA per tier | Plans page, tariffs, subscription page |
+| confirmation-page | Confirmation Page | (none) | Post-action page confirming a completed transaction or submission | Thank-you page, receipt page, success page, order complete |
+| auth-page | Authentication Page | (none) | Authentication flow — login, sign-up, password reset | Login page, sign-in page, sign-up page, register page, password reset |
 | site-wide | Site-wide | (none) | Considerations that apply across all pages | Global, cross-cutting |
 
 `site-wide` is special: it's not a real page, but a bucket for cross-cutting
@@ -99,24 +104,33 @@ is a component.
 | hero | Hero | Large lead block at top of page | Banner, splash, jumbotron |
 | eyebrow | Eyebrow | Short label above a heading | Kicker, supertitle, overline |
 | card | Card | Self-contained content tile with title, body, optional media | Tile, panel |
+| shopping-cart | Shopping Cart | Summary of items selected for purchase, with quantity and price | Cart, basket, bag, mini cart |
 | button | Button | Triggerable action element | CTA, action |
+| copy-link-button | Copy Link Button | Button that copies a URL or text to the clipboard, usually with confirmation feedback | Share link button, copy URL, copy to clipboard |
 | link | Link | Inline navigation element | Anchor |
 | form | Form | Grouped input fields with submission | — |
 | input-field | Input Field | Single text/number/etc. input | Text input, field |
+| textarea | Textarea | Multi-line text input | Multiline input, text area, long text |
 | select | Select | Single-choice dropdown | Dropdown, picker |
+| combobox | Combobox | Text input with filterable suggestion list | Autocomplete, type-ahead, search select |
 | checkbox | Checkbox | Multi-select option | Tickbox |
 | radio-group | Radio Group | Single-select from visible options | Radio buttons |
 | toggle | Toggle | On/off switch | Switch |
 | toggle-group | Toggle Group | Set of toggle buttons where one or more can be active | Button group, segmented control |
 | slider | Slider | Input control for selecting a value within a range | Range input, range slider |
 | date-picker | Date Picker | Input control for selecting a date or date range | Date input, date field |
+| file-upload | File Upload | Input control for selecting and uploading files | File input, uploader, drop zone, dropzone |
 | modal | Modal | Overlay that blocks the page until dismissed | Dialog, popup, lightbox |
 | popover | Popover | Floating panel anchored to a trigger element | Flyout, floating panel |
 | dropdown-menu | Dropdown Menu | Menu of actions or links revealed by clicking a trigger | Action menu, context menu, kebab menu |
 | tooltip | Tooltip | Hover/focus-triggered short hint | Hint |
 | tabs | Tabs | Switchable panels in the same space | Tab group |
+| stepper | Stepper | Multi-step process indicator with per-step navigation | Wizard, step indicator, progress steps |
 | accordion | Accordion | Expandable/collapsible content section | Disclosure, expander |
+| list | List | Vertical sequence of related items, ordered or unordered | Bullet list, numbered list, ordered list, unordered list, ul, ol |
+| code-block | Code Block | Formatted block of code, usually monospaced and syntax-highlighted | Code snippet, pre block, syntax block |
 | table | Table | Tabular data display | Data grid |
+| chart | Chart | Visual representation of data — bars, lines, pies, scatter, etc. | Graph, data visualization, data viz, plot |
 | pagination | Pagination | Page-by-page navigation through a list | Pager |
 | filter | Filter | Narrow a list by criteria | Faceted search, refinement |
 | sort | Sort | Reorder a list by criteria | Sorting controls |
@@ -126,14 +140,22 @@ is a component.
 | toast | Toast | Transient non-blocking message | Snackbar, notification |
 | alert | Alert | Persistent in-page status message | Banner alert, callout |
 | service-message | Service Message | Site-wide informational banner about temporary status | Site banner, announcement banner, VMA |
+| cookie-banner | Cookie Banner | Consent UI for cookie or tracking preferences | Consent banner, consent dialog, cookie consent, cookie notice |
 | progress-bar | Progress Bar | Visual indicator of completion or determinate state | Progress indicator |
+| spinner | Spinner | Small indeterminate animated indicator, usually inline | Loading spinner, activity indicator, throbber |
+| loader | Loader | Page or section-level loading state, often blocking with optional message | Page loader, loading overlay, loading screen, full-page loader |
 | badge | Badge | Small read-only status or label indicator | Pill, label |
 | chip | Chip | Compact interactive element representing an input, attribute, or filter | Token, tag (interactive) |
+| stat | Stat | Single-metric display with value, label, and optional delta | Metric, KPI, stat tile, number |
+| rating | Rating | User-facing rating control or display, usually star-based | Star rating, score, stars |
+| micro-feedback | Micro Feedback | Lightweight feedback prompt for a single binary or short-tap response | Was this helpful, thumbs up/down, quick feedback, reaction |
 | video | Video | Embedded or hosted video | — |
+| audio | Audio | Embedded audio player with transport controls | Audio player, podcast player, sound clip |
 | image | Image | Static image with semantics (alt, caption) | Picture |
 | icon | Icon | Small symbolic graphic | Glyph, symbol |
 | carousel | Carousel | Horizontally scrollable sequence of content slides | Slider, slideshow, rotator |
 | gallery | Image Gallery | Grid or lightbox collection of images for browsing | Image grid, photo gallery, lightbox |
+| map | Map | Embedded geographic map, usually interactive | Map embed, location map |
 | calendar | Calendar | View of dates in month/week/day format, often with events | Schedule view, agenda view |
 | avatar | Avatar | Circular or rounded image representing a person or entity | Profile picture, user image |
 | skeleton | Skeleton | Loading placeholder shape | Shimmer, loader |

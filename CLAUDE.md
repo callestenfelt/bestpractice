@@ -32,11 +32,11 @@ A `BUILD_HANDOVER.md` is referenced in `PROJECT.md` but does not yet exist — i
 
 ## Domain model essentials
 
-The product is a personal reference tool organized by **page type and component** (the inversion: not by discipline). Three taxonomies are locked and seed the database — do not invent new entries:
+The product is a personal reference tool organized by **page type and component** (the inversion: not by discipline). Three taxonomies seed the database — do not invent new entries autonomously; additions require explicit user approval:
 
-- **Phases** (10, filterable): strategy, concept, ux, design, frontend, backend, content, seo, measurement, maintenance. See `PROJECT.md` §2.1.
-- **Page types** (17, including the special `site-wide` bucket). See §2.2.
-- **Components** (~45). See §2.3.
+- **Phases** (11, filterable): strategy, concept, ux, design, frontend, backend, content, seo, measurement, maintenance, legal. See `PROJECT.md` §2.1.
+- **Page types** (21, including the special `site-wide` bucket). See §2.2.
+- **Components** (~63). See §2.3.
 
 Content is structured as **considerations** (large accordions, scoped to a page type or component) containing **sub-considerations** (sub-accordions, each a single sourced piece of guidance with phase tags, source, date, body). The data model is in §4.
 
