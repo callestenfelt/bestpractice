@@ -876,11 +876,14 @@ mark {
 .table-wrap {
   border: 1px solid var(--gray-5);
   border-radius: var(--radius-3);
-  overflow: hidden;
+  overflow-x: auto;
   background: #fff;
+  /* Horizontal scrollbar engages whenever the table is wider than the
+     container; vertical content (radius mask) stays clean. */
 }
 .table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
   font-size: var(--fs-13);
 }
@@ -1146,5 +1149,6 @@ mark {
     grid-template-columns: 1fr;
   }
   .table .col-hide-mobile { display: none; }
+  .table { min-width: 0; }  /* drop the desktop min-width once URL + Last-collected are hidden */
   .edit-dialog__row { grid-template-columns: 1fr; }
 }
