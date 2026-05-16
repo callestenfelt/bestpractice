@@ -14,6 +14,7 @@ Usage: python collect.py
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import re
 import sqlite3
@@ -25,6 +26,11 @@ from pathlib import Path
 import feedparser
 import requests
 from dotenv import load_dotenv
+
+# Windows consoles default to cp1252; force utf-8 so non-ASCII characters
+# in feed titles / log lines don't crash mid-run.
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True)
 
 load_dotenv()
 
