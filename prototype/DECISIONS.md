@@ -57,8 +57,9 @@ uses, for the build agent's reference:
 5. Link hover — body links, result-row titles, footer source links
 6. `<mark>` background for search-hit highlights (`--blue-2` tint, `--blue-11` text)
 7. `.results-meta em` for synonym-name highlights, same tint as `<mark>`
+8. The Phosphor icon on `.sidebar__link[aria-current="page"]` (v3 handover §3.8) — same `--blue-11` as the active-link border-left stripe
 
-Don't add an eighth without checking. A `.chip--blue` utility class once
+Don't add a ninth without checking. A `.chip--blue` utility class once
 existed for status-flagged chips; it was unused and has been removed. Add
 it back only with a concrete use case the user has approved.
 

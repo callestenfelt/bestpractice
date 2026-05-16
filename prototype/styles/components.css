@@ -329,11 +329,6 @@ details[open] > summary .chev {
 }
 .sub[open] {
   background: #fff;
-  border-top-color: transparent;
-  border-radius: 3px;
-}
-.sub[open] + .sub {
-  border-top-color: transparent;
 }
 .sub--new {
   position: relative;
@@ -372,7 +367,7 @@ details[open] > summary .chev {
   font-size: var(--fs-15);
   line-height: var(--lh-snug);
   color: var(--gray-12);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-regular);
 }
 .sub__newdot {
   display: inline-block;
@@ -410,7 +405,7 @@ details[open] > summary .chev {
   padding: var(--space-2) var(--space-3) var(--space-4);
   max-width: 64ch;
   color: var(--gray-12);
-  font-size: var(--fs-14);
+  font-size: var(--fs-15);
   line-height: var(--lh-loose);
 }
 .sub__body p + p,
@@ -983,84 +978,6 @@ mark {
   font-size: var(--fs-14);
   color: var(--gray-12);
   margin-bottom: 4px;
-}
-
-/* =========================================================
-   Filter trigger + dialog (mobile)
-========================================================= */
-.filters-trigger {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--gray-6);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--gray-11);
-  font-size: var(--fs-13);
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-  margin-bottom: var(--space-4);
-}
-.filters-trigger:hover {
-  border-color: var(--gray-8);
-  color: var(--gray-12);
-}
-.filters-trigger svg {
-  width: 14px;
-  height: 14px;
-}
-
-.filters-dialog {
-  border: 1px solid var(--gray-5);
-  border-radius: 8px;
-  padding: 0;
-  background: #fff;
-  width: min(420px, calc(100vw - 24px));
-  max-height: 88vh;
-  margin: auto;
-  color: var(--gray-12);
-  box-shadow: 0 16px 48px rgba(20, 20, 24, 0.18);
-}
-.filters-dialog::backdrop {
-  background: rgba(20, 20, 24, 0.42);
-}
-.filters-dialog__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--gray-4);
-}
-.filters-dialog__title {
-  font-size: var(--fs-16);
-  font-weight: var(--fw-semibold);
-  margin: 0;
-}
-.filters-dialog__close {
-  background: none;
-  border: 0;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--gray-10);
-  cursor: pointer;
-  padding: 4px 8px;
-}
-.filters-dialog__close:hover { color: var(--gray-12); }
-.filters-dialog__body {
-  padding: var(--space-4);
-  overflow: auto;
-  max-height: calc(88vh - 120px);
-}
-.filters-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--space-3) var(--space-4);
-  border-top: 1px solid var(--gray-4);
-}
-
-@media (max-width: 960px) {
-  .filters-trigger { display: inline-flex; }
 }
 
 /* =========================================================

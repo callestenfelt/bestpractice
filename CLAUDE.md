@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Caddy basic auth, single user). `/page-type/article-page` renders the prototype's 18 considerations / 59 sub-accordions from SQLite, byte-identical to opening `prototype/page-type.html` directly. The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths).
+Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Caddy basic auth, single user). `/page-type/article-page` renders the prototype's considerations from SQLite. The v3 chrome (topbar + collapsible sidebar nav + filters drawer, Phosphor icons) is templated from `prototype/page-type-v3.html` and applies to every route. `/search`, `/admin/queue`, `/admin/sources`, `/component/<slug>` all ship.
 
-Slices B+ are still pending: `/search`, the three admin views (`/admin/queue`, `/admin/sources`, `/admin/considerations/<slug>`), the `/component/<slug>` route, other page types, RSS + structured ingestion, and Groq scoring. See `nextstep.md` for the running session log and the current "Next session" pointer.
+Pending: write paths in `/admin/queue` (approve / reject / edit-and-approve), `/admin/considerations/<slug>` editor, RSS + structured ingestion, Groq scoring. See `nextstep.md` for the running session log and the current "Next session" pointer.
 
-The prototype remains a hard input — visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Don't redesign; wire it up.
+The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths). Schema changes still need a manual `python3 init_db.py` on the VPS post-deploy.
+
+The prototype remains a hard input — canonical file is `prototype/page-type-v3.html`. Visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Older prototype iterations live in `prototype/archive/v1/` for reference but are not the source of truth. Don't redesign; wire it up.
 
 **VPS Python note.** The VPS runs Python 3.10.12, not the 3.12+ that `PROJECT.md` §8 specifies. Slice A doesn't trip on this; flag if you reach for 3.12-only syntax.
 
