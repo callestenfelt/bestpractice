@@ -19,6 +19,10 @@
       </p>
     </div>
 
+    {% if error %}
+      <div class="queue-error" role="alert">{{ error }}</div>
+    {% endif %}
+
     <div class="queue-toolbar">
       <div class="queue-toolbar__count">
         <strong>{{ pending_count }}</strong> pending ·
@@ -41,7 +45,13 @@
     {% else %}
       <div class="queue-list">
         {% for item in items %}
-          <article class="qcard" data-sub-id="{{ item.id }}">
+          <article class="qcard"
+                   data-sub-id="{{ item.id }}"
+                   data-one-liner="{{ item.one_liner }}"
+                   data-body="{{ item.body }}"
+                   data-source-url="{{ item.source_url }}"
+                   data-source-date="{{ item.source_date or '' }}"
+                   data-phases="{{ item.phases|join(' ') }}">
             <div class="qcard__main">
               <div class="qcard__source">
                 {% if item.source_name %}<strong>{{ item.source_name }}</strong>{% endif %}
@@ -69,13 +79,87 @@
                   {{ item.body|safe }}
                 </div>
               {% endif %}
+
+              {% if item.source_url %}
+                <div class="qcard__source-link">
+                  <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">View source ↗</a>
+                </div>
+              {% endif %}
             </div>
 
             <aside class="qcard__aside" aria-label="Actions">
-              <span class="sr-only">Approve, reject, and edit controls land in Slice C.</span>
+              <form method="post" action="{{ url_for('admin_queue_approve', sub_id=item.id) }}">
+                <button type="submit" class="btn btn--primary qcard__btn">Approve</button>
+              </form>
+              <button type="button" class="btn qcard__btn" data-action="edit-approve" data-sub-id="{{ item.id }}">
+                Edit &amp; approve
+              </button>
+              <form method="post" action="{{ url_for('admin_queue_reject', sub_id=item.id) }}">
+                <button type="submit" class="btn btn--danger btn--sm qcard__btn">Reject</button>
+              </form>
             </aside>
           </article>
         {% endfor %}
       </div>
     {% endif %}
+
+    <dialog id="edit-approve-dialog" class="edit-dialog" aria-label="Edit and approve">
+      <form method="post" id="edit-approve-form">
+        <header class="edit-dialog__header">
+          <h2>Edit &amp; approve</h2>
+          <button type="button" class="btn btn--quiet btn--sm" data-action="dialog-close" aria-label="Close">✕</button>
+        </header>
+
+        <div class="edit-dialog__field">
+          <label for="edit-one-liner">One-liner <span class="edit-dialog__hint">(≤ 240 chars, terse)</span></label>
+          <input type="text" id="edit-one-liner" name="one_liner" maxlength="240" required>
+        </div>
+
+        <div class="edit-dialog__field">
+          <label for="edit-body">Body <span class="edit-dialog__hint">(plain text — server wraps in &lt;p&gt;)</span></label>
+          <textarea id="edit-body" name="body" rows="6"></textarea>
+        </div>
+
+        <div class="edit-dialog__row">
+          <div class="edit-dialog__field">
+            <label for="edit-source-url">Source URL</label>
+            <input type="url" id="edit-source-url" name="source_url">
+          </div>
+          <div class="edit-dialog__field">
+            <label for="edit-source-date">Source date</label>
+            <input type="date" id="edit-source-date" name="source_date">
+          </div>
+        </div>
+
+        <div class="edit-dialog__field">
+          <label for="edit-cons-id">Destination consideration</label>
+          <select id="edit-cons-id" name="consideration_id" required>
+            <option value="">— pick one —</option>
+            {% for opt in cons_options %}
+              <option value="{{ opt.id }}">{{ opt.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <fieldset class="edit-dialog__phases">
+          <legend>Phases <span class="edit-dialog__hint">(zero = applies to all)</span></legend>
+          {% for phase in all_phases %}
+            <label class="edit-dialog__phase">
+              <input type="checkbox" name="phase" value="{{ phase.slug }}">
+              <span>{{ phase.label }}</span>
+            </label>
+          {% endfor %}
+        </fieldset>
+
+        <footer class="edit-dialog__footer">
+          <button type="button" class="btn" data-action="dialog-close">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save &amp; approve</button>
+        </footer>
+      </form>
+    </dialog>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ asset('js/queue.js') }}" defer></script>
 {% endblock %}
