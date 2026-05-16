@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-16 (Session 6 — /component route + empty state)
+Last updated: 2026-05-16 (Session 7 — visual polish, mobile dialog, asset versioning, fixture HTML-escape fix)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -9,208 +9,12 @@ this file passes ~400 lines and has 4+ completed sessions, archive the
 oldest sessions to `docs/archive/sessions.md` and keep the 3 most recent
 live here.
 
-Sessions 1–2 (project bootstrap, design prototype + deploy prep) live in
+Sessions 1–4 (project bootstrap, design prototype + deploy prep,
+Slice A read surface, Slice B part 1 `/search`) live in
 [`docs/archive/sessions.md`](docs/archive/sessions.md).
 
 ---
 
-## Session 3 — Build Slice A (read surface) ✅ shipped 2026-05-16
-
-Slice A of the build session per `C:\Users\calle\.claude\plans\whats-next-breezy-pebble.md`:
-smallest deployable read surface. Flask app, full schema, taxonomies seeded
-from `PROJECT.md` §2.1–2.3, prototype's 18 considerations / 59 sub-accordions
-imported as fixtures, `/page-type/article-page` renders identically to
-`prototype/page-type.html`. No search, no admin, no ingestion. Slices B+
-(search, admin shells, ingestion, scoring) are follow-up sessions.
-
-Local build complete and verified. First production deploy fired
-cleanly via the Session 2 GHA workflow: rsync + `systemctl restart
-bestpractice` → `active` in ~12s. After seeding the VPS DB
-(`python3 init_db.py` on the box, one-time), `curl localhost:5681
-/page-type/article-page` from the VPS returns 200 with 107,695 bytes
-— byte-identical content-length to local. Sibling-site check held:
-amusealot.com 200, bubblesdontcry.com 200, staging.bubblesdontcry.com
-401, all unchanged.
-
-### Done — local
-- [x] `schema.sql` — all eight tables from `PROJECT.md` §4 (`phases`, `page_types`, `components`, `synonyms`, `considerations`, `sub_considerations`, `sub_consideration_phases`, `sources`). `PRAGMA foreign_keys = ON`. Indices on `parent_slug` (considerations) and `consideration_id` (sub_considerations). Added a `position` column on `sub_consideration_phases` so the rendered chip order matches the fixture (without it, SQLite's PK index made phases alphabetical, breaking parity with the prototype's `data-phases="strategy concept content"` order).
-- [x] `init_db.py` — applies schema, seeds 10 phases / 17 page_types / 46 components (all from `PROJECT.md` §2.1–2.3) and their synonyms (114 rows), loads `fixtures/article_page.json` into `considerations` + `sub_considerations` + `sub_consideration_phases`. Idempotent (`INSERT OR IGNORE` on taxonomies; skip fixture import if `article-page` already has considerations). Site-wide group inside the fixture is bucketed under `parent_slug='site-wide'`, not duplicated into every page type — matches `PROJECT.md` §2.2 ("not a real page" — cross-cutting).
-- [x] `scripts/extract_article_page_fixture.py` — one-shot bs4 parser that turns `prototype/page-type.html` into `fixtures/article_page.json`. Extracts 6 groups (5 page-type + 1 site-wide), 18 considerations, 59 sub-accordions including phases, source name/suffix/title/URL/date, body HTML, and `display_order`. The `sub--new` class is **not** stored; `last_updated` is stamped per `BUILD_NOTES.md` §3 (compute at render time from a 14-day window). For the four `sub--new` subs in the prototype, the extractor stamps `last_updated` near the `NEW_ANCHOR` (2026-05-15) spread by 3-day intervals so the indicators stay live for ~a week post-deploy then decay naturally.
-- [x] `fixtures/article_page.json` (61 KB) — extractor output committed so `init_db.py` has no bs4 runtime dep.
-- [x] `static/styles/{tokens,base,components}.css`, `static/js/{accordion,filters,search}.js` — copied verbatim from `prototype/`. CSS file names preserved per `BUILD_NOTES.md` §1.
-- [x] `static/fonts/InterVariable.woff2` (344 KB) — Inter v4 variable font from `rsms.me/inter/font-files/`. `@font-face` declaration added at the top of `static/styles/base.css`; Google Fonts CDN `<link>` and preconnects dropped from `templates/base.html`. `tokens.css`'s `--font-sans: "Inter", ...` picks it up without further changes.
-- [x] `templates/base.html` — shared chrome with brand, search form (action → `/search`), admin nav. Three CSS files and three JS files loaded via `url_for('static', filename=…)`.
-- [x] `templates/page_type.html` — extends `base.html`. Two macros (`render_consideration`, `render_sub`) emit the prototype's DOM contract from `BUILD_NOTES.md` §3 verbatim: `id="{cons_slug}.{sub_slug}"`, space-separated `data-phases`, `data-role="count"`, `sub--new` class computed at render time via an `is_new` Jinja filter, `<span class="sub__newdot">` + `<span class="sr-only">New. </span>` pair, the chevron SVG. Filter rail iterates `phases` from the DB; site-wide group renders last with `hidden` (the `filters.js` toggle un-hides it client-side per `BUILD_NOTES.md` §2.1).
-- [x] `templates/placeholder.html` — friendly "coming in a later slice" page used by `/search`, `/admin/queue`, `/admin/sources` so the header chrome's links route somewhere reasonable until Slice B+. Skips loading the JS files (filters/accordion/search), since there's nothing to filter on a placeholder.
-- [x] `app.py` — single-file Flask, ~170 lines. Routes: `/` (302 → article-page), `/page-type/<slug>` (loads page_type + phases + considerations + sub-considerations + phase tags, builds the grouped view model, also appends a site-wide group from `parent_slug='site-wide'` when the requested page isn't site-wide), `/search`, `/admin/queue`, `/admin/sources` (placeholders). `is_new` Jinja filter computes "within 14 days of now (UTC)" per `BUILD_NOTES.md` §3. `DB_PATH` reads `BESTPRACTICE_DB` env var with `data/bestpractice.db` default, so systemd's `EnvironmentFile=/opt/bestpractice/.env` can override on the VPS without code changes. Exits with a clear "run `python init_db.py` first" message if the DB file is missing — avoids surprise writes from a misconfigured service start. Listens on `0.0.0.0:5681` to match the `bestpractice.service` unit installed in Session 2.
-
-### Files changed
-- `app.py` (new, ~170 lines)
-- `schema.sql` (new)
-- `init_db.py` (new)
-- `scripts/extract_article_page_fixture.py` (new)
-- `fixtures/article_page.json` (new)
-- `templates/base.html` (new)
-- `templates/page_type.html` (new)
-- `templates/placeholder.html` (new)
-- `static/styles/{tokens,base,components}.css` (copied from `prototype/styles/`)
-- `static/js/{accordion,filters,search}.js` (copied from `prototype/js/`)
-- `static/fonts/InterVariable.woff2` (new binary, 344 KB)
-- `nextstep.md` — Session 3 block (this entry)
-
-### How to test — local (passing as of 2026-05-15)
-1. `python init_db.py` → creates `data/bestpractice.db`. Re-running prints `(skip) article-page already has 18 considerations` and exits clean.
-2. `python app.py` → serves on `http://localhost:5681`.
-3. `curl -sI http://localhost:5681/` → 302 to `/page-type/article-page`.
-4. `curl -sI http://localhost:5681/page-type/article-page` → 200, ~108 KB HTML.
-5. DOM contract parity (counted from the served HTML with bs4): 6 groups, 18 considerations, 59 sub-accordions, 4 `sub--new`, 10 phase checkboxes, `#toggle-sitewide` present, the site-wide `<section>` carries `hidden`. The first sub's `id` is `page-purpose.one-job`, `data-phases` is `strategy concept content`, chips render in matching order.
-6. `curl -sI http://localhost:5681/page-type/nonexistent` → 404.
-7. `/search`, `/admin/queue`, `/admin/sources` → 200 with the placeholder template.
-8. `curl -sI http://localhost:5681/static/{styles/base.css,fonts/InterVariable.woff2,js/accordion.js}` → all 200.
-9. Open `http://localhost:5681/page-type/article-page` in a browser side-by-side with `file:///E:/_dev/best/prototype/page-type.html`. Spot-check: untick a phase checkbox (subs hide, empty cons collapse, empty group disappears), toggle "Show site-wide considerations" (site-wide group appears at the bottom), append `#page-purpose.one-job` to the URL and reload (both `<details>` open).
-
-### How tested — production (passed 2026-05-16)
-- GHA run `25943254092` completed in 12s, rsync + `systemctl is-active bestpractice` returned `active`.
-- The service starts cleanly with no DB (the app only checks for the DB at request time, not on startup). So the deploy chain reports green even pre-seed, and the actual first 500 would only show on a request — fine, it's a known state.
-- `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'` ran once. Seeded 18 considerations and 59 sub-considerations.
-- `ssh root@77.42.40.207 'curl -sI http://localhost:5681/page-type/article-page'` → 200, Content-Length 107695 — byte-identical to the local Werkzeug response. Werkzeug header reports `Python/3.10.12` on the VPS (see Lessons).
-- Sibling check: `https://amusealot.com` 200, `https://bubblesdontcry.com` 200, `https://staging.bubblesdontcry.com` 401, `https://best.amusealot.com` 401. The new site's 401 confirms Caddy is reaching the app behind basic auth.
-
-### Out of scope (parked — Slice B+)
-- `/search` route — server-side body/title text search, synonyms-driven query expansion, the "Includes synonym matches for *foo*" hint line, snippet generation with `<mark>` highlights.
-- Admin shells: `/admin/queue` (no items yet without ingestion), `/admin/sources` (lists `sources` table rows), `/admin/considerations/<slug>` (large-accordion editor).
-- `/component/<slug>` route. Schema supports `parent_type='component'` but no template/route wiring yet. The `page_type.html` template will be reused per `BUILD_NOTES.md` §2.1.
-- Other page types beyond Article Page. Currently they 404 cleanly; render an empty state in Slice B.
-- RSS ingestion pipeline (`collect.py` mirroring musemaniac's `collect_news.py`): ETag caching, content-hash dedup, langdetect, retry behavior.
-- Structured importers (caniuse, WCAG 2.2 JSON-LD, MDN BCD, Schema.org).
-- Groq scoring (`score.py` mirroring `score_news.py`) — never auto-publishes per `PROJECT.md` §6.2.
-- Daily SQLite backup cron + log rotation on the VPS (last unchecked item in Session 2's deploy-prep list).
-- Radix Themes CSS vendoring — `tokens.css` already uses Radix-shaped variable names per the prototype's `DECISIONS.md`, so this is a mechanical swap that can land any time.
-
-### Lessons
-- **VPS Python is 3.10.12, not 3.12+.** `PROJECT.md` §8 spec'd "Python 3.12+". Slice A's code uses no 3.12-only syntax so it runs clean, but the constraint should be reconciled — either upgrade `/usr/bin/python3` on the VPS (or use a `pyenv`/`uv` install pinned to 3.12) before any feature that needs newer typing/syntax lands. Flag in Slice B if relevant.
-- **First-deploy hand-step is acceptable.** Seeding the DB by SSH'ing in once isn't wrapped into the GHA workflow — adding `python3 init_db.py` to the deploy script would make subsequent deploys re-run the seed (idempotent, but wasteful, and a foot-gun if the seed ever stops being idempotent). Keep it manual until ingestion exists.
-
-### Decisions worth noting (non-obvious)
-- **Site-wide is its own bucket, not denormalised per page type.** The fixture's site-wide group is stored under `parent_slug='site-wide'`. The view function pulls main considerations from the requested slug AND site-wide considerations separately, then concatenates them as a trailing `hidden` group. This avoids duplicating cross-cutting items into every page-type row when more page types ship in Slice B.
-- **`source_title` is its own column.** The prototype's per-sub footer carries a work/article title (`<em>How users read on the web</em>`) that isn't visible in the metarow. Adding `source_title` to `sub_considerations` lets the footer reconstruct faithfully without storing the prototype's footer HTML verbatim.
-- **`init_db.py` is hand-run, not auto-run on app start.** Avoids surprise writes from a misconfigured service start. The app exits cleanly if the DB is missing.
-- **Werkzeug dev server in production.** Matches musemaniac's pattern (`ExecStart=/usr/bin/python3 .../app.py`). Single user behind Caddy basic auth; gunicorn would be over-engineered for the load shape.
-
----
-
-## Session 4 — Slice B part 1: /search ✅ shipped 2026-05-16
-
-First slice of the search + admin trio. Wired `/search` end-to-end:
-SQLite FTS5 over `sub_considerations` (with parent `consideration.title`
-and `consideration.intro` folded in), whole-query synonym expansion
-against the seeded `synonyms` table, grouped results that mirror
-`prototype/search.html`, `<mark>`-highlighted snippets via FTS5's
-built-in `snippet()`. Admin shells (`/admin/queue`, `/admin/sources`)
-are still placeholders — Session 5.
-
-### Done
-- [x] `schema.sql` — `subs_fts` virtual table (FTS5, `unicode61
-      remove_diacritics 2`, content columns `one_liner` / `body` /
-      `cons_title` / `cons_intro`). Contentless: no triggers,
-      `init_db.py` owns sync.
-- [x] `init_db.py` — new `rebuild_fts()` runs on every invocation. Joins
-      approved subs to their approved consideration parent, repopulates
-      the FTS table from scratch. Cheap, idempotent, picks up content
-      drift without migrations.
-- [x] `app.py` — `expand_synonyms()` does case-insensitive whole-query
-      lookups against `synonyms.synonym` and entity labels
-      (page_types/components/phases); for each hit, returns the
-      entity's other names. `run_search()` builds an FTS query of the
-      form `"<q>" OR "<expansion>" …`, fetches results with FTS5's
-      `snippet()` for `<mark>` highlights on both `body` and
-      `one_liner` columns, then groups by parent (page types in
-      `display_order`, then components, then site-wide). The route
-      catches `sqlite3.OperationalError` (raised when FTS rejects
-      special chars like a bare `"`) and renders the empty state
-      instead of 500ing.
-- [x] `templates/search.html` — extends `base.html`, ports the
-      prototype's DOM verbatim. Three states: no query (prompt),
-      no matches (empty state with synonym-suggestion list), hits
-      (`<p class="results-meta">` line + grouped `<section
-      class="result-group">` blocks). Result links resolve to
-      `/page-type/<slug>#<cons>.<sub>` so the existing hash-deep-link
-      JS opens the right accordions on landing.
-
-### Files changed
-- `schema.sql` — `subs_fts` virtual table appended
-- `init_db.py` — `rebuild_fts()` + main() call
-- `app.py` — `_fts_quote`, `expand_synonyms`, `run_search`, replaced
-  `/search` route body
-- `templates/search.html` (new)
-
-### How to test — local (passed 2026-05-16)
-1. `python init_db.py` → final line `FTS rows: 59`.
-2. `python app.py`.
-3. `curl -sI http://localhost:5681/search?q=alt+text` → 200, ~3.8 KB.
-4. `curl -s 'http://localhost:5681/search?q=image'` → 7 results, meta
-   line includes `Includes synonym matches for <em>Picture</em>.`
-5. `curl -s 'http://localhost:5681/search?q=nav'` → 3 results, meta
-   line expands to `main nav`, `menu`, `Navigation` (the `navigation`
-   component's other names).
-6. `curl -s 'http://localhost:5681/search?q=zzzzzzz'` → empty-state
-   "No matches for &ldquo;zzzzzzz&rdquo;." rendered.
-7. `curl -s 'http://localhost:5681/search?q=%22'` (bare `"`) → 200
-   empty state, **not 500** (verifies the OperationalError fallback).
-8. `curl -sI http://localhost:5681/page-type/article-page` → still
-   200, Content-Length 107695 (unchanged from Slice A).
-
-### How tested — production (passed 2026-05-16)
-- Push to `main` triggered GHA; service came back `active`.
-- One-time `ssh root@77.42.40.207 'cd /opt/bestpractice && python3
-  init_db.py'` to add `subs_fts` to the existing prod DB. Output:
-  `FTS rows: 59` — matches local.
-- `curl -sI http://localhost:5681/search?q=alt+text` from the VPS →
-  `HTTP/1.1 200`.
-- `curl -s 'http://localhost:5681/search?q=image' | grep -o
-  'class=.result.' | wc -l` → 33 (= 7 results × 4 `result__*` classes
-  + 1 group × ~4 `result-group__*` classes + chip). Matches local
-  shape.
-
-### Out of scope (parked — Session 5 starts here)
-- `/admin/queue` — read-only shell first; the queue is empty until
-  ingestion lands in Slice C, so the page renders "no pending items"
-  with the toolbar (Last sync pill + status counts wired to real data
-  once `sources` rows exist).
-- `/admin/sources` — list + active/paused toggle over the `sources`
-  table; `<form method="post">` per row, no JS required for the
-  toggle.
-- `/component/<slug>` — reuses `templates/page_type.html`; just a
-  different `parent_type` filter on the considerations query plus a
-  template fall-through to the existing `page_type` view.
-- Empty-state rendering for the 16 other page types so they stop 404ing.
-
-### Lessons / decisions worth noting (non-obvious)
-- **FTS5 with `content=''` (contentless) was tempting but rejected.**
-  Contentless FTS forbids `snippet()` / `highlight()` because the
-  source text isn't stored, only the index. We need snippets for the
-  result UI, so the table stores its own copy. Cost: ~one extra copy
-  of every sub's body in the DB. Worth it.
-- **Synonym expansion is whole-query, not tokenized.** Matching the
-  whole user query against `synonyms.synonym` (case-insensitive) keeps
-  the surface predictable: typing `nav` expands, typing `nav menu`
-  doesn't. Multi-token expansion can land later if real usage
-  demands it.
-- **Snippet column priority.** Result rendering prefers the `body`
-  snippet (longer, more context) when FTS injected a `<mark>` there;
-  falls back to the `one_liner` snippet otherwise. If the match lived
-  in `cons_title` / `cons_intro` instead of the sub itself, neither
-  snippet carries a mark — the result still groups correctly and
-  shows the raw one-liner, just unhighlighted. Acceptable for v1; a
-  future polish is emitting an "in: *<Cons title>*" hint when the
-  match column is cons-level.
-- **`init_db.py` always rebuilds FTS.** The fixture-load step is still
-  skip-if-present, but FTS rebuild is unconditional. That means
-  rerunning `init_db.py` after any future content edit re-syncs the
-  index automatically. The admin write paths in Slice C/D will need
-  to update FTS row-by-row instead of relying on this rebuild.
-
----
 
 ## Session 5 — Slice B parts 2 + 3: /admin/queue + /admin/sources ✅ shipped 2026-05-16
 
@@ -485,28 +289,186 @@ component route renders non-empty.
 
 ---
 
-## Next session — Session 7 starts here
+## Session 7 — visual polish, mobile filter dialog, asset versioning, fixture HTML-escape fix ✅ shipped 2026-05-16
+
+Session 6 went to prod cleanly at the start of the session (GHA
+`25945628409`, 12s; one-time `python3 init_db.py` on the VPS loaded
+the image fixture). The remainder was design polish on the sub
+accordion, a real mobile UX for the phase filters, and a long
+debugging tail that ended in a content-escaping bug in the
+article-page fixture. Four follow-on deploys (GHA `25946314260`,
+`25946626060`, `25946733356`, `25947052735`) all in ~10s each.
+
+### Done
+- [x] **Sub accordion polish.** `.sub[open]` drops the inherited
+      top/bottom rules (`border-top-color: transparent` on the open
+      sub AND on its next sibling so the line below disappears too)
+      and gains `border-radius: 3px`, so the active row reads as a
+      clean rounded card. `.sub__body` font-size drops to `--fs-14`
+      (14 px), `.sub__one-liner` weight bumps to `--fw-semibold`
+      (600). Edits mirrored in `prototype/styles/components.css` and
+      `static/styles/components.css`.
+- [x] **Mobile filter dialog.** Below 960 px the rail is hidden via
+      `display: none`; a new `<button class="filters-trigger">` sits
+      below the page heading and opens a native `<dialog
+      id="filters-dialog">`. `filters.js`'s new `setupMobileDialog()`
+      relocates the rail's children into the dialog body via
+      `matchMedia('(max-width: 960px)')` at init (and back on resize),
+      so phase checkboxes + `#toggle-sitewide` keep a single source
+      of truth — `applyFilters()` and `bindBulk()` need no changes.
+      Esc, backdrop click, and the close/Done buttons all dismiss.
+      Markup mirrored in `prototype/page-type.html` and
+      `templates/page_type.html`.
+- [x] **Static-file cache headers.** `app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0`.
+      Single-user admin tool, bandwidth trivial; eliminates the 12-
+      hour stale-asset window where users see old CSS/JS after a
+      deploy until they hard-refresh.
+- [x] **Asset versioning.** `ASSET_VERSION = str(int(time.time()))`
+      computed at module import (service restart on every deploy
+      bumps it). A Jinja context processor exposes
+      `asset(filename)`, which appends `?v=<ASSET_VERSION>` to the
+      static URL. All four templates (`base.html`, `search.html`,
+      `admin/sources.html`, and existing `page_type.html` via base)
+      swapped from `url_for('static', filename=...)` to
+      `asset(...)`. Belt + suspenders with the cache header — even
+      if a browser is sitting on a Cache-Control entry from before
+      the header fix, the URL itself now changes per deploy so the
+      browser must fetch.
+- [x] **Fixture HTML-escape fix.** `fixtures/article_page.json` had
+      an unescaped literal `<title>` in the H1-and-title sub's
+      `one_liner`. Once the template rendered it with `|safe`, the
+      browser opened a stray `<title>` element inside `<body>`,
+      which swallowed every subsequent element including the three
+      `<script src=...>` tags. Result: `filters.js` was never
+      loaded, so `setupMobileDialog` never ran, so the new "Filters"
+      button did nothing. Fixed: escaped to `<code>&lt;title&gt;</code>`
+      in the fixture, plus an idempotent data fix in
+      `init_db.py:migrate()` so existing local + prod DBs get
+      patched on next `init_db.py` run. `rebuild_fts()` runs
+      unconditionally, so the FTS index re-syncs automatically.
+
+### Files changed
+- `app.py` — `SEND_FILE_MAX_AGE_DEFAULT=0`, `ASSET_VERSION`,
+  `_inject_asset_helper` context processor, `import time`
+- `init_db.py` — `migrate()` data fix for unescaped `<title>`
+- `fixtures/article_page.json` — `<title>` → `<code>&lt;title&gt;</code>`
+- `templates/base.html`, `templates/search.html`,
+  `templates/admin/sources.html` — `url_for('static', filename=…)`
+  → `asset(…)`
+- `templates/page_type.html` — filter trigger button + dialog
+  shell, dynamic eyebrow already in Session 6
+- `prototype/page-type.html` — same filter trigger + dialog markup
+  (visual-source-of-truth parity)
+- `prototype/styles/{base,components}.css` and
+  `static/styles/{base,components}.css` — `.rail { display: none }`
+  on mobile, sub-accordion polish, `.filters-trigger`/`.filters-dialog`
+  styles
+- `prototype/js/filters.js` and `static/js/filters.js` —
+  `setupMobileDialog()`, tightened `bindBulk()`, 101 lines
+- `nextstep.md`, `docs/archive/sessions.md` — Session 7 block + S3
+  archived
+
+### How tested
+- **Local.** `python init_db.py` → migrate logs no errors;
+  `data/bestpractice.db` row for slug `match` has the escaped
+  `one_liner`. `python app.py`; `curl
+  /page-type/article-page` Content-Length 108614 (+908 bytes over
+  Session 6 from the new button + dialog shell + `?v=` query
+  strings); page HTML now includes
+  `/static/js/filters.js?v=<timestamp>` for every asset. Filter
+  trigger button visible only ≤960 px; `<dialog>` shell empty until
+  JS init relocates rail children on mobile.
+- **Production.** Four GHA deploys, each ~10s. One-time
+  `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
+  after the last deploy applied the migrate data fix; verified via
+  `sqlite3` (well, `python3 -c …sqlite3…` since the VPS doesn't have
+  the `sqlite3` CLI): the row now reads the escaped form. Prod
+  page-type HTML serves versioned URLs; `Cache-Control: no-cache,
+  max-age=0` confirmed on `/static/js/filters.js`. User confirmed
+  the mobile filter button now opens the dialog.
+
+### Out of scope (parked — Session 8 / Slice C)
+- All Slice C work (ingestion + Groq scoring + write paths). See
+  Next-session pointer below.
+- Tightening `filters.js` below 100 lines per `PROJECT.md`'s
+  per-feature JS guideline. Currently 101. Mechanical refactor when
+  it next gets edited.
+- A fixture-content validator: refuse to seed if any `one_liner` or
+  `body` contains an unescaped structural tag (`<script`, `<title`,
+  `<style`, `<head`, `<body`, `<html`, `<iframe`). Two minutes to
+  add to `init_db.py` and would have caught the bug at seed time
+  rather than via user-reported "button does nothing".
+- The `actions/checkout@v4.2.2` Node-20 deprecation notice from
+  GHA. Forced to Node 24 on 2026-06-02; bump to a Node-24-aware
+  version (`actions/checkout@v5` or later) any time before then.
+
+### Lessons / decisions worth noting (non-obvious)
+- **Belt + suspenders for static cache.** Setting
+  `SEND_FILE_MAX_AGE_DEFAULT=0` only affects *future* responses,
+  not entries already in the browser cache — those keep their old
+  `max-age=43200` until expiry or a true cache bypass (iOS Safari's
+  "hard refresh" is unreliable). The URL-versioning step is what
+  forces existing browsers to refetch. Doing one without the other
+  leaves a stranded-user case.
+- **`<dialog>`'s click-target trick for backdrop dismiss.** A click
+  on the backdrop has `e.target === dialog`; a click on the dialog's
+  inner content has `e.target` somewhere in the descendants. So
+  `if (e.target !== dialog) return; …getBoundingClientRect bounds
+  check…` reliably distinguishes them without coordinate math
+  alone.
+- **DOM relocation > duplicate render** for shared filter state. The
+  alternative was rendering the rail markup twice (once inline, once
+  in the dialog body) and syncing checkbox state via a `change`
+  handler. Moving the same DOM nodes between two parents avoids
+  duplicate IDs (`#toggle-sitewide`), keeps `filters.js`'s global
+  selectors untouched, and naturally tracks state.
+- **`{% set %}` inside `{% if %}` propagates in Jinja2.** Same
+  pattern was already working for the page-type branch of the
+  search href; the elif for component just slotted in. (Re-noted
+  from Session 6 because it was the cause of a five-minute false
+  panic during this session's CSS work too.)
+- **Fixture content needs the same escaping discipline as inline
+  template HTML.** `|safe` is load-bearing for the body field
+  (which intentionally carries `<p>`, `<code>`, `<strong>`), so the
+  pipeline can't blanket-escape — content authors (and the
+  extractor) have to escape structural tags by hand. Adding the
+  validator above closes the loop.
+- **Long debugging tails compound.** The visible symptom was "button
+  does nothing." Likely causes ran cache → bundling → JS init →
+  HTML parse error. Each fix made the next layer's failure visible.
+  When a script "isn't running" but the file is correct, jump
+  straight to `document.querySelectorAll('script[src]')` to confirm
+  the page actually has the tags in DOM — would have shortened the
+  loop by 20 minutes.
+
+---
+
+## Next session — Session 8 starts here
 
 **Slice C — ingestion + Groq scoring.** First user-facing payoff is
 real pending rows in `/admin/queue`. Reference the §6 ingestion
 pattern in `PROJECT.md`; the working pattern lives in
 AmuseAlot/musemaniac's `collect_news.py` (ETag caching, content-hash
 dedup, langdetect) + `score_news.py` (retry/rate-limit, prompt
-shape). Ask the user for the AmuseAlot path when starting.
+shape). Local path per Session 1's reference memory:
+`E:\_dev\musemaniac`.
 
 Order of operations:
 1. **`collect.py`** — iterate active `sources` rows, fetch feeds with
    ETag/Last-Modified caching, hash-dedup against
-   `sub_considerations.body`, write candidates into a staging table
-   (or directly into `sub_considerations` with `status='pending'`,
-   `relevance_score=NULL`).
+   `sub_considerations.body`, write candidates into
+   `sub_considerations` with `status='pending'`,
+   `relevance_score=NULL`.
 2. **`score.py`** — Groq-score pending rows 1–10 against the page
    type / component routing guidance from `PROJECT.md`, write back
    to `relevance_score`. Items below a threshold (e.g. 4) stay
    pending but won't bubble to the top of the queue.
 3. **`/admin/queue` write paths** — approve / reject / edit-and-
    approve POST handlers. The `<dialog>` from `BUILD_NOTES.md` §2.3
-   is the prototype contract for edit-and-approve.
+   is the prototype contract for edit-and-approve. The
+   `setupMobileDialog` pattern from this session is reusable; the
+   edit modal probably wants its own dedicated dialog rather than
+   sharing.
 
 ### Tech-debt nudges parked from earlier sessions
 - VPS Python is 3.10.12; `PROJECT.md` §8 calls for 3.12+. No 3.12-
@@ -516,5 +478,9 @@ Order of operations:
   urgent (DB is no longer purely append-on-deploy).
 - Radix Themes CSS vendoring — `tokens.css` already uses Radix-shaped
   variable names; mechanical swap, can land any time.
-- Session 6 hasn't deployed yet. Push to main + one-time
-  `python3 init_db.py` on the VPS to load the image fixture.
+- `filters.js` is 101 lines; trim to under 100 next time it's
+  edited.
+- Add a fixture-content validator in `init_db.py` for unescaped
+  structural HTML tags (see "Out of scope" above).
+- `actions/checkout@v4.2.2` is Node-20-deprecated; bump before
+  2026-06-02.

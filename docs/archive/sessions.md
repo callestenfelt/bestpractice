@@ -149,3 +149,159 @@ blockers. No secret values appear in this repo; only names and structure.
 - Musemaniac is the repo name for what `docs/PROJECT.md` calls "AmuseAlot". Local path: `E:\_dev\musemaniac`. When the briefs reference `collect_news.py`, `score_news.py`, or `run_newsletter.sh`, look there.
 - Musemaniac deploys via local `deploy.sh` (scp + ssh systemctl restart), **not** GitHub Actions. Bestpractice will be the first Python-on-VPS project to use GHA-on-push — no existing workflow to copy.
 
+---
+
+## Session 3 — Build Slice A (read surface) ✅ shipped 2026-05-16
+
+Slice A of the build session per `C:\Users\calle\.claude\plans\whats-next-breezy-pebble.md`:
+smallest deployable read surface. Flask app, full schema, taxonomies seeded
+from `PROJECT.md` §2.1–2.3, prototype's 18 considerations / 59 sub-accordions
+imported as fixtures, `/page-type/article-page` renders identically to
+`prototype/page-type.html`. No search, no admin, no ingestion. Slices B+
+(search, admin shells, ingestion, scoring) are follow-up sessions.
+
+Local build complete and verified. First production deploy fired
+cleanly via the Session 2 GHA workflow: rsync + `systemctl restart
+bestpractice` → `active` in ~12s. After seeding the VPS DB
+(`python3 init_db.py` on the box, one-time), `curl localhost:5681
+/page-type/article-page` from the VPS returns 200 with 107,695 bytes
+— byte-identical content-length to local. Sibling-site check held:
+amusealot.com 200, bubblesdontcry.com 200, staging.bubblesdontcry.com
+401, all unchanged.
+
+### Done — local
+- [x] `schema.sql` — all eight tables from `PROJECT.md` §4 (`phases`, `page_types`, `components`, `synonyms`, `considerations`, `sub_considerations`, `sub_consideration_phases`, `sources`). `PRAGMA foreign_keys = ON`. Indices on `parent_slug` (considerations) and `consideration_id` (sub_considerations). Added a `position` column on `sub_consideration_phases` so the rendered chip order matches the fixture (without it, SQLite's PK index made phases alphabetical, breaking parity with the prototype's `data-phases="strategy concept content"` order).
+- [x] `init_db.py` — applies schema, seeds 10 phases / 17 page_types / 46 components (all from `PROJECT.md` §2.1–2.3) and their synonyms (114 rows), loads `fixtures/article_page.json` into `considerations` + `sub_considerations` + `sub_consideration_phases`. Idempotent (`INSERT OR IGNORE` on taxonomies; skip fixture import if `article-page` already has considerations). Site-wide group inside the fixture is bucketed under `parent_slug='site-wide'`, not duplicated into every page type — matches `PROJECT.md` §2.2 ("not a real page" — cross-cutting).
+- [x] `scripts/extract_article_page_fixture.py` — one-shot bs4 parser that turns `prototype/page-type.html` into `fixtures/article_page.json`. Extracts 6 groups (5 page-type + 1 site-wide), 18 considerations, 59 sub-accordions including phases, source name/suffix/title/URL/date, body HTML, and `display_order`. The `sub--new` class is **not** stored; `last_updated` is stamped per `BUILD_NOTES.md` §3 (compute at render time from a 14-day window). For the four `sub--new` subs in the prototype, the extractor stamps `last_updated` near the `NEW_ANCHOR` (2026-05-15) spread by 3-day intervals so the indicators stay live for ~a week post-deploy then decay naturally.
+- [x] `fixtures/article_page.json` (61 KB) — extractor output committed so `init_db.py` has no bs4 runtime dep.
+- [x] `static/styles/{tokens,base,components}.css`, `static/js/{accordion,filters,search}.js` — copied verbatim from `prototype/`. CSS file names preserved per `BUILD_NOTES.md` §1.
+- [x] `static/fonts/InterVariable.woff2` (344 KB) — Inter v4 variable font from `rsms.me/inter/font-files/`. `@font-face` declaration added at the top of `static/styles/base.css`; Google Fonts CDN `<link>` and preconnects dropped from `templates/base.html`. `tokens.css`'s `--font-sans: "Inter", ...` picks it up without further changes.
+- [x] `templates/base.html` — shared chrome with brand, search form (action → `/search`), admin nav. Three CSS files and three JS files loaded via `url_for('static', filename=…)`.
+- [x] `templates/page_type.html` — extends `base.html`. Two macros (`render_consideration`, `render_sub`) emit the prototype's DOM contract from `BUILD_NOTES.md` §3 verbatim: `id="{cons_slug}.{sub_slug}"`, space-separated `data-phases`, `data-role="count"`, `sub--new` class computed at render time via an `is_new` Jinja filter, `<span class="sub__newdot">` + `<span class="sr-only">New. </span>` pair, the chevron SVG. Filter rail iterates `phases` from the DB; site-wide group renders last with `hidden` (the `filters.js` toggle un-hides it client-side per `BUILD_NOTES.md` §2.1).
+- [x] `templates/placeholder.html` — friendly "coming in a later slice" page used by `/search`, `/admin/queue`, `/admin/sources` so the header chrome's links route somewhere reasonable until Slice B+. Skips loading the JS files (filters/accordion/search), since there's nothing to filter on a placeholder.
+- [x] `app.py` — single-file Flask, ~170 lines. Routes: `/` (302 → article-page), `/page-type/<slug>` (loads page_type + phases + considerations + sub-considerations + phase tags, builds the grouped view model, also appends a site-wide group from `parent_slug='site-wide'` when the requested page isn't site-wide), `/search`, `/admin/queue`, `/admin/sources` (placeholders). `is_new` Jinja filter computes "within 14 days of now (UTC)" per `BUILD_NOTES.md` §3. `DB_PATH` reads `BESTPRACTICE_DB` env var with `data/bestpractice.db` default, so systemd's `EnvironmentFile=/opt/bestpractice/.env` can override on the VPS without code changes. Exits with a clear "run `python init_db.py` first" message if the DB file is missing — avoids surprise writes from a misconfigured service start. Listens on `0.0.0.0:5681` to match the `bestpractice.service` unit installed in Session 2.
+
+### Lessons
+- **VPS Python is 3.10.12, not 3.12+.** `PROJECT.md` §8 spec'd "Python 3.12+". Slice A's code uses no 3.12-only syntax so it runs clean, but the constraint should be reconciled — either upgrade `/usr/bin/python3` on the VPS (or use a `pyenv`/`uv` install pinned to 3.12) before any feature that needs newer typing/syntax lands. Flag in Slice B if relevant.
+- **First-deploy hand-step is acceptable.** Seeding the DB by SSH'ing in once isn't wrapped into the GHA workflow — adding `python3 init_db.py` to the deploy script would make subsequent deploys re-run the seed (idempotent, but wasteful, and a foot-gun if the seed ever stops being idempotent). Keep it manual until ingestion exists.
+
+### Decisions worth noting (non-obvious)
+- **Site-wide is its own bucket, not denormalised per page type.** The fixture's site-wide group is stored under `parent_slug='site-wide'`. The view function pulls main considerations from the requested slug AND site-wide considerations separately, then concatenates them as a trailing `hidden` group. This avoids duplicating cross-cutting items into every page-type row when more page types ship in Slice B.
+- **`source_title` is its own column.** The prototype's per-sub footer carries a work/article title (`<em>How users read on the web</em>`) that isn't visible in the metarow. Adding `source_title` to `sub_considerations` lets the footer reconstruct faithfully without storing the prototype's footer HTML verbatim.
+- **`init_db.py` is hand-run, not auto-run on app start.** Avoids surprise writes from a misconfigured service start. The app exits cleanly if the DB is missing.
+- **Werkzeug dev server in production.** Matches musemaniac's pattern (`ExecStart=/usr/bin/python3 .../app.py`). Single user behind Caddy basic auth; gunicorn would be over-engineered for the load shape.
+
+---
+
+## Session 4 — Slice B part 1: /search ✅ shipped 2026-05-16
+
+First slice of the search + admin trio. Wired `/search` end-to-end:
+SQLite FTS5 over `sub_considerations` (with parent `consideration.title`
+and `consideration.intro` folded in), whole-query synonym expansion
+against the seeded `synonyms` table, grouped results that mirror
+`prototype/search.html`, `<mark>`-highlighted snippets via FTS5's
+built-in `snippet()`. Admin shells (`/admin/queue`, `/admin/sources`)
+are still placeholders — Session 5.
+
+### Done
+- [x] `schema.sql` — `subs_fts` virtual table (FTS5, `unicode61
+      remove_diacritics 2`, content columns `one_liner` / `body` /
+      `cons_title` / `cons_intro`). Contentless: no triggers,
+      `init_db.py` owns sync.
+- [x] `init_db.py` — new `rebuild_fts()` runs on every invocation. Joins
+      approved subs to their approved consideration parent, repopulates
+      the FTS table from scratch. Cheap, idempotent, picks up content
+      drift without migrations.
+- [x] `app.py` — `expand_synonyms()` does case-insensitive whole-query
+      lookups against `synonyms.synonym` and entity labels
+      (page_types/components/phases); for each hit, returns the
+      entity's other names. `run_search()` builds an FTS query of the
+      form `"<q>" OR "<expansion>" …`, fetches results with FTS5's
+      `snippet()` for `<mark>` highlights on both `body` and
+      `one_liner` columns, then groups by parent (page types in
+      `display_order`, then components, then site-wide). The route
+      catches `sqlite3.OperationalError` (raised when FTS rejects
+      special chars like a bare `"`) and renders the empty state
+      instead of 500ing.
+- [x] `templates/search.html` — extends `base.html`, ports the
+      prototype's DOM verbatim. Three states: no query (prompt),
+      no matches (empty state with synonym-suggestion list), hits
+      (`<p class="results-meta">` line + grouped `<section
+      class="result-group">` blocks). Result links resolve to
+      `/page-type/<slug>#<cons>.<sub>` so the existing hash-deep-link
+      JS opens the right accordions on landing.
+
+### Files changed
+- `schema.sql` — `subs_fts` virtual table appended
+- `init_db.py` — `rebuild_fts()` + main() call
+- `app.py` — `_fts_quote`, `expand_synonyms`, `run_search`, replaced
+  `/search` route body
+- `templates/search.html` (new)
+
+### How to test — local (passed 2026-05-16)
+1. `python init_db.py` → final line `FTS rows: 59`.
+2. `python app.py`.
+3. `curl -sI http://localhost:5681/search?q=alt+text` → 200, ~3.8 KB.
+4. `curl -s 'http://localhost:5681/search?q=image'` → 7 results, meta
+   line includes `Includes synonym matches for <em>Picture</em>.`
+5. `curl -s 'http://localhost:5681/search?q=nav'` → 3 results, meta
+   line expands to `main nav`, `menu`, `Navigation` (the `navigation`
+   component's other names).
+6. `curl -s 'http://localhost:5681/search?q=zzzzzzz'` → empty-state
+   "No matches for &ldquo;zzzzzzz&rdquo;." rendered.
+7. `curl -s 'http://localhost:5681/search?q=%22'` (bare `"`) → 200
+   empty state, **not 500** (verifies the OperationalError fallback).
+8. `curl -sI http://localhost:5681/page-type/article-page` → still
+   200, Content-Length 107695 (unchanged from Slice A).
+
+### How tested — production (passed 2026-05-16)
+- Push to `main` triggered GHA; service came back `active`.
+- One-time `ssh root@77.42.40.207 'cd /opt/bestpractice && python3
+  init_db.py'` to add `subs_fts` to the existing prod DB. Output:
+  `FTS rows: 59` — matches local.
+- `curl -sI http://localhost:5681/search?q=alt+text` from the VPS →
+  `HTTP/1.1 200`.
+- `curl -s 'http://localhost:5681/search?q=image' | grep -o
+  'class=.result.' | wc -l` → 33 (= 7 results × 4 `result__*` classes
+  + 1 group × ~4 `result-group__*` classes + chip). Matches local
+  shape.
+
+### Out of scope (parked — Session 5 starts here)
+- `/admin/queue` — read-only shell first; the queue is empty until
+  ingestion lands in Slice C, so the page renders "no pending items"
+  with the toolbar (Last sync pill + status counts wired to real data
+  once `sources` rows exist).
+- `/admin/sources` — list + active/paused toggle over the `sources`
+  table; `<form method="post">` per row, no JS required for the
+  toggle.
+- `/component/<slug>` — reuses `templates/page_type.html`; just a
+  different `parent_type` filter on the considerations query plus a
+  template fall-through to the existing `page_type` view.
+- Empty-state rendering for the 16 other page types so they stop 404ing.
+
+### Lessons / decisions worth noting (non-obvious)
+- **FTS5 with `content=''` (contentless) was tempting but rejected.**
+  Contentless FTS forbids `snippet()` / `highlight()` because the
+  source text isn't stored, only the index. We need snippets for the
+  result UI, so the table stores its own copy. Cost: ~one extra copy
+  of every sub's body in the DB. Worth it.
+- **Synonym expansion is whole-query, not tokenized.** Matching the
+  whole user query against `synonyms.synonym` (case-insensitive) keeps
+  the surface predictable: typing `nav` expands, typing `nav menu`
+  doesn't. Multi-token expansion can land later if real usage
+  demands it.
+- **Snippet column priority.** Result rendering prefers the `body`
+  snippet (longer, more context) when FTS injected a `<mark>` there;
+  falls back to the `one_liner` snippet otherwise. If the match lived
+  in `cons_title` / `cons_intro` instead of the sub itself, neither
+  snippet carries a mark — the result still groups correctly and
+  shows the raw one-liner, just unhighlighted. Acceptable for v1; a
+  future polish is emitting an "in: *<Cons title>*" hint when the
+  match column is cons-level.
+- **`init_db.py` always rebuilds FTS.** The fixture-load step is still
+  skip-if-present, but FTS rebuild is unconditional. That means
+  rerunning `init_db.py` after any future content edit re-syncs the
+  index automatically. The admin write paths in Slice C/D will need
+  to update FTS row-by-row instead of relying on this rebuild.
+
+---
