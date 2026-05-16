@@ -189,6 +189,53 @@ INBOX_CONSIDERATION = {
     "display_order": 0,
 }
 
+# Site-wide consideration scaffolds. Each is an empty "container" — title +
+# intro, no sub_considerations seeded — to advertise the cross-cutting topic
+# in the picker so the editor has a home to Edit-and-approve pending items
+# into (OWASP → Security, INP/CWV → Performance, GDPR/cookie → Privacy, etc.).
+# All share the same group identity as the existing sw-contrast / sw-keyboard
+# rows (group_slug='site-wide', group_label='Site-wide considerations',
+# group_order=6) so all 8 considerations render under one section header on
+# /page-type/site-wide.
+SITE_WIDE_SCAFFOLDS: list[dict] = [
+    {
+        "slug": "sw-security",
+        "title": "Security",
+        "intro": "Cross-cutting protections against unauthorized access, data exposure, and injection. Owns CSP, CSRF, session handling, XSS-prevention defaults, and the OWASP Top 10 surface across page types.",
+        "display_order": 3,
+    },
+    {
+        "slug": "sw-privacy",
+        "title": "Privacy & consent",
+        "intro": "User data minimization, lawful basis, consent collection and storage, third-party script isolation. Tracks GDPR / ePrivacy obligations as a site-wide concern, layered onto every page type.",
+        "display_order": 4,
+    },
+    {
+        "slug": "sw-performance",
+        "title": "Performance",
+        "intro": "Core Web Vitals targets and the patterns that meet them: image loading strategy, font loading, JS bundling discipline, render-blocking budget. Performance is owned at the site level even though pages express it.",
+        "display_order": 5,
+    },
+    {
+        "slug": "sw-error-handling",
+        "title": "Error handling",
+        "intro": "Global error patterns: how the site responds to 401/403/404/500, offline states, partial failures, and unexpected exceptions. The shared error posture across all routes — distinct from per-page-type error states.",
+        "display_order": 6,
+    },
+    {
+        "slug": "sw-measurement",
+        "title": "Measurement & analytics",
+        "intro": "Event taxonomy, consent-gated tracking, sampling, dashboards. The data layer that lets the team know whether changes worked. Lives site-wide because page-type instrumentation derives from this scaffold.",
+        "display_order": 7,
+    },
+    {
+        "slug": "sw-i18n",
+        "title": "Internationalization",
+        "intro": "lang attribute, locale formatting, RTL support, language switcher patterns. Site-wide because i18n is impossible to retrofit per page-type — the scaffolding lives once for the whole product.",
+        "display_order": 8,
+    },
+]
+
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
@@ -327,6 +374,38 @@ def seed_inbox(conn: sqlite3.Connection) -> int:
     return cur.lastrowid
 
 
+def seed_site_wide_scaffolds(conn: sqlite3.Connection) -> int:
+    """Seed empty site-wide consideration containers from SITE_WIDE_SCAFFOLDS.
+    Idempotent — checks (parent_type, parent_slug, slug) and only inserts
+    missing rows. Title and intro are NOT overwritten on re-runs so a
+    later edit via /admin/considerations/<slug> isn't clobbered. Returns
+    number of rows added this run."""
+    cur = conn.cursor()
+    now = now_iso()
+    added = 0
+    for scaffold in SITE_WIDE_SCAFFOLDS:
+        row = cur.execute(
+            "SELECT id FROM considerations WHERE parent_type='page_type' AND parent_slug='site-wide' AND slug=?",
+            (scaffold["slug"],),
+        ).fetchone()
+        if row:
+            continue
+        cur.execute(
+            """INSERT INTO considerations
+                   (slug, parent_type, parent_slug, title, intro,
+                    group_label, group_slug, group_order, display_order,
+                    status, created_at, updated_at)
+               VALUES (?, 'page_type', 'site-wide', ?, ?,
+                       'Site-wide considerations', 'site-wide', 6, ?,
+                       'approved', ?, ?)""",
+            (scaffold["slug"], scaffold["title"], scaffold["intro"],
+             scaffold["display_order"], now, now),
+        )
+        added += 1
+    conn.commit()
+    return added
+
+
 def seed_sources(conn: sqlite3.Connection) -> int:
     """Seed default sources keyed on URL. Idempotent. Returns rows added.
     config_json is written on first insert and never overwritten — so an
@@ -458,6 +537,9 @@ def main() -> None:
         print("seeding ingest inbox...")
         inbox_id = seed_inbox(conn)
         print(f"  inbox consideration id={inbox_id}")
+        print("seeding site-wide scaffolds...")
+        sw_added = seed_site_wide_scaffolds(conn)
+        print(f"  site-wide scaffolds added: {sw_added} (existing rows preserved)")
         print("seeding default sources...")
         added = seed_sources(conn)
         print(f"  sources added: {added} (existing rows preserved)")
