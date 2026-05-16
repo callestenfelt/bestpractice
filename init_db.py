@@ -139,6 +139,32 @@ COMPONENTS: list[tuple[str, str, str, list[str], str]] = [
 ]
 
 
+DEFAULT_SOURCES: list[tuple[str, str, str]] = [
+    # (name, type, url). Seeded once via INSERT OR IGNORE keyed on URL;
+    # operator can prune via /admin/sources without these reappearing.
+    ("web.dev",          "rss", "https://web.dev/static/blog/feed.xml"),
+    ("The A11y Project", "rss", "https://www.a11yproject.com/feed/feed.xml"),
+    ("CSS-Tricks",       "rss", "https://css-tricks.com/feed/"),
+    ("Smashing Magazine","rss", "https://www.smashingmagazine.com/feed/"),
+    ("MDN Blog",         "rss", "https://developer.mozilla.org/en-US/blog/rss.xml"),
+]
+
+# The ingest inbox is a placeholder consideration that pending sub_considerations
+# attach to before scoring routes them to a real home. Lives under site-wide so
+# it never shows up on a real read view (subs are status='pending' until scoring).
+INBOX_CONSIDERATION = {
+    "slug": "ingest-inbox",
+    "parent_type": "page_type",
+    "parent_slug": "site-wide",
+    "title": "Ingest inbox",
+    "intro": "Placeholder home for freshly ingested items awaiting Groq scoring.",
+    "group_label": "Inbox",
+    "group_slug": "inbox",
+    "group_order": 998,
+    "display_order": 0,
+}
+
+
 def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -168,6 +194,16 @@ def migrate(conn: sqlite3.Connection) -> None:
     existing_cmp = {row[1] for row in cur.execute("PRAGMA table_info(components)").fetchall()}
     if "icon" not in existing_cmp:
         cur.execute("ALTER TABLE components ADD COLUMN icon TEXT")
+
+    # Session 10: RFC 7232 conditional-GET caching columns on sources.
+    existing_src = {row[1] for row in cur.execute("PRAGMA table_info(sources)").fetchall()}
+    if "etag" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN etag TEXT")
+    if "last_modified" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN last_modified TEXT")
+    if "last_fetched" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN last_fetched TEXT")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_url ON sources(url)")
 
     # 2026-05-16 data fix: an unescaped <title> in the article-page fixture
     # closed the head's title tag mid-body, swallowing every later element
@@ -238,6 +274,50 @@ def seed_taxonomies(conn: sqlite3.Connection) -> None:
             )
 
     conn.commit()
+
+
+def seed_inbox(conn: sqlite3.Connection) -> int:
+    """Ensure the ingest-inbox consideration exists. Returns its id."""
+    cur = conn.cursor()
+    now = now_iso()
+    row = cur.execute(
+        "SELECT id FROM considerations WHERE parent_type=? AND parent_slug=? AND slug=?",
+        (INBOX_CONSIDERATION["parent_type"], INBOX_CONSIDERATION["parent_slug"], INBOX_CONSIDERATION["slug"]),
+    ).fetchone()
+    if row:
+        return row[0]
+    cur.execute(
+        """INSERT INTO considerations
+               (slug, parent_type, parent_slug, title, intro,
+                group_label, group_slug, group_order, display_order,
+                status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)""",
+        (INBOX_CONSIDERATION["slug"], INBOX_CONSIDERATION["parent_type"], INBOX_CONSIDERATION["parent_slug"],
+         INBOX_CONSIDERATION["title"], INBOX_CONSIDERATION["intro"],
+         INBOX_CONSIDERATION["group_label"], INBOX_CONSIDERATION["group_slug"],
+         INBOX_CONSIDERATION["group_order"], INBOX_CONSIDERATION["display_order"],
+         now, now),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def seed_sources(conn: sqlite3.Connection) -> int:
+    """Seed default RSS sources keyed on URL. Idempotent. Returns rows added."""
+    cur = conn.cursor()
+    now = now_iso()
+    added = 0
+    for name, type_, url in DEFAULT_SOURCES:
+        before = cur.execute("SELECT COUNT(*) FROM sources WHERE url=?", (url,)).fetchone()[0]
+        cur.execute(
+            """INSERT OR IGNORE INTO sources (name, type, url, status, created_at)
+               VALUES (?, ?, ?, 'active', ?)""",
+            (name, type_, url, now),
+        )
+        if before == 0:
+            added += 1
+    conn.commit()
+    return added
 
 
 def load_fixture(conn: sqlite3.Connection, parent_type: str, parent_slug: str, path: Path) -> int:
@@ -347,6 +427,12 @@ def main() -> None:
         apply_schema(conn)
         print("seeding taxonomies...")
         seed_taxonomies(conn)
+        print("seeding ingest inbox...")
+        inbox_id = seed_inbox(conn)
+        print(f"  inbox consideration id={inbox_id}")
+        print("seeding default sources...")
+        added = seed_sources(conn)
+        print(f"  sources added: {added} (existing rows preserved)")
         print("loading fixtures...")
         for parent_type, parent_slug, path in FIXTURES:
             load_fixture(conn, parent_type, parent_slug, path)

@@ -1,4 +1,4 @@
-"""bestpractice — Flask app, Slice A (read surface only)."""
+"""bestpractice — Flask app."""
 from __future__ import annotations
 
 import os
@@ -8,7 +8,10 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import Flask, abort, g, redirect, render_template, request, url_for
+
+load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("BESTPRACTICE_DB", str(ROOT / "data" / "bestpractice.db")))
