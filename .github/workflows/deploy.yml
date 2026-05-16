@@ -67,6 +67,17 @@ jobs:
             --exclude='instance/' \
             ./ "$SSH_USER@$SSH_HOST:/opt/bestpractice/"
 
+      - name: Install Python deps on VPS
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        # app.py imports python-dotenv at module load, and Slice C/D add
+        # feedparser + requests. Without this step the systemctl restart
+        # below fails on ImportError and the service stays down.
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "cd /opt/bestpractice && pip3 install -r requirements.txt"
+
       - name: Restart bestpractice service
         if: steps.gate.outputs.ready == 'true'
         env:
