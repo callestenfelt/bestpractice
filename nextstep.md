@@ -289,12 +289,27 @@ prototype directory shuffle.
 8. Filter regression: `data-phases` hiding still works (no contract
    change in filters.js).
 
-### How tested — production
-- Deferred to post-push smoke test. GHA rsync covers the templates,
-  CSS, JS, and Phosphor assets. The `icon` column ALTER and seed
-  ordering re-apply via the standard
+### How tested — production (passed 2026-05-16)
+- Three GHA deploys ran clean: `25959668990` (stage A, 15s),
+  `25959790313` (stage B, 15s), `25959892789` (stage C, 7s).
+- One-time prod seed via
   `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
-  step. See Next-session pointer below for the VPS step.
+  ran clean: schema applied, icon column ALTERed onto existing
+  page_types + components tables, taxonomies re-seeded with the new
+  display_order + icon values via the Session 8 upsert, fixtures
+  skipped (idempotent), FTS rows 65.
+- Prod verification via VPS-local curl bypassing Caddy:
+  - `/page-type/article-page` → 200, 125509 bytes (v3 chrome live;
+    matches local).
+  - `/component/loader` → 200, 30250 bytes (empty-state with full
+    sidebar; matches local).
+  - `/static/icons/phosphor/Phosphor.woff2` → 200, 147380 bytes
+    (self-hosted, no CDN). `Cache-Control: no-cache, max-age=0`
+    from the Session 7 caching policy.
+  - `/static/styles/sidebar.css` → 200, 10077 bytes.
+  - Icon column populated on prod DB:
+    `SELECT slug, icon FROM page_types WHERE slug='article-page'`
+    returns `('article-page', 'ph-article')`.
 
 ### Files changed
 - **Stage A** (`757336d`): `schema.sql`, `init_db.py` (lists +
