@@ -766,6 +766,74 @@ Session 11). Nothing pushed. `git switch main` reverts cleanly.
 
 ---
 
+## Resume-here notes (2026-05-16, pause point)
+
+Slice C + D + multi-destination + categories all shipped to prod
+(commits up to `a42deee`). Local `init_db.py` ran on prod cleanly:
+6 categories / 38 memberships / 28 destination backfills, no errors.
+`collect.py` / `collect_structured.py` / `score.py` already ran on
+prod earlier (308 pending / 65 approved / 16 rejected as of last
+peek). Queue is full and waiting.
+
+**The next user-facing decision is whether to cull the prod queue.**
+A preview script was drafted but never ran because of repeated
+terminal-wrap / heredoc paste issues on the VPS shell. The plan:
+
+1. SSH to VPS: `ssh root@77.42.40.207`
+2. `cd /opt/bestpractice`
+3. `nano /tmp/preview.py` (paste the snippet below), `Ctrl+O Enter Ctrl+X`
+4. `python3 /tmp/preview.py` — preview-only, no rows changed
+5. If the number looks right, swap `SELECT source_name, COUNT(*)` for
+   `UPDATE sub_considerations SET status='rejected',
+   last_updated=datetime('now')` (keep the WHERE clause exactly).
+
+```python
+# /tmp/preview.py — safe RSS-only cull preview
+import sqlite3
+c = sqlite3.connect('/opt/bestpractice/data/bestpractice.db')
+print('--- WOULD REJECT (preview) ---')
+total = 0
+for r in c.execute("""
+    SELECT source_name, COUNT(*)
+      FROM sub_considerations
+     WHERE status='pending'
+       AND source_name NOT IN (
+           'W3C WCAG 2.2', 'GOV.UK Design System',
+           'Schema.org', 'caniuse', 'OWASP Top 10'
+       )
+       AND (
+           source_date < '2024-01-01'
+           OR (relevance_score IS NOT NULL AND relevance_score < 5)
+       )
+     GROUP BY source_name
+     ORDER BY 2 DESC
+"""):
+    print(f'  {r[0]:26s} {r[1]}')
+    total += r[1]
+print(f'  total: {total}')
+print('(no rows changed - preview only)')
+```
+
+**Safety rationale.** A naive `score < 5 OR source_date < 2024-01-01`
+cull would wipe most WCAG (2023-10-05 publication date), OWASP
+(2021-09-24), and GOV.UK (empty source_date) — all primary-source
+content we want to keep. The `source_name NOT IN (...)` guard around
+the rule preserves the 5 structured sources entirely. Only 2
+structured items currently sit at score=4 (both GOV.UK patterns:
+"Redirect to equality info pattern" and "Emergency impact on
+service") — they survive.
+
+**After the cull (or skip):** walk `/admin/queue` and use the new
+Edit-and-approve flow with the destinations multi-checkbox to route
+items to the right home(s). The 6 categories (`has-header`,
+`transactional`, `content-rich`, `index-style`, `system-page`,
+`authenticated`) are the main routing shortcut. Watch sidebar dots
+light up as approvals accumulate.
+
+**Other Session 12 items below are unchanged.**
+
+---
+
 ## Next session — Session 12 starts here
 
 **The biggest item by far: review the queue.** ~70+ pending items
