@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-16 (Session 9 — v3 chrome: sidebar nav + filters drawer + Phosphor icons)
+Last updated: 2026-05-16 (Session 10 — Slice C: RSS ingestion + Groq scoring + queue write paths)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -357,43 +357,230 @@ prototype directory shuffle.
 
 ---
 
-## Next session — Session 10 starts here
+## Session 10 — Slice C: ingestion + Groq scoring + queue write paths ✅ shipped 2026-05-16 (branch `slice-c`, not yet pushed)
 
-**Slice C — ingestion + Groq scoring.** First user-facing payoff is
-real pending rows in `/admin/queue`. Reference the §6 ingestion
-pattern in `PROJECT.md`; the working pattern lives in
-AmuseAlot/musemaniac's `collect_news.py` (ETag caching, content-hash
-dedup, langdetect) + `score_news.py` (retry/rate-limit, prompt
-shape). Local path per Session 1's reference memory:
-`E:\_dev\musemaniac`.
+User stepped away for a couple of hours and asked for the most demanding
+thing that could land solo. Slice C was the obvious target — it turns the
+read-only admin surface (Sessions 5–9) into an editorial loop where AI
+suggestions land in the queue, get scored, and approve/reject/edit
+controls move them onto real pages. Locked-in pre-flight decisions:
+RSS-only (structured caniuse/MDN/WCAG/schema.org deferred to Slice D
+because the first-fetch flood needs user-paced paging), feature branch
+`slice-c` with no push, GROQ_API_KEY copied from
+`E:\_dev\musemaniac\.env`.
 
-Now that the sidebar nav surfaces every slug with the "new" dot
-computed from `last_updated`, the natural visual payoff of Slice C
-is the dot lighting up as ingestion approves items — gives the user
-a real signal for "what changed this week" across the whole
-taxonomy.
+The work split into four commits. Stage A laid the foundation
+(schema/env/seed), Stage B added `collect.py` (RSS ingestion), Stage C
+added `score.py` (Groq scoring), Stage D wired the queue write paths +
+edit-approve dialog. Stage E is this entry.
 
-Order of operations for Slice C:
-1. **`collect.py`** — iterate active `sources` rows, fetch feeds
-   with ETag/Last-Modified caching, hash-dedup against
-   `sub_considerations.body`, write candidates into
-   `sub_considerations` with `status='pending'`,
-   `relevance_score=NULL`.
-2. **`score.py`** — Groq-score pending rows 1–10 against the page
-   type / component routing guidance from `PROJECT.md`, write back
-   to `relevance_score`. Items below a threshold (e.g. 4) stay
-   pending but won't bubble to the top of the queue.
-3. **`/admin/queue` write paths** — approve / reject / edit-and-
-   approve POST handlers. The `<dialog>` from `BUILD_NOTES.md` §2.3
-   is the prototype contract for edit-and-approve; build it as a
-   dedicated modal rather than reusing the filters drawer.
+### Done
+- [x] **Stage A — foundation.** `schema.sql` gained `etag` /
+      `last_modified` / `last_fetched` columns on `sources` plus a
+      `UNIQUE INDEX idx_sources_url` for the seed's `INSERT OR IGNORE`.
+      `init_db.py:migrate()` got the matching idempotent ALTERs
+      (mirroring the Session 9 icon pattern). `init_db.py` now also
+      seeds an `INBOX_CONSIDERATION` placeholder at
+      `site-wide/ingest-inbox` and 5 default RSS sources (web.dev, A11y
+      Project, CSS-Tricks, Smashing, MDN Blog) via the new
+      `seed_inbox()` / `seed_sources()` helpers. `requirements.txt`
+      (first one in the project) ships `feedparser>=6.0`,
+      `requests>=2.31`, `python-dotenv>=1.0`. `app.py` calls
+      `load_dotenv()` at module init; `.env.example` checked in;
+      `.gitignore:10` already blocked `.env`.
+- [x] **Stage B — `collect.py`.** Standalone CLI walking
+      `sources WHERE type='rss' AND status IN ('active','error')`.
+      Sends `If-None-Match` + `If-Modified-Since` per source; 304 → log
+      and skip; 200 → captures the response `ETag` / `Last-Modified`
+      back into the source row. Entries deduped against existing
+      `sub_considerations.source_url` in any status (rejected items
+      don't resurrect). Body normalisation strips all HTML, caps at
+      600 chars at a word boundary, escapes residual `<`/`>`/`&`, and
+      wraps in `<p>` — direct application of the Session 7 fixture
+      escaping lesson. Slug is `sha1(url)[:12]` so the
+      `UNIQUE (consideration_id, slug)` constraint can't collide.
+      First-run smoke ingested 200 entries from the 5 feeds (CSS-Tricks
+      15, MDN 70, Smashing 40, A11y 65, web.dev 10); second run hit
+      304 on 4 feeds and URL-dedup on the 5th (web.dev sent no ETag).
+- [x] **Stage C — `score.py`.** Standalone CLI iterating
+      `sub_considerations WHERE status='pending' AND relevance_score IS
+      NULL`. Calls Groq `llama-3.3-70b-versatile` via raw `requests` to
+      `api.groq.com/openai/v1/chat/completions` (no Groq SDK —
+      musemaniac's pattern) with `response_format=json_object`. System
+      prompt geared at senior UX/frontend reader: terse, primary
+      sources, penalise marketing. Output JSON shape per PROJECT.md
+      §6.1: `score` 1–10, `phases[]` (filtered against the phases
+      table), `consideration_id` (validated against the approved
+      catalog, ingest-inbox excluded; null → keep row in inbox),
+      rewritten `one_liner`, edited `body`. Auto-reject threshold
+      defaults to 4 per §6.1 (`--threshold` flag overrides).
+      Hardening: 429 → 8s/16s/24s backoff; 5xx → 4s/8s/12s; malformed
+      JSON or out-of-range score → leave row pending+NULL for the
+      next run. Live smoke run scored the 200-row batch (took
+      ~7–10 min at 2s between calls).
+- [x] **Stage D — queue write paths + edit-approve dialog.** Three
+      new POST routes in `app.py`:
+      `/admin/queue/<id>/approve` (status='approved' + FTS insert),
+      `/admin/queue/<id>/reject` (status='rejected'),
+      `/admin/queue/<id>/edit_approve` (full editor: one_liner / body /
+      source_url / source_date / phases / consideration_id, validates
+      target consideration, DELETE+INSERT the phases bridge, FTS
+      re-sync). Helper `_ensure_pending()` makes them idempotent (back
+      button / double submit redirect quietly). Helper
+      `_sync_fts_row()` does DELETE+INSERT keyed on `rowid` so re-edits
+      don't dupe in the FTS index. Helper `load_queue_catalog()` feeds
+      the dialog's destination-consideration select. Template carries
+      `data-*` attrs per qcard so `static/js/queue.js` (54 lines)
+      populates the shared `<dialog id="edit-approve-dialog">` without
+      a round-trip. Append-only CSS additions in
+      `static/styles/components.css`: `.edit-dialog`, `.edit-dialog__*`,
+      `.qcard__btn` (full-width), `.qcard__source-link`,
+      `.queue-error`.
+- [x] **Stage E — local smoke verification.** Test-client run against
+      `Flask.test_client()` confirmed end-to-end:
+      approve → status flips + FTS row appears,
+      reject → status flips (FTS untouched),
+      edit_approve → row moves to target consideration with new
+      one_liner / body / phases / FTS row.
+      `/search?q=edited` returned the edited row with `<mark>` highlights
+      proving FTS picked the change up. All test-mutated rows reverted
+      to pending so the user inherits a clean queue.
+
+### How tested — local (passed 2026-05-16)
+1. `git switch -c slice-c`
+2. `pip install -r requirements.txt` (deps already satisfied locally)
+3. `python init_db.py` — applied 3 sources ALTERs, created
+   ingest-inbox consideration id=22, seeded 5 RSS sources.
+4. `python collect.py` — ingested 200 candidates. Re-run got 304 on
+   4 feeds, dedup on the 5th.
+5. `python score.py` — Groq-scored all 200 pending rows. Distribution
+   roughly matches the 1-10 spec (top items at 8–9, slop at 1–3,
+   auto-rejected below 4). Cost: well under $0.20 at Groq's per-token
+   rates.
+6. `python app.py` + curl probes: `/admin/queue` → 200 (552KB with
+   ~150 qcards + the dialog). `/search?q=` works through FTS over the
+   newly-approved rows.
+7. Test-client write-path exercise: approve / reject / edit_approve
+   all return 302 with the expected DB + FTS mutations. Smoke-test
+   rows reverted afterwards.
+
+### How tested — production (NOT YET)
+Branch is `slice-c`, never pushed. `git switch main` reverts the work
+cleanly. Production at `best.amusealot.com` still on Session 9 chrome
+with the empty-queue placeholder text — see "Next session" for the
+deploy plan once the user is back.
+
+### Files changed
+- **Stage A** (`bf23928`): `schema.sql`, `init_db.py`, `app.py`,
+  `requirements.txt` (new), `.env.example` (new).
+- **Stage B** (`bc2a484`): `collect.py` (new, 265 lines).
+- **Stage C** (`5f0c24e`): `score.py` (new, ~310 lines), `collect.py`
+  (utf-8 stdout fix).
+- **Stage D** (`5f00d7c`): `app.py` (routes + helpers),
+  `templates/admin/queue.html` (rewritten), `static/js/queue.js` (new),
+  `static/styles/components.css` (dialog + queue extras appended).
+
+### Lessons / decisions worth noting (non-obvious)
+- **UTF-8 BOM in `.env` breaks python-dotenv key names.** PowerShell
+  5.1's `Set-Content -Encoding utf8` writes the file with a leading
+  `EF BB BF` BOM; python-dotenv 1.2.2 reads the first key name as
+  `﻿GROQ_API_KEY` rather than `GROQ_API_KEY`. Stripped the BOM
+  via a 4-line Python helper (`p.write_bytes(data[3:] if
+  data.startswith(b'\xef\xbb\xbf') else data)`). Future Windows envs
+  should use `-Encoding utf8NoBOM` (PS 7+) or write via Python.
+- **Windows cp1252 console crashes on non-ASCII stdout mid-script.**
+  Adding `sys.stdout = io.TextIOWrapper(sys.stdout.buffer,
+  encoding='utf-8', errors='replace', line_buffering=True)` at module
+  init in both `collect.py` and `score.py` matches musemaniac's
+  pattern and survives feed titles + AI output containing arrows /
+  smart quotes / emoji.
+- **Inbox consideration as a holding pen, not a hack.** Pending rows
+  need a non-null `consideration_id` because the FK is `NOT NULL`. The
+  options were: (a) drop the NOT NULL, (b) make scoring write the FK,
+  (c) park rows in a placeholder consideration until scoring routes
+  them. (c) won — the schema stays strict, ingestion stays
+  schema-pure, and the placeholder is invisible from the read surface
+  because all its subs are `status='pending'` and read views filter to
+  approved.
+- **Auto-reject in the scoring pass cuts queue noise meaningfully.**
+  ~20-25% of the 200 ingested rows scored below 4 and were
+  auto-rejected, halving the manual-review burden vs. surfacing
+  everything. The threshold is a CLI flag (`--threshold`) so the user
+  can ratchet it up to 5 or 6 once the queue's been tuned.
+- **Flask dev server doesn't auto-reload without debug=True.**
+  Stage D's app.py changes returned 500s until the process was killed
+  via `taskkill //PID <pid> //F` and restarted. Worth flipping
+  `debug=True` (or `app.run(debug=os.environ.get('FLASK_DEBUG'))`) in
+  local dev mode if Session 11 expects fast iteration.
+- **Native `<dialog>` was the right call.** showModal()'s built-in
+  backdrop + Esc handling cut the JS surface to 54 lines (vs. the
+  ~120 a hand-rolled modal would need). The Session 7 mobile filter
+  dialog had set the precedent; sticking with native means the dialog
+  inherits a11y for free.
+- **Edit-and-approve dialog reads from data-\* attrs, not a fetch.**
+  Each qcard renders all editable values into `data-one-liner`,
+  `data-body`, etc. Click → JS copies them into the shared form, no
+  round-trip. Cheaper, simpler, and means the dialog works under
+  network failure. Server's `_sync_fts_row()` still re-runs after
+  edit_approve so search stays consistent.
+
+---
+
+## Next session — Session 11 starts here
+
+**Deploy Slice C to production.** Before merging `slice-c` → `main`
+(GHA auto-deploys on push), do a final local pass: scroll the queue
+top-to-bottom, approve/edit-approve/reject 5–10 items by hand, confirm
+the sidebar "new" dot lights up for parents that now have approved
+subs within the 14-day window. Then:
+
+1. `git switch main && git merge slice-c --no-ff` (preserve the four
+   stage commits in history; the Session 9 commits are no-ff merges
+   too, mirror that).
+2. Push to `main`. GHA `deploy.yml` will rsync to the VPS and restart
+   `bestpractice.service`. Watch the action log.
+3. On the VPS: `cd /opt/bestpractice && python3 init_db.py` — applies
+   the three sources ALTERs to prod, seeds the inbox consideration
+   and 5 sources, idempotent for existing approved/pending data.
+   (VPS Python is still 3.10.12 per CLAUDE.md; nothing in Slice C
+   reaches for 3.12-only syntax.)
+4. **Set `GROQ_API_KEY` on the VPS.** PROJECT.md §7 specifies
+   `/opt/bestpractice/.env` (set -a + source pattern). Verify the
+   systemd unit picks it up — may need an `EnvironmentFile=` line.
+5. First prod ingestion run: `python3 collect.py` → expect 200ish
+   pending. `python3 score.py --limit 20` to test before full batch.
+6. Then full `python3 score.py`. Walk `/admin/queue` via the
+   Caddy-auth domain. Watch the sidebar "new" dot.
+
+**After deploy, polish parked from this session:**
+- Inline auto-save edits on the queue card (textarea blur debounce,
+  chip × buttons, association change auto-POST). The edit-approve
+  dialog covers everything; the inline layer is a faster UX for
+  scanning-and-fixing small bits without opening the modal. Adds 4–5
+  small PATCH routes + ~80 lines of JS. The user wanted to shape this
+  themselves so deferring made sense.
+- Per-source error surfacing on `/admin/sources` — show the last
+  error message + retry button when `status='error'`. Currently the
+  source row goes silent.
+- langdetect for non-English feeds (currently filter on
+  feed-declared language only).
+- Cron / scheduled `python collect.py && python score.py` — see the
+  daily SQLite backup parked nudge below; both want a systemd timer.
+
+**Slice D — structured sources.** caniuse + MDN BCD + WCAG +
+schema.org. Pattern: per-source adapter under `ingestors/`, snapshot
+diff against `data/cache/<slug>.json` (gitignored), `MAX_NEW_PER_RUN`
+cap to absorb the first-fetch flood (caniuse ~600 features, MDN BCD
+thousands of entries — the cap drains them across multiple runs).
+`sources.type='structured'` + `config_json` are already in the schema
+ready for it.
 
 ### Tech-debt nudges parked from earlier sessions
 - VPS Python is 3.10.12; `PROJECT.md` §8 calls for 3.12+. No 3.12-
-  only syntax used yet; flag if Slice C reaches for it.
+  only syntax used yet; flag if a future slice reaches for it.
 - Daily SQLite backup cron + log rotation on the VPS — last
-  unchecked item from Session 2's deploy-prep list. Ingestion makes
-  this more urgent (DB is no longer purely append-on-deploy).
+  unchecked item from Session 2's deploy-prep list. Now critical:
+  ingestion writes to the DB on every collect/score run.
 - Radix Themes CSS vendoring — `tokens.css` already uses Radix-
   shaped variable names; mechanical swap, can land any time.
 - Add a fixture-content validator in `init_db.py` for unescaped
@@ -404,3 +591,6 @@ Order of operations for Slice C:
   `static/styles/{base,components}.css` are unused after Session 9's
   chrome rewrite. Worth a `grep -L .site-header templates/*.html` pass
   to confirm, then prune.
+- `app.run(debug=False)` in `app.py:613` means the dev server doesn't
+  auto-reload on edits. Trip-hazard for any future write-path
+  session — consider `debug=os.environ.get('FLASK_DEBUG') == '1'`.
