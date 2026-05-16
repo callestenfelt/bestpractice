@@ -2,10 +2,7 @@
 {% block title %}Sources · bestpractice{% endblock %}
 
 {% block content %}
-<div class="shell shell--narrow">
-  <div class="main" style="max-width: none;">
-
-    <div class="page-heading">
+<div class="page-heading">
       <div class="page-heading__eyebrow">Admin · sources</div>
       <h1 class="page-heading__title">Sources</h1>
       <p class="page-heading__definition">
@@ -91,11 +88,9 @@
         <button class="btn btn--primary" type="submit" style="height: 32px;">Add source</button>
       </div>
     </form>
-
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script src="{{ asset('js/admin.js') }}"></script>
 {% endblock %}

@@ -1,0 +1,36 @@
+<aside class="sidebar" id="sidebar" aria-label="Browse">
+  <div class="sidebar__inner">
+    <nav class="sidebar__nav" aria-label="Pages and components">
+
+      <section class="sidebar__section">
+        <h2 class="sidebar__heading">Page types <span class="count">{{ nav_page_types | length }}</span></h2>
+        <ul class="sidebar__list">
+          {% for pt in nav_page_types %}
+          <li><a class="sidebar__link" href="{{ url_for('page_type', slug=pt.slug) }}"
+                 {% if current_kind == 'page_type' and current_slug == pt.slug %}aria-current="page"{% endif %}>
+            <i class="ph {{ pt.icon }}" aria-hidden="true"></i>{{ pt.label }}{% if pt.has_new %}<span class="dot" aria-label="New items"></span>{% endif %}
+          </a></li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section class="sidebar__section">
+        <h2 class="sidebar__heading">Components <span class="count">{{ nav_components | length }}</span></h2>
+        <ul class="sidebar__list">
+          {% for cmp in nav_components %}
+          <li><a class="sidebar__link" href="{{ url_for('component', slug=cmp.slug) }}"
+                 {% if current_kind == 'component' and current_slug == cmp.slug %}aria-current="page"{% endif %}>
+            <i class="ph {{ cmp.icon }}" aria-hidden="true"></i>{{ cmp.label }}{% if cmp.has_new %}<span class="dot" aria-label="New items"></span>{% endif %}
+          </a></li>
+          {% endfor %}
+        </ul>
+      </section>
+
+    </nav>
+
+    <footer class="sidebar__footer">
+      <a href="{{ url_for('admin_queue') }}">Review queue</a>
+      <a href="{{ url_for('admin_sources') }}">Sources</a>
+    </footer>
+  </div>
+</aside>

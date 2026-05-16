@@ -1,14 +1,5 @@
 /* base.css — resets, typography, layout primitives */
 
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url("/static/fonts/InterVariable.woff2") format("woff2-variations"),
-       url("/static/fonts/InterVariable.woff2") format("woff2");
-}
-
 *,
 *::before,
 *::after {
@@ -253,7 +244,10 @@ pre code {
     padding: var(--space-5) var(--space-4) var(--space-9);
   }
   .rail {
-    display: none;
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
   .site-header__inner {
     grid-template-columns: auto 1fr auto;

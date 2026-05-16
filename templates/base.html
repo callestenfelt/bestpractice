@@ -4,42 +4,57 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}bestpractice{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="{{ asset('icons/phosphor/style.css') }}" />
   <link rel="stylesheet" href="{{ asset('styles/tokens.css') }}" />
   <link rel="stylesheet" href="{{ asset('styles/base.css') }}" />
   <link rel="stylesheet" href="{{ asset('styles/components.css') }}" />
+  <link rel="stylesheet" href="{{ asset('styles/sidebar.css') }}" />
   {% block head_extra %}{% endblock %}
 </head>
 <body style="font-size: 15px">
-<div class="app">
+<div class="app" data-sidebar-open="true" data-filters-open="true">
 
-  <header class="site-header">
-    <div class="site-header__inner">
-      <a class="site-header__brand" href="{{ url_for('home') }}">
-        <span class="site-header__brand-mark" aria-hidden="true"></span>
-        bestpractice
-      </a>
-      <form class="search-form search" role="search" action="{{ url_for('search') }}" method="get">
-        <svg class="search__icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m14 14-3.2-3.2"/></svg>
-        <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" value="{{ q|default('', true) }}" />
-        <kbd class="search__kbd">⌘K</kbd>
-      </form>
-      <nav class="site-header__nav" aria-label="Admin">
-        <a href="{{ url_for('admin_queue') }}"><span class="label">Review queue</span><span class="sr-only"> (admin)</span></a>
-        <a href="{{ url_for('admin_sources') }}"><span class="label">Sources</span></a>
-      </nav>
-    </div>
+  <header class="topbar">
+    <button class="topbar__toggle" type="button" data-action="toggle-sidebar"
+            aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true"
+            title="Toggle sidebar (Ctrl + .)">
+      <i class="ph ph-sidebar-simple" aria-hidden="true"></i>
+    </button>
+    <a class="topbar__brand" href="{{ url_for('home') }}">bestpractice</a>
+    <form class="search-form search" role="search" action="{{ url_for('search') }}" method="get">
+      <i class="ph ph-magnifying-glass search__icon" aria-hidden="true"></i>
+      <input class="search__input" type="search" name="q" placeholder="Search page types, components, considerations…" aria-label="Search" value="{{ q|default('', true) }}" />
+      <kbd class="search__kbd">⌘K</kbd>
+    </form>
+    {% block topbar_filters_toggle %}{% endblock %}
   </header>
 
-  <main class="app-main">
-    {% block content %}{% endblock %}
-  </main>
+  <div class="sidebar-scrim" aria-hidden="true"></div>
+  <div class="filters-scrim" aria-hidden="true"></div>
 
+  <div class="layout">
+
+    {% include "_sidebar.html" %}
+
+    <main class="content">
+      <div class="reading">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    {% block filters_rail %}{% endblock %}
+
+  </div>
 </div>
 
 {% block scripts %}
 <script src="{{ asset('js/filters.js') }}"></script>
 <script src="{{ asset('js/accordion.js') }}"></script>
 <script src="{{ asset('js/search.js') }}"></script>
+<script src="{{ asset('js/sidebar.js') }}"></script>
 {% endblock %}
 </body>
 </html>

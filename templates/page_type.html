@@ -51,83 +51,77 @@
   </details>
 {% endmacro %}
 
+{% block topbar_filters_toggle %}
+  <button class="topbar__toggle topbar__toggle--filters" type="button" data-action="toggle-filters"
+          aria-label="Toggle filters" aria-controls="filters-rail" aria-expanded="true"
+          title="Toggle filters (Ctrl + ,)">
+    <i class="ph ph-sliders-horizontal" aria-hidden="true"></i>
+    <span class="topbar__toggle-count" hidden></span>
+  </button>
+{% endblock %}
+
 {% block content %}
-<div class="shell">
-
-  <aside class="rail" aria-label="Filters">
-    <div class="rail__section">
-      <div class="rail__heading">
-        <span>Filter by phase</span>
-        <span class="rail__actions">
-          <button class="linkbtn" data-action="select-all" type="button">all</button>
-          <span aria-hidden="true">·</span>
-          <button class="linkbtn" data-action="clear-all" type="button">none</button>
-        </span>
-      </div>
-      <ul class="checklist">
-        {% for phase in phases %}
-        <li><label class="checklist__item"><input type="checkbox" name="phase" value="{{ phase.slug }}" checked /><span>{{ phase.label }}</span></label></li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <hr class="hr hr--tight" />
-
-    <div class="rail__section">
-      <label class="toggle-row">
-        <input type="checkbox" class="toggle" id="toggle-sitewide" />
-        <span>Show site-wide considerations</span>
-      </label>
-      <p style="font-size: var(--fs-12); color: var(--gray-10); margin-top: 8px; line-height: var(--lh-snug);">
-        Mixes alt text, contrast, keyboard nav, and other cross-cutting items into this view.
-      </p>
-    </div>
-  </aside>
-
-  <div class="main">
-
-    <div class="page-heading">
-      <div class="page-heading__eyebrow">{{ parent_kind | default('Page type') }}{% if page.schema_org_type %} · <code>{{ page.schema_org_type }}</code>{% endif %}</div>
-      <h1 class="page-heading__title">{{ page.label }}</h1>
-      <p class="page-heading__definition">{{ page.definition }}</p>
-    </div>
-
-    <button class="filters-trigger" type="button" data-action="open-filters" aria-haspopup="dialog" aria-controls="filters-dialog">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
-      Filters
-    </button>
-
-    <dialog class="filters-dialog" id="filters-dialog" aria-label="Filters">
-      <header class="filters-dialog__header">
-        <h2 class="filters-dialog__title">Filters</h2>
-        <button class="filters-dialog__close" type="button" data-action="close-filters" aria-label="Close filters">×</button>
-      </header>
-      <div class="filters-dialog__body" data-role="filters-body"></div>
-      <footer class="filters-dialog__footer">
-        <button class="linkbtn" type="button" data-action="close-filters">Done</button>
-      </footer>
-    </dialog>
-
-    <hr class="hr" />
-
-    {% set visible_groups = groups | rejectattr('group_slug', 'equalto', 'site-wide') | list %}
-    {% if not visible_groups and not is_self_sitewide %}
-      <div class="empty-state" style="padding: 32px 0; color: var(--gray-10); line-height: var(--lh-snug);">
-        <p style="font-size: var(--fs-16); margin: 0 0 8px;">No considerations curated for this {{ (parent_kind | default('page type')) | lower }} yet.</p>
-        <p style="font-size: var(--fs-14); margin: 0;">Cross-cutting guidance still applies — toggle <em>Show site-wide considerations</em> in the rail to layer it on.</p>
-      </div>
-    {% endif %}
-
-    {% for group in groups %}
-      <section class="group" data-group="{{ group.group_slug }}"{% if group.group_slug == 'site-wide' and not is_self_sitewide %} hidden{% endif %}>
-        <header class="group__header">
-          <h2 class="group__title">{{ group.group_label }}</h2>
-          {% if group.group_slug == 'site-wide' %}<span class="group__count">Layered onto every page</span>{% endif %}
-        </header>
-        {% for cons in group.considerations %}{{ render_consideration(cons) }}{% endfor %}
-      </section>
-    {% endfor %}
-
-  </div>
+<div class="page-heading">
+  <div class="page-heading__eyebrow">{{ parent_kind | default('Page type') }}{% if page.schema_org_type %} · <code>{{ page.schema_org_type }}</code>{% endif %}</div>
+  <h1 class="page-heading__title">{{ page.label }}</h1>
+  <p class="page-heading__definition">{{ page.definition }}</p>
 </div>
+
+<hr class="hr" />
+
+{% set visible_groups = groups | rejectattr('group_slug', 'equalto', 'site-wide') | list %}
+{% if not visible_groups and not is_self_sitewide %}
+  <div class="empty-state" style="padding: 32px 0; color: var(--gray-10); line-height: var(--lh-snug);">
+    <p style="font-size: var(--fs-16); margin: 0 0 8px;">No considerations curated for this {{ (parent_kind | default('page type')) | lower }} yet.</p>
+    <p style="font-size: var(--fs-14); margin: 0;">Cross-cutting guidance still applies — toggle <em>Show site-wide considerations</em> in the filters drawer to layer it on.</p>
+  </div>
+{% endif %}
+
+{% for group in groups %}
+  <section class="group" data-group="{{ group.group_slug }}"{% if group.group_slug == 'site-wide' and not is_self_sitewide %} hidden{% endif %}>
+    <header class="group__header">
+      <h2 class="group__title">{{ group.group_label }}</h2>
+      {% if group.group_slug == 'site-wide' %}<span class="group__count">Layered onto every page</span>{% endif %}
+    </header>
+    {% for cons in group.considerations %}{{ render_consideration(cons) }}{% endfor %}
+  </section>
+{% endfor %}
+{% endblock %}
+
+{% block filters_rail %}
+<aside class="filters-rail" id="filters-rail" aria-label="Filters">
+  <div class="filters-rail__inner">
+    <header class="filters-rail__header">
+      <h2 class="filters-rail__title">Filters</h2>
+      <span class="filters-rail__count" data-role="filters-count" hidden></span>
+    </header>
+    <div class="filters-rail__body">
+      <div class="rail__section">
+        <div class="rail__heading">
+          <span>Filter by phase</span>
+          <span class="rail__actions">
+            <button class="linkbtn" data-action="select-all" type="button">all</button>
+            <span aria-hidden="true">·</span>
+            <button class="linkbtn" data-action="clear-all" type="button">none</button>
+          </span>
+        </div>
+        <ul class="checklist">
+          {% for phase in phases %}
+          <li><label class="checklist__item"><input type="checkbox" name="phase" value="{{ phase.slug }}" checked /><span>{{ phase.label }}</span></label></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <hr class="hr hr--tight" />
+      <div class="rail__section">
+        <label class="toggle-row">
+          <input type="checkbox" class="toggle" id="toggle-sitewide" />
+          <span>Show site-wide considerations</span>
+        </label>
+        <p class="filters-rail__hint">
+          Mixes alt text, contrast, keyboard nav, and other cross-cutting items into this view.
+        </p>
+      </div>
+    </div>
+  </div>
+</aside>
 {% endblock %}
