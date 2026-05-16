@@ -417,21 +417,42 @@ sub_consideration_phases: [seo, content, ux]
 
 ### 5.1 Structured sources
 
-Imported directly from machine-readable feeds. Re-synced on a schedule
-(weekly). The build agent decides how to map source items to
+Imported directly from machine-readable sources (JSON, JSON-LD, or
+structured Markdown in a public git repo — no HTML scraping, no auth, no
+API keys). Re-synced on a schedule (weekly for fast-moving, on version
+bumps for slow specs). The build agent decides how to map source items to
 sub-accordions and which large accordion to associate them with — likely
 via a per-source configuration that maps source categories to consideration
 IDs.
 
-- **caniuse.com** — JSON database at `github.com/Fyrd/caniuse`. Browser
-  support data per feature. Map features to relevant component
-  considerations.
-- **WCAG 2.2** — W3C publishes success criteria as JSON-LD. Each success
-  criterion becomes a sub-accordion tagged with appropriate phases.
-- **MDN browser-compat-data (BCD)** — JSON at
-  `github.com/mdn/browser-compat-data`. Similar to caniuse but more granular.
-- **Schema.org WebPage and subtypes** — JSON-LD vocabulary. Inform structured
-  data considerations.
+All structured sources change format occasionally. Write mappers
+defensively and **log loudly** when a source's shape changes, the same way
+AmuseAlot aborts loudly on a bad GitHub token rather than silently
+producing empty output.
+
+- **caniuse.com** — JSON database, raw file from
+  `raw.githubusercontent.com/Fyrd/caniuse/main/data.json`. Browser support
+  data per feature. Map features to relevant component considerations.
+  Re-fetch weekly, diff against last copy.
+- **MDN browser-compat-data (BCD)** — JSON from
+  `github.com/mdn/browser-compat-data` (also published as the
+  `@mdn/browser-compat-data` npm package, which is just JSON). More granular
+  than caniuse. Re-fetch weekly, diff.
+- **WCAG 2.2** — W3C guidelines repo `github.com/w3c/wcag`, success criteria
+  available as structured data with stable IDs. Each success criterion
+  becomes a sub-accordion tagged with appropriate phases. Slow source —
+  re-check on WCAG version bumps, not weekly.
+- **Schema.org** — full vocabulary as JSON-LD at
+  `schema.org/version/latest/schemaorg-current-https.jsonld`. Extract the
+  WebPage subtree. Rarely changes.
+- **OWASP** — Top 10 (`github.com/OWASP/Top10`) and Cheat Sheet Series
+  (`github.com/OWASP/CheatSheetSeries`), both structured Markdown in public
+  repos. Primary-source security guidance. Maps to `backend` and `site-wide`
+  security considerations. Slow source — re-check on releases.
+- **GOV.UK Design System** — content lives in a public GitHub repo with
+  consistent per-component page structure. Ingest from the source repo, not
+  the rendered HTML site. Excellent quality, very slow-moving, strong fit
+  for component considerations.
 
 ### 5.2 RSS sources
 
@@ -441,12 +462,34 @@ content-hash dedup, langdetect.
 - **web.dev** — `https://web.dev/rss.xml`
 - **Nielsen Norman Group** — `https://www.nngroup.com/feed/rss/`
 - **The A11y Project** — `https://www.a11yproject.com/feed.xml`
+- **Google Search Central** — Google's official search/SEO blog has an RSS
+  feed. Primary-source authority for the `seo` phase.
 
-### 5.3 Future sources (not v1)
+### 5.3 Manual reference sources — NOT ingested
+
+These are high-quality references the **user** consults while authoring
+intro paragraphs and reviewing the queue. They are explicitly **not**
+pipeline sources: no RSS, no public structured export, no source repo for
+the guidance, and/or terms that discourage scraping. The build agent must
+**not** attempt to ingest or scrape these. Listing them here so the effort
+is not wasted trying.
+
+- **Material Design 3** (`m3.material.io`) — designed site, JS-heavy, no
+  guidance export. Manual reference only.
+- **Apple Human Interface Guidelines** — no RSS/repo/API, discourages
+  scraping, only partial overlap with web. Manual reference only.
+- **Baymard Institute** (`baymard.com`) — substantive research is paywalled;
+  free RSS is teaser-only. Not pipeline-worthy. Manual reference only (more
+  valuable if the user has a subscription, but still not ingestible).
+
+### 5.4 Future sources (not v1)
 
 Out of scope for the first cut, but worth keeping the schema flexible
-enough to add: MDN blog, A List Apart, Adrian Roselli, Heydon Pickering,
-Sara Soueidan, GOV.UK Design System notes, USWDS release notes.
+enough to add: MDN content corpus (`github.com/mdn/content` — large, held
+back from v1 to avoid swamping the review queue early; BCD alone is enough
+MDN for v1), MDN blog, Smashing Magazine RSS (`smashingmagazine.com/feed/`
+— signal varies, optional), A List Apart, Adrian Roselli, Heydon Pickering,
+Sara Soueidan, USWDS release notes.
 
 ---
 
@@ -513,6 +556,15 @@ Same VPS as AmuseAlot (`root@77.42.40.207`). Same operational patterns.
 
 The build agent must produce a `Caddyfile` snippet, a `bestpractice.service`
 unit file, and a `deploy.ps1` (or equivalent) as part of the deliverables.
+
+**Network egress.** The ingestion pipeline needs the VPS to reach:
+`raw.githubusercontent.com`, `github.com`, `schema.org`, `web.dev`,
+`www.nngroup.com`, `www.a11yproject.com`, the Google Search Central blog
+host, and `api.groq.com`. AmuseAlot already talks to GitHub and Groq, so
+those are proven; the others are new egress. The build agent should verify
+reachability as an early step and fail loudly (not silently) if a host is
+blocked, consistent with the editorial principle that the user must always
+know when collection breaks.
 
 ---
 

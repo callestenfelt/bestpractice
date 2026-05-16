@@ -139,6 +139,57 @@ COMPONENTS: list[tuple[str, str, str, list[str], str]] = [
 ]
 
 
+DEFAULT_SOURCES: list[tuple[str, str, str, dict]] = [
+    # (name, type, url, config_dict). Seeded once via INSERT OR IGNORE keyed
+    # on URL; operator can prune via /admin/sources without these reappearing.
+    # The v1 RSS roster per PROJECT.md §5.2 — four high-signal primary
+    # sources. CSS-Tricks / Smashing / MDN Blog were the Session 10 first-
+    # cut but moved to §5.4 future; they stay in the DB (paused) for any
+    # already-ingested rows but are not re-seeded on a fresh init_db.
+    ("web.dev",                "rss", "https://web.dev/static/blog/feed.xml", {}),
+    # PROJECT.md §5.2 lists this as /feed.xml; that URL 404s in practice.
+    # /feed/feed.xml is the actually-served canonical Jekyll output.
+    ("The A11y Project",       "rss", "https://www.a11yproject.com/feed/feed.xml", {}),
+    ("Nielsen Norman Group",   "rss", "https://www.nngroup.com/feed/rss/", {}),
+    ("Google Search Central",  "rss", "https://developers.google.com/search/blog/feed.xml", {}),
+
+    # Structured sources per PROJECT.md §5.1. Each carries {"adapter": "<module>"}
+    # under ingestors/. collect_structured.py dispatches by that key.
+    ("W3C WCAG 2.2", "structured",
+     "https://www.w3.org/WAI/WCAG22/wcag.json",
+     {"adapter": "wcag"}),
+    ("Schema.org WebPage", "structured",
+     "https://schema.org/version/latest/schemaorg-current-https.jsonld",
+     {"adapter": "schema_org"}),
+    # caniuse cap of 25 per run absorbs the 554-feature first-fetch flood
+    # across multiple runs; URL dedup means re-runs don't double-ingest.
+    ("caniuse", "structured",
+     "https://raw.githubusercontent.com/Fyrd/caniuse/main/data.json",
+     {"adapter": "caniuse"}),
+    ("OWASP Top 10", "structured",
+     "https://raw.githubusercontent.com/OWASP/Top10/master/2021/docs/en/",
+     {"adapter": "owasp"}),
+    ("GOV.UK Design System", "structured",
+     "https://github.com/alphagov/govuk-design-system",
+     {"adapter": "govuk"}),
+]
+
+# The ingest inbox is a placeholder consideration that pending sub_considerations
+# attach to before scoring routes them to a real home. Lives under site-wide so
+# it never shows up on a real read view (subs are status='pending' until scoring).
+INBOX_CONSIDERATION = {
+    "slug": "ingest-inbox",
+    "parent_type": "page_type",
+    "parent_slug": "site-wide",
+    "title": "Ingest inbox",
+    "intro": "Placeholder home for freshly ingested items awaiting Groq scoring.",
+    "group_label": "Inbox",
+    "group_slug": "inbox",
+    "group_order": 998,
+    "display_order": 0,
+}
+
+
 def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -168,6 +219,16 @@ def migrate(conn: sqlite3.Connection) -> None:
     existing_cmp = {row[1] for row in cur.execute("PRAGMA table_info(components)").fetchall()}
     if "icon" not in existing_cmp:
         cur.execute("ALTER TABLE components ADD COLUMN icon TEXT")
+
+    # Session 10: RFC 7232 conditional-GET caching columns on sources.
+    existing_src = {row[1] for row in cur.execute("PRAGMA table_info(sources)").fetchall()}
+    if "etag" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN etag TEXT")
+    if "last_modified" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN last_modified TEXT")
+    if "last_fetched" not in existing_src:
+        cur.execute("ALTER TABLE sources ADD COLUMN last_fetched TEXT")
+    cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_url ON sources(url)")
 
     # 2026-05-16 data fix: an unescaped <title> in the article-page fixture
     # closed the head's title tag mid-body, swallowing every later element
@@ -238,6 +299,53 @@ def seed_taxonomies(conn: sqlite3.Connection) -> None:
             )
 
     conn.commit()
+
+
+def seed_inbox(conn: sqlite3.Connection) -> int:
+    """Ensure the ingest-inbox consideration exists. Returns its id."""
+    cur = conn.cursor()
+    now = now_iso()
+    row = cur.execute(
+        "SELECT id FROM considerations WHERE parent_type=? AND parent_slug=? AND slug=?",
+        (INBOX_CONSIDERATION["parent_type"], INBOX_CONSIDERATION["parent_slug"], INBOX_CONSIDERATION["slug"]),
+    ).fetchone()
+    if row:
+        return row[0]
+    cur.execute(
+        """INSERT INTO considerations
+               (slug, parent_type, parent_slug, title, intro,
+                group_label, group_slug, group_order, display_order,
+                status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)""",
+        (INBOX_CONSIDERATION["slug"], INBOX_CONSIDERATION["parent_type"], INBOX_CONSIDERATION["parent_slug"],
+         INBOX_CONSIDERATION["title"], INBOX_CONSIDERATION["intro"],
+         INBOX_CONSIDERATION["group_label"], INBOX_CONSIDERATION["group_slug"],
+         INBOX_CONSIDERATION["group_order"], INBOX_CONSIDERATION["display_order"],
+         now, now),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def seed_sources(conn: sqlite3.Connection) -> int:
+    """Seed default sources keyed on URL. Idempotent. Returns rows added.
+    config_json is written on first insert and never overwritten — so an
+    operator can edit a source's adapter config via /admin/sources later
+    without it being clobbered on the next re-seed."""
+    cur = conn.cursor()
+    now = now_iso()
+    added = 0
+    for name, type_, url, config in DEFAULT_SOURCES:
+        before = cur.execute("SELECT COUNT(*) FROM sources WHERE url=?", (url,)).fetchone()[0]
+        cur.execute(
+            """INSERT OR IGNORE INTO sources (name, type, url, status, config_json, created_at)
+               VALUES (?, ?, ?, 'active', ?, ?)""",
+            (name, type_, url, json.dumps(config), now),
+        )
+        if before == 0:
+            added += 1
+    conn.commit()
+    return added
 
 
 def load_fixture(conn: sqlite3.Connection, parent_type: str, parent_slug: str, path: Path) -> int:
@@ -347,6 +455,12 @@ def main() -> None:
         apply_schema(conn)
         print("seeding taxonomies...")
         seed_taxonomies(conn)
+        print("seeding ingest inbox...")
+        inbox_id = seed_inbox(conn)
+        print(f"  inbox consideration id={inbox_id}")
+        print("seeding default sources...")
+        added = seed_sources(conn)
+        print(f"  sources added: {added} (existing rows preserved)")
         print("loading fixtures...")
         for parent_type, parent_slug, path in FIXTURES:
             load_fixture(conn, parent_type, parent_slug, path)

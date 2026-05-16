@@ -6,9 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Caddy basic auth, single user). `/page-type/article-page` renders the prototype's considerations from SQLite. The v3 chrome (topbar + collapsible sidebar nav + filters drawer, Phosphor icons) is templated from `prototype/page-type-v3.html` and applies to every route. `/search`, `/admin/queue`, `/admin/sources`, `/component/<slug>` all ship.
 
-Pending: write paths in `/admin/queue` (approve / reject / edit-and-approve), `/admin/considerations/<slug>` editor, RSS + structured ingestion, Groq scoring. See `nextstep.md` for the running session log and the current "Next session" pointer.
+**Slice C + D shipped locally on branch `slice-c` (Sessions 10–11, not yet merged to `main`).** The editorial loop is end-to-end:
 
-The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths). Schema changes still need a manual `python3 init_db.py` on the VPS post-deploy.
+- `/admin/queue` write paths (approve / reject / edit-and-approve with `<dialog>`) live (`app.py:558-694`).
+- RSS ingestion via `collect.py` (4 active feeds: web.dev, A11y Project, NN/g, Google Search Central; 3 deprioritized feeds paused in-DB).
+- Structured ingestion via `collect_structured.py` + 5 adapters under `ingestors/`: WCAG 2.2, Schema.org WebPage subtree, caniuse (capped 25/run), OWASP Top 10, GOV.UK Design System. All 5 PROJECT.md §5.1 sources live.
+- Groq scoring via `score.py` (`llama-3.3-70b-versatile`, raw HTTP, auto-reject at `<4`).
+- `.env` loads `GROQ_API_KEY` via python-dotenv. `requirements.txt` ships feedparser + requests + python-dotenv.
+
+Still pending: `/admin/considerations/<slug>` editor, MDN browser-compat-data adapter, per-source-type score threshold, inline auto-save on queue cards, `/admin/sources` UX polish (error display, config_json editor), content-diff for structured sources, cron + daily SQLite backup. See `nextstep.md` Session 12 pointer.
+
+The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths). Schema changes still need a manual `python3 init_db.py` on the VPS post-deploy. **Deploy of Slice C+D needs `GROQ_API_KEY` in `/opt/bestpractice/.env` and `pip3 install -r requirements.txt` on the VPS as one-time setup.**
 
 The prototype remains a hard input — canonical file is `prototype/page-type-v3.html`. Visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Older prototype iterations live in `prototype/archive/v1/` for reference but are not the source of truth. Don't redesign; wire it up.
 
@@ -17,8 +25,17 @@ The prototype remains a hard input — canonical file is `prototype/page-type-v3
 ## Running it locally
 
 ```
-python init_db.py     # one-time, creates data/bestpractice.db
-python app.py         # serves on http://localhost:5681
+pip install -r requirements.txt    # one-time, installs feedparser/requests/dotenv
+python init_db.py                  # one-time, creates data/bestpractice.db (idempotent)
+python app.py                      # serves on http://localhost:5681
+```
+
+For the ingestion pipeline (after putting `GROQ_API_KEY` in `.env`):
+
+```
+python collect.py             # RSS sources → pending rows
+python collect_structured.py  # WCAG / Schema.org / caniuse / OWASP / GOV.UK → pending rows
+python score.py               # Groq-score pending rows (auto-reject below 4)
 ```
 
 `init_db.py` is idempotent. `app.py` exits with a clear message if the DB file is missing.

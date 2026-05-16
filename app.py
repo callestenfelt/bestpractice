@@ -1,4 +1,4 @@
-"""bestpractice — Flask app, Slice A (read surface only)."""
+"""bestpractice — Flask app."""
 from __future__ import annotations
 
 import os
@@ -8,7 +8,10 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import Flask, abort, g, redirect, render_template, request, url_for
+
+load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("BESTPRACTICE_DB", str(ROOT / "data" / "bestpractice.db")))
@@ -551,10 +554,147 @@ def load_queue_view(db: sqlite3.Connection):
     }
 
 
+def load_queue_catalog(db: sqlite3.Connection):
+    """Picker data for the edit-and-approve dialog: every approved
+    consideration (excluding the ingest-inbox placeholder) grouped by
+    parent, plus the canonical phase list."""
+    rows = db.execute(
+        """SELECT c.id, c.title, c.parent_type, c.parent_slug, c.group_label,
+                  COALESCE(pt.label, cmp.label) AS parent_label,
+                  COALESCE(pt.display_order, cmp.display_order, 999) AS parent_order,
+                  c.group_order, c.display_order
+             FROM considerations c
+        LEFT JOIN page_types pt ON c.parent_type='page_type' AND pt.slug=c.parent_slug
+        LEFT JOIN components cmp ON c.parent_type='component' AND cmp.slug=c.parent_slug
+            WHERE c.status='approved' AND c.slug != 'ingest-inbox'
+            ORDER BY c.parent_type, parent_order, c.group_order, c.display_order"""
+    ).fetchall()
+    cons_options = [{
+        "id": r["id"],
+        "label": (f"{r['parent_label']} · {r['group_label']} → {r['title']}"
+                  if r["group_label"] else f"{r['parent_label']} → {r['title']}"),
+    } for r in rows]
+    phases = db.execute(
+        "SELECT slug, label FROM phases ORDER BY display_order"
+    ).fetchall()
+    return cons_options, phases
+
+
 @app.route("/admin/queue")
 def admin_queue():
-    view = load_queue_view(get_db())
+    db = get_db()
+    view = load_queue_view(db)
+    cons_options, all_phases = load_queue_catalog(db)
+    view["cons_options"] = cons_options
+    view["all_phases"] = all_phases
+    view["error"] = request.args.get("error", "").strip()
     return render_template("admin/queue.html", **view)
+
+
+def _sync_fts_row(db: sqlite3.Connection, sub_id: int) -> None:
+    """Re-insert a sub_consideration into subs_fts (rowid keyed). Called
+    after approve/edit_approve so search picks the new copy up. DELETE+
+    INSERT is safe for both first-approve and re-edit."""
+    db.execute("DELETE FROM subs_fts WHERE rowid = ?", (sub_id,))
+    db.execute(
+        """INSERT INTO subs_fts (rowid, one_liner, body, cons_title, cons_intro)
+           SELECT s.id, s.one_liner, s.body, c.title, c.intro
+             FROM sub_considerations s
+             JOIN considerations c ON c.id = s.consideration_id
+            WHERE s.id = ? AND s.status='approved' AND c.status='approved'""",
+        (sub_id,),
+    )
+
+
+def _ensure_pending(db: sqlite3.Connection, sub_id: int) -> sqlite3.Row:
+    row = db.execute(
+        "SELECT id, status FROM sub_considerations WHERE id = ?", (sub_id,)
+    ).fetchone()
+    if not row:
+        abort(404)
+    if row["status"] != "pending":
+        # Idempotent: already-acted-on rows redirect quietly rather than 409ing.
+        return None
+    return row
+
+
+@app.route("/admin/queue/<int:sub_id>/approve", methods=["POST"])
+def admin_queue_approve(sub_id):
+    db = get_db()
+    if _ensure_pending(db, sub_id) is None:
+        return redirect(url_for("admin_queue"))
+    db.execute(
+        "UPDATE sub_considerations SET status='approved', last_updated=? WHERE id=?",
+        (datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"), sub_id),
+    )
+    _sync_fts_row(db, sub_id)
+    db.commit()
+    return redirect(url_for("admin_queue"))
+
+
+@app.route("/admin/queue/<int:sub_id>/reject", methods=["POST"])
+def admin_queue_reject(sub_id):
+    db = get_db()
+    if _ensure_pending(db, sub_id) is None:
+        return redirect(url_for("admin_queue"))
+    db.execute(
+        "UPDATE sub_considerations SET status='rejected', last_updated=? WHERE id=?",
+        (datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"), sub_id),
+    )
+    db.commit()
+    return redirect(url_for("admin_queue"))
+
+
+@app.route("/admin/queue/<int:sub_id>/edit_approve", methods=["POST"])
+def admin_queue_edit_approve(sub_id):
+    db = get_db()
+    if _ensure_pending(db, sub_id) is None:
+        return redirect(url_for("admin_queue"))
+
+    one_liner = (request.form.get("one_liner") or "").strip()
+    body_text = (request.form.get("body") or "").strip()
+    source_url = (request.form.get("source_url") or "").strip()
+    source_date = (request.form.get("source_date") or "").strip() or None
+    cons_id_raw = request.form.get("consideration_id") or ""
+    phase_slugs = request.form.getlist("phase")
+
+    if not one_liner:
+        return redirect(url_for("admin_queue", error="One-liner is required."))
+    try:
+        cons_id = int(cons_id_raw)
+    except ValueError:
+        return redirect(url_for("admin_queue", error="Pick a destination consideration."))
+    cons_row = db.execute(
+        "SELECT id FROM considerations WHERE id = ? AND status='approved' AND slug != 'ingest-inbox'",
+        (cons_id,),
+    ).fetchone()
+    if not cons_row:
+        return redirect(url_for("admin_queue", error="Unknown consideration."))
+
+    valid_phases = {r["slug"] for r in db.execute("SELECT slug FROM phases").fetchall()}
+    phase_slugs = [p for p in phase_slugs if p in valid_phases]
+
+    # Body coming from a plain-text <textarea> — wrap in <p> if non-empty.
+    body_html = f"<p>{body_text}</p>" if body_text else ""
+
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    db.execute(
+        """UPDATE sub_considerations
+              SET consideration_id = ?, one_liner = ?, body = ?,
+                  source_url = ?, source_date = ?, status = 'approved',
+                  last_updated = ?
+            WHERE id = ?""",
+        (cons_id, one_liner[:240], body_html, source_url, source_date, now, sub_id),
+    )
+    db.execute("DELETE FROM sub_consideration_phases WHERE sub_consideration_id = ?", (sub_id,))
+    for pos, slug in enumerate(phase_slugs, start=1):
+        db.execute(
+            "INSERT INTO sub_consideration_phases (sub_consideration_id, phase_slug, position) VALUES (?, ?, ?)",
+            (sub_id, slug, pos),
+        )
+    _sync_fts_row(db, sub_id)
+    db.commit()
+    return redirect(url_for("admin_queue"))
 
 
 @app.route("/admin/sources")

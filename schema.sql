@@ -93,8 +93,13 @@ CREATE TABLE IF NOT EXISTS sources (
   last_collected TEXT,
   item_count     INTEGER NOT NULL DEFAULT 0,
   config_json    TEXT NOT NULL DEFAULT '{}',
-  created_at     TEXT NOT NULL
+  created_at     TEXT NOT NULL,
+  -- RFC 7232 conditional-GET caching for collect.py. NULL until first fetch.
+  etag           TEXT,
+  last_modified  TEXT,
+  last_fetched   TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sources_url ON sources(url);
 
 -- Full-text search over approved sub_considerations + parent consideration
 -- title/intro. rowid = sub_considerations.id. Populated by init_db.py
