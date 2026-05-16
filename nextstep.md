@@ -519,15 +519,22 @@ when `loader` got its own slug.
    `spinner` (verified by `SELECT synonym FROM synonyms WHERE
    entity_slug='spinner'` — no "Loader" row).
 
+### How tested — production (passed 2026-05-16)
+- Deployed via GHA `25958578000`, push `b02b94f`, ~10s.
+- One-time prod seed via
+  `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
+  ran clean: schema applied, taxonomies seeded (idempotent skip on
+  existing fixtures), FTS rows 65. The new upsert logic re-ran on
+  every existing row, syncing labels / definitions / display_order
+  on the prod DB to match the canonical lists.
+- Smoke test via VPS-local curl bypassing Caddy:
+  `ssh root@77.42.40.207 'curl -sI http://localhost:5681/component/loader'`
+  → `HTTP/1.1 200 OK`, Content-Length 13446 (Session 6 empty
+  state). New slug routes are live.
+
 ### Out of scope (parked — Session 9)
-- VPS deploy of this session. Pushing to `main` triggers GHA rsync.
-  **Manual step on the VPS:** `ssh root@77.42.40.207 'cd
-  /opt/bestpractice && python3 init_db.py'` to land the new rows
-  and apply the `seed_taxonomies()` upsert (otherwise prod DB has
-  stale labels and scrambled display_order on rows whose position
-  shifted).
-- Slice C (ingestion + Groq scoring) — still queued, see prior
-  Session 8 pointer below.
+- Slice C (ingestion + Groq scoring) — still queued, see Session 9
+  pointer below.
 - Fixture content for any new slug — all 21 new routes render the
   empty state until fixtures or Slice C ingestion lands.
 - Re-tagging existing article-page sub-considerations with the new
