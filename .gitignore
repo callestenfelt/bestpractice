@@ -20,6 +20,9 @@ instance/
 *.sqlite
 *.sqlite3
 
+# Structured-source snapshots (collect_structured.py diffs against these)
+data/cache/
+
 # Build / cache
 dist/
 build/

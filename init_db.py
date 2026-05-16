@@ -139,14 +139,36 @@ COMPONENTS: list[tuple[str, str, str, list[str], str]] = [
 ]
 
 
-DEFAULT_SOURCES: list[tuple[str, str, str]] = [
-    # (name, type, url). Seeded once via INSERT OR IGNORE keyed on URL;
-    # operator can prune via /admin/sources without these reappearing.
-    ("web.dev",          "rss", "https://web.dev/static/blog/feed.xml"),
-    ("The A11y Project", "rss", "https://www.a11yproject.com/feed/feed.xml"),
-    ("CSS-Tricks",       "rss", "https://css-tricks.com/feed/"),
-    ("Smashing Magazine","rss", "https://www.smashingmagazine.com/feed/"),
-    ("MDN Blog",         "rss", "https://developer.mozilla.org/en-US/blog/rss.xml"),
+DEFAULT_SOURCES: list[tuple[str, str, str, dict]] = [
+    # (name, type, url, config_dict). Seeded once via INSERT OR IGNORE keyed
+    # on URL; operator can prune via /admin/sources without these reappearing.
+    # The v1 RSS roster per PROJECT.md §5.2 — four high-signal primary
+    # sources. CSS-Tricks / Smashing / MDN Blog were the Session 10 first-
+    # cut but moved to §5.4 future; they stay in the DB (paused) for any
+    # already-ingested rows but are not re-seeded on a fresh init_db.
+    ("web.dev",                "rss", "https://web.dev/static/blog/feed.xml", {}),
+    # PROJECT.md §5.2 lists this as /feed.xml; that URL 404s in practice.
+    # /feed/feed.xml is the actually-served canonical Jekyll output.
+    ("The A11y Project",       "rss", "https://www.a11yproject.com/feed/feed.xml", {}),
+    ("Nielsen Norman Group",   "rss", "https://www.nngroup.com/feed/rss/", {}),
+    ("Google Search Central",  "rss", "https://developers.google.com/search/blog/feed.xml", {}),
+
+    # Structured sources per PROJECT.md §5.1. Each carries {"adapter": "<module>"}
+    # under ingestors/. collect_structured.py dispatches by that key.
+    ("W3C WCAG 2.2", "structured",
+     "https://www.w3.org/WAI/WCAG22/wcag.json",
+     {"adapter": "wcag"}),
+    ("Schema.org WebPage", "structured",
+     "https://schema.org/version/latest/schemaorg-current-https.jsonld",
+     {"adapter": "schema_org"}),
+    # caniuse cap of 25 per run absorbs the 554-feature first-fetch flood
+    # across multiple runs; URL dedup means re-runs don't double-ingest.
+    ("caniuse", "structured",
+     "https://raw.githubusercontent.com/Fyrd/caniuse/main/data.json",
+     {"adapter": "caniuse"}),
+    ("OWASP Top 10", "structured",
+     "https://raw.githubusercontent.com/OWASP/Top10/master/2021/docs/en/",
+     {"adapter": "owasp"}),
 ]
 
 # The ingest inbox is a placeholder consideration that pending sub_considerations
@@ -303,16 +325,19 @@ def seed_inbox(conn: sqlite3.Connection) -> int:
 
 
 def seed_sources(conn: sqlite3.Connection) -> int:
-    """Seed default RSS sources keyed on URL. Idempotent. Returns rows added."""
+    """Seed default sources keyed on URL. Idempotent. Returns rows added.
+    config_json is written on first insert and never overwritten — so an
+    operator can edit a source's adapter config via /admin/sources later
+    without it being clobbered on the next re-seed."""
     cur = conn.cursor()
     now = now_iso()
     added = 0
-    for name, type_, url in DEFAULT_SOURCES:
+    for name, type_, url, config in DEFAULT_SOURCES:
         before = cur.execute("SELECT COUNT(*) FROM sources WHERE url=?", (url,)).fetchone()[0]
         cur.execute(
-            """INSERT OR IGNORE INTO sources (name, type, url, status, created_at)
-               VALUES (?, ?, ?, 'active', ?)""",
-            (name, type_, url, now),
+            """INSERT OR IGNORE INTO sources (name, type, url, status, config_json, created_at)
+               VALUES (?, ?, ?, 'active', ?, ?)""",
+            (name, type_, url, json.dumps(config), now),
         )
         if before == 0:
             added += 1
