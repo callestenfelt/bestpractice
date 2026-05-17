@@ -632,6 +632,7 @@ def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
         order = "ORDER BY COALESCE(s.relevance_score, 0) DESC, s.created_at DESC"
     rows = db.execute(
         f"""SELECT s.id, s.slug, s.one_liner, s.body, s.relevance_score,
+                   s.content_kind,
                    s.source_name, s.source_date, s.source_url, s.source_title,
                    c.slug AS cons_slug, c.title AS cons_title,
                    c.parent_type, c.parent_slug, c.group_label
@@ -678,6 +679,7 @@ def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
             "one_liner": r["one_liner"],
             "body": r["body"],
             "score": r["relevance_score"],
+            "content_kind": r["content_kind"],
             "source_name": r["source_name"],
             "source_date": r["source_date"],
             "source_url": r["source_url"],
@@ -759,7 +761,7 @@ def _load_queue_item(db: sqlite3.Connection, sub_id: int):
     row = db.execute(
         """SELECT s.id, s.consideration_id, s.one_liner, s.body,
                   s.source_name, s.source_date, s.source_url, s.source_title,
-                  s.relevance_score, s.status,
+                  s.relevance_score, s.content_kind, s.status,
                   c.title AS cons_title, c.parent_type, c.parent_slug, c.group_label
              FROM sub_considerations s
              JOIN considerations c ON c.id = s.consideration_id
@@ -792,6 +794,7 @@ def _load_queue_item(db: sqlite3.Connection, sub_id: int):
         "source_url": row["source_url"],
         "source_title": row["source_title"],
         "relevance_score": row["relevance_score"],
+        "content_kind": row["content_kind"],
         "status": row["status"],
         "phase_slugs": set(phase_slugs),
         "placement_ids": set(placement_ids),

@@ -48,11 +48,31 @@ MAX_RETRIES = 3
 
 REJECT_THRESHOLD = 4  # PROJECT.md §6.1 starting threshold
 
+# Session 14: kinds the editorial tool actually wants. Anything else auto-rejects
+# regardless of score — a feature-release blog post can be technically strong
+# (score 8) and still not belong here.
+KEEP_KINDS = {"guidance", "reference"}
+VALID_KINDS = KEEP_KINDS | {"news", "discussion", "tutorial", "case-study", "marketing", "other"}
+
 SYSTEM_PROMPT = """You score and route items for "bestpractice", a personal reference tool of web/UX best practices used by one senior product professional. The audience is experienced: a working UX/frontend lead, not a beginner.
 
 Be selective. Most items will be tier 3 (skip). Promote only what is specific, actionable, and grounded in primary sources (specs, WCAG, web platform docs, original research). Penalise marketing, vague opinion, recycled commentary, listicles, and beginner explainers.
 
+Classify each item by kind BEFORE scoring. Only "guidance" and "reference" belong in this tool. A new spec/feature/release is "news", not "guidance", even if technically substantive — the user wants the rule, not the announcement. A tutorial that teaches an existing tool is "tutorial", not "guidance". An opinion or commentary piece is "discussion". When in doubt between "guidance" and "news"/"tutorial"/"discussion", prefer the latter.
+
 For each item, return a JSON object with EXACTLY these fields:
+
+- "kind": one of "guidance", "reference", "news", "discussion", "tutorial",
+  "case-study", "marketing", "other". Items not "guidance" or "reference"
+  will be auto-rejected regardless of score.
+    guidance   = enduring rule, principle, or checklist item
+    reference  = primary-source spec / standard / WCAG SC / API doc
+    news       = announcement, release post, "X is now in Chrome", roadmap
+    discussion = opinion, commentary, "thoughts on…", debate
+    tutorial   = step-by-step walkthrough, "how to set up X"
+    case-study = single-project retrospective
+    marketing  = vendor pitch, product page
+    other      = doesn't fit above
 
 - "score": integer 1-10
     10 = essential primary-source guidance (e.g. a new WCAG SC, a spec milestone)
@@ -84,12 +104,17 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def fetch_pending(conn: sqlite3.Connection, limit: int | None) -> list[sqlite3.Row]:
-    sql = """SELECT id, slug, one_liner, body, source_name, source_url,
-                    source_title, source_date
-               FROM sub_considerations
-              WHERE status='pending' AND relevance_score IS NULL
-              ORDER BY id"""
+def fetch_pending(conn: sqlite3.Connection, limit: int | None, rescore: bool = False) -> list[sqlite3.Row]:
+    # Default mode picks up un-scored pending rows only (normal post-collect run).
+    # --rescore drops the relevance_score filter so the existing pending queue
+    # gets re-classified one-shot; safe to interrupt because each apply_result
+    # commits per row and rejected rows fall out of subsequent pending selects.
+    where = "status='pending'" if rescore else "status='pending' AND relevance_score IS NULL"
+    sql = f"""SELECT id, slug, one_liner, body, source_name, source_url,
+                     source_title, source_date
+                FROM sub_considerations
+               WHERE {where}
+               ORDER BY id"""
     if limit:
         sql += f" LIMIT {int(limit)}"
     return conn.execute(sql).fetchall()
@@ -203,8 +228,14 @@ def validate_result(result: dict, valid_consideration_ids: set[int], valid_phase
     body = (result.get("body") or "").strip()
     # Strip any HTML the model may have leaked despite the instruction.
     body = body.replace("<p>", "").replace("</p>", "")
+    # Default missing/unknown kinds to "other" rather than failing the row —
+    # rejection is reversible; the editor can re-queue from the Rejected bin.
+    kind = (result.get("kind") or "other").strip().lower()
+    if kind not in VALID_KINDS:
+        kind = "other"
     return {
         "score": score,
+        "kind": kind,
         "phases": phases,
         "consideration_id": cons_id,
         "one_liner": one_liner,
@@ -215,24 +246,26 @@ def validate_result(result: dict, valid_consideration_ids: set[int], valid_phase
 def apply_result(conn: sqlite3.Connection, item_id: int, parsed: dict, threshold: int) -> str:
     """Write scoring result. Returns the new status."""
     now = now_iso()
-    new_status = "rejected" if parsed["score"] < threshold else "pending"
+    reject_for_kind = parsed["kind"] not in KEEP_KINDS
+    reject_for_score = parsed["score"] < threshold
+    new_status = "rejected" if (reject_for_kind or reject_for_score) else "pending"
     new_cons_id = parsed["consideration_id"]
     if new_cons_id is None:
         # Leave the row attached to inbox; record the score only.
         conn.execute(
             """UPDATE sub_considerations
-                  SET relevance_score = ?, one_liner = ?, body = ?,
-                      status = ?, last_updated = ?
+                  SET relevance_score = ?, content_kind = ?, one_liner = ?,
+                      body = ?, status = ?, last_updated = ?
                 WHERE id = ?""",
-            (parsed["score"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
+            (parsed["score"], parsed["kind"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
         )
     else:
         conn.execute(
             """UPDATE sub_considerations
-                  SET consideration_id = ?, relevance_score = ?,
+                  SET consideration_id = ?, relevance_score = ?, content_kind = ?,
                       one_liner = ?, body = ?, status = ?, last_updated = ?
                 WHERE id = ?""",
-            (new_cons_id, parsed["score"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
+            (new_cons_id, parsed["score"], parsed["kind"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
         )
 
     conn.execute("DELETE FROM sub_consideration_phases WHERE sub_consideration_id = ?", (item_id,))
@@ -249,6 +282,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="Cap rows scored this run")
     parser.add_argument("--threshold", type=int, default=REJECT_THRESHOLD, help="Auto-reject below this score")
+    parser.add_argument("--rescore", action="store_true",
+        help="Re-score every status='pending' row (ignores existing relevance_score). One-shot cleanup of the current queue.")
     args = parser.parse_args()
 
     if not GROQ_API_KEY:
@@ -262,12 +297,13 @@ def main() -> int:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
 
-    pending = fetch_pending(conn, args.limit)
+    pending = fetch_pending(conn, args.limit, rescore=args.rescore)
     catalog, valid_cons_ids = fetch_consideration_catalog(conn)
     valid_phases = fetch_valid_phases(conn)
 
     print(f"db: {DB_PATH}")
     print(f"model: {GROQ_MODEL}")
+    print(f"mode: {'rescore-all-pending' if args.rescore else 'score-unscored'}")
     print(f"pending to score: {len(pending)}")
     print(f"consideration catalog: {len(catalog)}")
     print(f"reject threshold: < {args.threshold}\n")
@@ -303,7 +339,7 @@ def main() -> int:
             approved += 1
         phases_short = ",".join(parsed["phases"]) or "-"
         cons_short = parsed["consideration_id"] if parsed["consideration_id"] else "inbox"
-        print(f"[{idx}/{len(pending)}] #{item['id']} score={parsed['score']} phases={phases_short} → {cons_short} [{status}]")
+        print(f"[{idx}/{len(pending)}] #{item['id']} score={parsed['score']} kind={parsed['kind']} phases={phases_short} → {cons_short} [{status}]")
 
         time.sleep(DELAY_BETWEEN_CALLS)
 

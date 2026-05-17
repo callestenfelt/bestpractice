@@ -1254,3 +1254,121 @@ Session 12's priority list still stands (MDN BCD adapter, per-source-
 type threshold, considerations editor, sources UX gaps, content-diff,
 cron+backup). These were three UX bug fixes; the editorial loop is
 unchanged.
+
+
+## Session 14 — content-kind classification + auto-reject ✅ shipped 2026-05-17 (`main`)
+
+The Groq scoring pass was producing high-scoring false positives:
+feature-release blog posts ("CSS corner-shape for folded corners" from
+CSS-Tricks scored **8** pre-change) and tutorial/discussion content
+were landing in Pending because the prompt only weighed substance, not
+*kind*. The user wants enduring guidance, not announcements. Added a
+classification step that runs before scoring and auto-rejects anything
+that isn't `guidance` or `reference`, regardless of numeric score.
+
+Also queued the deferred work for a future session: **AI-assisted
+destination selection.** Picking page-types + components + the matching
+consideration on each is the slow part of approval; the user wants
+Groq to propose a draft placement set and have the editor edit
+mistakes rather than build from scratch. Out of scope this session.
+
+### Done
+- [x] **`content_kind` column on `sub_considerations`.** Nullable TEXT,
+      no DB-level CHECK (enum enforced in `score.py` so labels can
+      evolve without a migration). Migrated in `init_db.py:migrate()`
+      via the existing `existing` set + `ALTER TABLE` pattern, plus
+      added to `schema.sql` so fresh DBs get it natively.
+- [x] **Groq prompt classification block.** New "Classify each item by
+      kind BEFORE scoring" section in `SYSTEM_PROMPT`, with explicit
+      reject criteria: a new spec/feature/release is `news` not
+      `guidance` even if technically substantive; a tutorial is
+      `tutorial`; commentary is `discussion`. Also added `"kind"` as a
+      required JSON field with the 8-value enum and per-value
+      definitions. Insertion point is *before* the `"score"` bullet so
+      the model commits to a kind first.
+- [x] **Kind-based auto-reject in `apply_result()`.** Composes with
+      the existing score threshold: `new_status = "rejected" if
+      (reject_for_kind or reject_for_score) else "pending"`. Both
+      UPDATE branches (no-cons-id, with-cons-id) persist
+      `content_kind` alongside the score.
+- [x] **`validate_result()` defaults to `"other"`** when Groq omits or
+      garbles the kind field — rejection is reversible, so it's safer
+      to reject-and-tag than to fail the whole row and leave it
+      unscored. The editor can re-queue from the Rejected bin.
+- [x] **`score.py --rescore` flag.** New CLI option that drops the
+      `relevance_score IS NULL` filter, so the existing pending queue
+      can be re-classified one-shot. Safe to interrupt: each row
+      commits before the next, and rejected rows fall out of
+      subsequent `status='pending'` selects, so a resumed run picks up
+      where it left off. Mode is logged at startup
+      (`mode: rescore-all-pending` vs `score-unscored`); log line per
+      row now includes `kind=` alongside `score=`.
+- [x] **UI: `.chip--kind` badge.** New muted-border small-caps chip
+      modifier in `static/styles/components.css`. Renders on the queue
+      list (`templates/admin/queue.html`) next to the score, and on
+      `/admin/queue/<id>` next to the `N/10` counter
+      (`templates/admin/queue_item.html`). Conditional fires only when
+      `content_kind` is set AND isn't `guidance`/`reference`, so the
+      Pending bin stays uncluttered for the expected case.
+- [x] **`app.py` plumbing.** `load_queue_view()` and `_load_queue_item()`
+      both pull `s.content_kind` into the SELECT and pass it through
+      to the template dict.
+- [x] **Rescore run on the existing queue.** 259 pending items
+      reprocessed (~9 minutes at 2s/item). Outcome:
+      `scored_pending=231 rejected=28 errors=0`. The 28 (well, 30 in
+      total across kinds after a couple of late items) break down as
+      15 discussion + 12 news + 3 tutorial. Item #73 flipped from
+      score=8/pending → score=2/kind=tutorial/rejected, as expected.
+
+### Lessons / decisions worth noting (non-obvious)
+- **The score axis alone wasn't enough.** A technically substantive
+  release post legitimately scores 7–9 on "specific, actionable,
+  primary-source grounded" criteria — the model isn't wrong, the
+  *taxonomy* was wrong. Adding a kind axis separates "is this
+  well-written?" from "does the tool want this kind of content?".
+- **Default malformed kinds to `other` (which rejects), don't fail
+  the row.** Earlier patterns in `validate_result()` return `None,
+  err` and skip the row entirely on bad output, so the next run
+  retries it. For `kind` we'd rather route to the Rejected bin where
+  the editor can see and re-queue, than leave it as silently-unscored
+  pending forever.
+- **The kind enum lives in `score.py`, not the DB CHECK.** Same logic
+  as `status` lives in CHECK *because* it has a fixed three-value
+  contract that read paths depend on; `kind` is editorial taxonomy
+  that may grow (e.g. splitting `news` into `news` vs `release`
+  later). Keeping it out of the DB schema means relabeling doesn't
+  need a migration.
+- **`--rescore` re-processes a row that was just updated if
+  interrupted.** Considered a `last_updated >= rescore_start_ts`
+  guard, decided against it — a few extra Groq calls (cents) is
+  worth more than the complexity. The user can always Ctrl-C and
+  resume; rejected rows automatically drop out.
+- **The chip on `queue_item.html` only fires after re-queue.** New
+  pending items never display it (apply_result rejects non-keep
+  kinds before they land). The chip is there for the unreject path,
+  where `status` flips back to pending but `content_kind` is
+  preserved. Worth ~3 lines of template; useful when present.
+
+### Next-session pointer
+**AI-assisted destination selection** is the headline next item. The
+infra is already partly there — `score.py` writes
+`consideration_id` (one primary placement) and the catalog
+(`fetch_consideration_catalog`) gives Groq the full page-type +
+component list. Extending this to **multiple** placements (the
+`sub_consideration_placements` table that Session 12 introduced)
+needs prompt changes + `apply_result()` writing to the placements
+table not just the primary `consideration_id` column.
+
+Earlier deferred items still apply: MDN BCD adapter, per-source-type
+score threshold, `/admin/considerations/<slug>` editor, `/admin/sources`
+UX polish (error display, config_json editor), content-diff for
+structured sources, cron + daily SQLite backup.
+
+Prod deploy steps for Session 14: GHA will rsync the code; then on the
+VPS:
+```
+ssh root@77.42.40.207
+cd /opt/bestpractice
+python3 init_db.py          # ALTER TABLE adds content_kind
+python3 score.py --rescore  # one-shot reclassification of the live pending queue
+```

@@ -519,6 +519,15 @@ details[open] > summary .chev {
   border-color: var(--gray-8);
   color: var(--gray-12);
 }
+/* AI-classified kind chip. Stronger border + small-caps so it reads as a
+   meta tag rather than a content tag (which uses the default .chip). */
+.chip--kind {
+  border-color: var(--gray-8);
+  color: var(--gray-12);
+  text-transform: lowercase;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}
 
 /* =========================================================
    Buttons

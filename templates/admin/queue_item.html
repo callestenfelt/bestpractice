@@ -25,6 +25,9 @@
       {% if sub.relevance_score %}
         <span class="qitem__score" title="AI relevance score, 1–10">{{ sub.relevance_score }}/10</span>
       {% endif %}
+      {% if sub.content_kind and sub.content_kind not in ('guidance', 'reference') %}
+        <span class="chip chip--kind" title="AI-classified kind">{{ sub.content_kind }}</span>
+      {% endif %}
     </div>
     <div class="qitem__nav">
       {% if prev_id %}

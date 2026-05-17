@@ -1096,6 +1096,10 @@ def migrate(conn: sqlite3.Connection) -> None:
     existing = {row[1] for row in cur.execute("PRAGMA table_info(sub_considerations)").fetchall()}
     if "relevance_score" not in existing:
         cur.execute("ALTER TABLE sub_considerations ADD COLUMN relevance_score INTEGER")
+    # Session 14: AI-classified kind. guidance|reference KEEP; anything else
+    # auto-rejects in score.py. Nullable on legacy rows + non-queue items.
+    if "content_kind" not in existing:
+        cur.execute("ALTER TABLE sub_considerations ADD COLUMN content_kind TEXT")
 
     # Session 9: icon column on page_types and components (Phosphor glyph slug).
     existing_pt = {row[1] for row in cur.execute("PRAGMA table_info(page_types)").fetchall()}

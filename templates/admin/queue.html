@@ -72,6 +72,9 @@
                 {% if item.source_name and item.source_date %}<span class="sub__dot" aria-hidden="true"></span>{% endif %}
                 {% if item.source_date %}<span>{{ item.source_date }}</span>{% endif %}
                 {{ score_dots(item.score) }}
+                {% if item.content_kind and item.content_kind not in ('guidance', 'reference') %}
+                  <span class="chip chip--kind" title="AI-classified kind">{{ item.content_kind }}</span>
+                {% endif %}
               </div>
 
               <p class="qcard__one-liner">{{ item.one_liner }}</p>

@@ -72,6 +72,10 @@ CREATE TABLE IF NOT EXISTS sub_considerations (
   superseded_by    INTEGER REFERENCES sub_considerations(id),
   -- 1-10 from Groq scoring; NULL for items that didn't enter via the queue.
   relevance_score  INTEGER,
+  -- Groq classification: guidance|reference (KEEP) or news|discussion|tutorial|
+  -- case-study|marketing|other (auto-reject). NULL on legacy rows + items that
+  -- didn't enter via the queue. Enum enforced in score.py, not the DB.
+  content_kind     TEXT,
   UNIQUE (consideration_id, slug)
 );
 CREATE INDEX IF NOT EXISTS idx_subs_cons ON sub_considerations(consideration_id);
