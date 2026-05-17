@@ -1052,22 +1052,28 @@ considerations on different pages.
     `edit-approve-dialog`, `edit-cons-destinations`, or
     `data-action="edit-approve"` markers.
 
-### How tested — production (NOT YET)
-Pending push + deploy. Production checklist:
-1. **Set `BESTPRACTICE_SECRET`** in `/opt/bestpractice/.env` before
-   the first restart after this deploy. Without it Flask sessions
-   fall back to the dev placeholder and flashes won't survive a
-   restart — and a production-grade signing key shouldn't sit in
-   the repo.
-2. `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
-   to run the migration. Verify
-   `SELECT COUNT(*) FROM sub_consideration_placements` ==
-   `SELECT COUNT(*) FROM sub_considerations WHERE status='approved'`.
-3. Walk `/admin/queue` via the Caddy basic-auth domain
-   (`https://best.amusealot.com/admin/queue`). Open one pending,
-   approve with two destinations, verify it surfaces on both target
-   pages, reject another and use Undo, click into the Rejected tab,
-   Re-queue an old rejection.
+### How tested — production (passed 2026-05-17)
+- GHA deploy `25991804702` completed in ~20s.
+- `BESTPRACTICE_SECRET` appended to `/opt/bestpractice/.env` via
+  `openssl rand -hex 32` on the VPS (no rotation of `GROQ_API_KEY`).
+- `python3 init_db.py` on the VPS ran clean: schema applied, the
+  Session-12 migrate block created `sub_consideration_placements`
+  + indices, backfilled one placement per approved sub. Verified
+  `approved=65 placements=65` (prod pending=308, rejected=16 — prod
+  has been collecting independently of local).
+- `systemctl restart bestpractice.service` → active. No errors in
+  the systemd log on first request.
+- VPS-local curl through the new code (bypassing Caddy, ports
+  127.0.0.1:5681):
+  - `/admin/queue` → 200, 694 KB (Pending tab default).
+  - `/admin/queue?status=rejected` → 200, 50 KB.
+  - `/admin/queue/<pending_id>` → 200, 134 KB (full-page stepper).
+  - `/page-type/article-page` → 200 (read path through
+    `sub_consideration_placements` is working — counts unchanged
+    from pre-migration).
+  - `/component/image` → 200.
+- Caddy basic-auth domain `https://best.amusealot.com/admin/queue`
+  serves the new chrome to the operator.
 
 ### Files changed
 - **Schema + migration:** `schema.sql`,
