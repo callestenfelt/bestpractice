@@ -1302,6 +1302,16 @@ def seed_site_wide_scaffolds(conn: sqlite3.Connection) -> int:
             (scaffold["slug"], scaffold["title"], scaffold["intro"],
              scaffold["display_order"], now, now),
         )
+        # Without a destination row, the approval picker (which JOINs on
+        # consideration_destinations) skips this consideration. migrate()
+        # backfills it on the next run, but the seeder must own this so
+        # one init_db.py invocation produces a pickable row.
+        cur.execute(
+            """INSERT OR IGNORE INTO consideration_destinations
+                   (consideration_id, dest_kind, dest_slug)
+               VALUES (?, 'page_type', 'site-wide')""",
+            (cur.lastrowid,),
+        )
         added += 1
     conn.commit()
     return added
@@ -1337,6 +1347,12 @@ def seed_scaffolds(conn: sqlite3.Connection) -> int:
                        VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, 'approved', ?, ?)""",
                     (slug, pt, ps, title, group_label, group_slug,
                      g_order, d_order, now, now),
+                )
+                cur.execute(
+                    """INSERT OR IGNORE INTO consideration_destinations
+                           (consideration_id, dest_kind, dest_slug)
+                       VALUES (?, ?, ?)""",
+                    (cur.lastrowid, pt, ps),
                 )
                 added += 1
     conn.commit()
