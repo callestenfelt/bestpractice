@@ -1207,3 +1207,50 @@ content quality. Pick the next slice from this list in priority order:
 - `app.run(debug=False)` in `app.py:613` means the dev server doesn't
   auto-reload on edits. Trip-hazard for any future write-path
   session — consider `debug=os.environ.get('FLASK_DEBUG') == '1'`.
+
+---
+
+## Session 13 — queue/admin chrome polish ✅ shipped 2026-05-17 (`main`)
+
+Three small UI fixes after Session 12 went live. No data-model or
+write-path changes; CSS + one JS selector.
+
+### Done
+- [x] **Sticky scrollable Placements panel.** On `/admin/queue/<id>`
+      the right column scrolled with the page, so once you reached the
+      destination you wanted the one-liner/body/source were off-screen.
+      `.qitem__side` is now `position: sticky; top: var(--header-height);
+      max-height: calc(100vh - var(--header-height) - var(--space-4));
+      overflow-y: auto` with a mobile override that reverts it to
+      static. (`static/styles/components.css`)
+- [x] **Empty filters-scrim on mobile.** On any page without a filters
+      drawer (e.g. `/admin/queue`), narrow viewports got an overlay
+      covering the screen because `[data-filters-open="true"]` is the
+      default in `base.html` and the scrim CSS didn't check whether a
+      rail actually exists. Gated the rule with
+      `:has(.filters-rail)`. (`static/styles/sidebar.css`)
+- [x] **Sidebar "Review queue" count blanked on /admin/queue.**
+      `updateFiltersBadge()` in `sidebar.js` did
+      `querySelector('.topbar__toggle-count')`. On pages without a
+      filters toggle in the topbar that selector matches the sidebar
+      footer's Review queue badge first — which then got hidden /
+      `textContent=""` on every render. Scoped to
+      `.topbar .topbar__toggle-count`. (`static/js/sidebar.js`)
+
+### Lessons / decisions worth noting (non-obvious)
+- **Global `[data-state]` defaults need a "does this even apply?"
+  gate.** `data-filters-open="true"` is hardcoded on every page, but
+  only routes that override `{% block filters_rail %}` actually render
+  one. CSS rules keyed on `[data-state="…"]` should pair with a
+  structural check (`:has(.thing)`) when the state attribute is
+  page-wide but the thing it describes is per-route.
+- **`querySelector` without a scope is a footgun for shared class
+  names.** `.topbar__toggle-count` lives in two distinct contexts
+  (topbar filters toggle, sidebar footer counts). Reuse of the badge
+  styling is fine; reuse of the unscoped selector is not.
+
+### Next-session pointer
+Session 12's priority list still stands (MDN BCD adapter, per-source-
+type threshold, considerations editor, sources UX gaps, content-diff,
+cron+backup). These were three UX bug fixes; the editorial loop is
+unchanged.

@@ -25,7 +25,9 @@ Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Ca
 
 **Consideration scaffolds expanded (2026-05-17).** Empty consideration containers now exist for all 21 page-types and 20 components (image + 19 first-wave: button/card/cookie-banner/file-upload/footer/form/header/hero/input-field/link/modal/navigation/pagination/search/table/tabs/toast/tooltip/video) so the approval `<select>` is never empty on common destinations. Source: `SCAFFOLDS` list in `init_db.py`, seeded via `seed_scaffolds()` (idempotent — never overwrites existing titles, so editor-side renames survive a re-seed). The remaining 43 components stay uncovered; the inline "+ new consideration here" handles long-tail. See `docs/CONSIDERATION_SCAFFOLDS.md`. Prod needs a manual `python3 init_db.py` post-deploy to pick up the 396 new rows + drop the stray `inline-test-...` cleanup row.
 
-Sidebar footer now shows live counts: pending queue items + active sources, rendered with the existing `topbar__toggle-count` badge. Injected via `_inject_nav` in `app.py` (`nav_queue_count`, `nav_sources_count`).
+Sidebar footer now shows live counts: pending queue items + active sources, rendered with the existing `topbar__toggle-count` badge. Injected via `_inject_nav` in `app.py` (`nav_queue_count`, `nav_sources_count`). `sidebar.js`'s filters-badge selector is scoped to `.topbar .topbar__toggle-count` so it doesn't blank the sidebar counts on routes without a topbar filters toggle.
+
+**Session 13 chrome polish (2026-05-17).** The Placements column on `/admin/queue/<id>` is `position: sticky` and independently scrollable so the one-liner/body/source/phases stay in view while picking destinations. The mobile `filters-scrim` rule is gated with `:has(.filters-rail)` so admin pages without a filters drawer don't get an empty overlay covering the screen.
 
 Still pending: `/admin/considerations/<slug>` editor, MDN browser-compat-data adapter, per-source-type score threshold, `/admin/sources` UX polish (error display, config_json editor), content-diff for structured sources, cron + daily SQLite backup. See `nextstep.md` Session 13 pointer.
 
