@@ -85,8 +85,11 @@ For each item, return a JSON object with EXACTLY these fields:
     4-6 = relevant but secondary or partial
     1-3 = off-topic, fluff, marketing, or beginner content (will be auto-rejected)
 
-- "phases": array of 0+ phase slugs from this list (zero is valid and means
-  "applies to all phases"; do not invent slugs):
+- "phases": array of 1-3 phase slugs from this list — pick the disciplines
+  where someone working on this item would actually do the work. Empty
+  array is reserved for the rare item that genuinely cuts across every
+  phase equally (e.g. a foundational principle); most items have a
+  primary discipline angle, so prefer 1-2 over zero. Do not invent slugs.
   strategy, concept, ux, design, frontend, backend, content, seo,
   measurement, maintenance, legal
 
