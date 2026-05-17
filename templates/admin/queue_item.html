@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% from "admin/_flash.html" import render_flashes %}
+{% block title %}Approve: {{ sub.one_liner[:60] }} · bestpractice{% endblock %}
+
+{% block content %}
+{# Flashes render OUTSIDE the approve form. The "Undo" flash contains its
+   own <form>, and nested forms are invalid HTML — the parser drops the
+   inner <form> tag, which would re-route the Undo submit through the
+   outer approve form. #}
+{{ render_flashes() }}
+
+<form method="post" action="{{ url_for('admin_queue_approve', sub_id=sub.id) }}"
+      id="approve-form" class="qitem"
+      data-reject-action="{{ url_for('admin_queue_reject', sub_id=sub.id) }}"
+      data-new-cons-action="{{ url_for('admin_considerations_new') }}">
+
+  <header class="qitem__header">
+    <nav class="qitem__crumbs">
+      <a href="{{ url_for('admin_queue') }}">← Queue</a>
+      {% if sub.source_name %}<span class="qitem__crumb-sep">·</span><span>{{ sub.source_name }}</span>{% endif %}
+      {% if sub.source_date %}<span class="qitem__crumb-sep">·</span><span>{{ sub.source_date }}</span>{% endif %}
+    </nav>
+    <div class="qitem__counter">
+      <strong>{{ pos_index }}</strong> of {{ pos_total }}
+      {% if sub.relevance_score %}
+        <span class="qitem__score" title="AI relevance score, 1–10">{{ sub.relevance_score }}/10</span>
+      {% endif %}
+    </div>
+    <div class="qitem__nav">
+      {% if prev_id %}
+        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=prev_id) }}">← Prev</a>
+      {% else %}
+        <span class="btn btn--quiet btn--sm" aria-disabled="true">← Prev</span>
+      {% endif %}
+      {% if next_id %}
+        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=next_id) }}">Next →</a>
+      {% else %}
+        <span class="btn btn--quiet btn--sm" aria-disabled="true">Next →</span>
+      {% endif %}
+    </div>
+  </header>
+
+  {% if error %}<div class="queue-error" role="alert">{{ error }}</div>{% endif %}
+
+  <div class="qitem__body">
+
+    <section class="qitem__main">
+      <div class="qitem__field">
+        <label for="qi-one-liner">One-liner <span class="qitem__hint">(≤ 240 chars, terse)</span></label>
+        <input id="qi-one-liner" name="one_liner" type="text" maxlength="240" required value="{{ sub.one_liner }}">
+      </div>
+
+      <div class="qitem__field">
+        <label for="qi-body">Body <span class="qitem__hint">(plain text — server wraps in &lt;p&gt;)</span></label>
+        <textarea id="qi-body" name="body" rows="10">{{ sub.body_plain }}</textarea>
+      </div>
+
+      <div class="qitem__row">
+        <div class="qitem__field">
+          <label for="qi-source-url">Source URL</label>
+          <input id="qi-source-url" name="source_url" type="url" value="{{ sub.source_url }}">
+        </div>
+        <div class="qitem__field">
+          <label for="qi-source-date">Source date</label>
+          <input id="qi-source-date" name="source_date" type="date" value="{{ sub.source_date or '' }}">
+        </div>
+      </div>
+
+      {% if sub.source_url %}
+        <div class="qitem__source-link">
+          <a href="{{ sub.source_url }}" target="_blank" rel="noopener noreferrer">View source ↗</a>
+        </div>
+      {% endif %}
+
+      <fieldset class="qitem__phases">
+        <legend>Phases <span class="qitem__hint">(zero = applies to all)</span></legend>
+        {% for ph in phases %}
+          <label class="qitem__phase">
+            <input type="checkbox" name="phase" value="{{ ph.slug }}"
+                   {% if ph.slug in sub.phase_slugs %}checked{% endif %}>
+            <span>{{ ph.label }}</span>
+          </label>
+        {% endfor %}
+      </fieldset>
+    </section>
+
+    <aside class="qitem__side">
+      <h3 class="qitem__side-title">Placements</h3>
+      <p class="qitem__hint">Check a destination, then pick where on that page/component it should show.</p>
+
+      {% macro dest_group(kind, heading, items) %}
+        <h4 class="qitem__dest-heading">{{ heading }}</h4>
+        <div class="qitem__dest-group">
+          {% for it in items %}
+            {% set key = kind ~ ':' ~ it.slug %}
+            {% set checked = key in sub.dest_keys %}
+            {% set groups = cons_by_dest_key.get(key, []) %}
+            <details class="qitem__dest" {% if checked %}open{% endif %} data-dest-key="{{ key }}">
+              <summary class="qitem__dest-summary">
+                <label class="qitem__dest-check">
+                  <input type="checkbox" name="dest_key" value="{{ key }}"
+                         {% if checked %}checked{% endif %}
+                         data-kind="{{ kind }}" data-slug="{{ it.slug }}">
+                  <span>{{ it.label }}</span>
+                </label>
+              </summary>
+              <div class="qitem__dest-body">
+                <label class="qitem__hint" for="qi-cons-{{ kind }}-{{ it.slug }}">Consideration on this {{ kind|replace('_', ' ') }}:</label>
+                <select id="qi-cons-{{ kind }}-{{ it.slug }}"
+                        name="placement_cons_id__{{ kind }}__{{ it.slug }}"
+                        {% if not checked %}disabled{% endif %}>
+                  <option value="">— pick —</option>
+                  {% for grp in groups %}
+                    <optgroup label="{{ grp.group_label or '(no group)' }}">
+                      {% for c in grp.options %}
+                        <option value="{{ c.id }}"
+                                {% if c.id in sub.placement_ids %}selected{% endif %}>{{ c.title }}</option>
+                      {% endfor %}
+                    </optgroup>
+                  {% endfor %}
+                </select>
+                <button type="button" class="btn btn--quiet btn--sm qitem__new-cons"
+                        data-action="new-cons"
+                        data-kind="{{ kind }}" data-slug="{{ it.slug }}">
+                  + new consideration here
+                </button>
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      {% endmacro %}
+
+      {{ dest_group('page_type', 'Page types', dest_palette.page_types) }}
+      {{ dest_group('component', 'Components', dest_palette.components) }}
+    </aside>
+
+  </div>
+
+  <footer class="qitem__footer">
+    <button type="button" class="btn btn--danger" data-action="reject">Reject</button>
+    <button type="submit" class="btn btn--primary" data-action="approve">Approve &amp; Next</button>
+  </footer>
+</form>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ asset('js/queue_item.js') }}" defer></script>
+{% endblock %}

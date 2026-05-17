@@ -84,6 +84,22 @@ CREATE TABLE IF NOT EXISTS sub_consideration_phases (
 );
 CREATE INDEX IF NOT EXISTS idx_scp_phase ON sub_consideration_phases(phase_slug);
 
+-- A sub-consideration can be placed under multiple considerations on
+-- different page-types / components. Each row = one cons-umbrella the
+-- sub lives under. Which page-types/components surface the sub is still
+-- derived through consideration_destinations on each cons.
+-- sub_considerations.consideration_id stays as the "primary placement"
+-- (mirrored from position=0) so FTS joins and pending-row routing don't
+-- have to change.
+CREATE TABLE IF NOT EXISTS sub_consideration_placements (
+  sub_id            INTEGER NOT NULL REFERENCES sub_considerations(id) ON DELETE CASCADE,
+  consideration_id  INTEGER NOT NULL REFERENCES considerations(id)     ON DELETE CASCADE,
+  position          INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (sub_id, consideration_id)
+);
+CREATE INDEX IF NOT EXISTS idx_sub_placements_cons ON sub_consideration_placements(consideration_id);
+CREATE INDEX IF NOT EXISTS idx_sub_placements_sub  ON sub_consideration_placements(sub_id);
+
 -- Page-type categories — virtual umbrellas that group several page_types.
 -- A consideration can be attached to a category (via consideration_destinations
 -- with dest_kind='category'); the read view expands the membership at query

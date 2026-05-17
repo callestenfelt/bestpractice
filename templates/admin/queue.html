@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "admin/_flash.html" import render_flashes %}
 {% block title %}Review queue · bestpractice{% endblock %}
 
 {% macro score_dots(score) -%}
@@ -15,19 +16,29 @@
       <h1 class="page-heading__title">Review queue</h1>
       <p class="page-heading__definition">
         AI-suggested sub-accordions waiting for editorial approval. Nothing here is visible to readers
-        until you approve it.
+        until you approve it. Click any row to open the full-page reviewer.
       </p>
     </div>
 
-    {% if error %}
-      <div class="queue-error" role="alert">{{ error }}</div>
-    {% endif %}
+    {{ render_flashes() }}
+    {% if error %}<div class="queue-error" role="alert">{{ error }}</div>{% endif %}
+
+    <nav class="queue-tabs" aria-label="Queue status">
+      <a class="queue-tab {% if status == 'pending' %}queue-tab--active{% endif %}"
+         href="{{ url_for('admin_queue') }}"
+         {% if status == 'pending' %}aria-current="page"{% endif %}>
+        Pending <span class="queue-tab__count">{{ pending_count }}</span>
+      </a>
+      <a class="queue-tab {% if status == 'rejected' %}queue-tab--active{% endif %}"
+         href="{{ url_for('admin_queue', status='rejected') }}"
+         {% if status == 'rejected' %}aria-current="page"{% endif %}>
+        Rejected <span class="queue-tab__count">{{ rejected_count }}</span>
+      </a>
+    </nav>
 
     <div class="queue-toolbar">
       <div class="queue-toolbar__count">
-        <strong>{{ pending_count }}</strong> pending ·
-        <strong>{{ approved_week }}</strong> approved this week ·
-        <strong>{{ rejected_count }}</strong> rejected
+        <strong>{{ approved_week }}</strong> approved this week
       </div>
       <div class="queue-toolbar__actions">
         <span class="btn btn--quiet btn--sm" aria-disabled="true">Last sync: {{ last_sync }}</span>
@@ -36,23 +47,26 @@
 
     {% if not items %}
       <div class="empty">
-        <div class="empty__title">No pending items.</div>
-        <p class="empty__body">
-          Ingestion and Groq scoring will create pending rows here for editorial approval.
-          Configure feeds in <a href="{{ url_for('admin_sources') }}">Sources</a> once the ingestion pipeline lands.
-        </p>
+        {% if status == 'rejected' %}
+          <div class="empty__title">No rejected items.</div>
+          <p class="empty__body">Rejected items show up here so you can re-queue them if you change your mind.</p>
+        {% else %}
+          <div class="empty__title">No pending items.</div>
+          <p class="empty__body">
+            Ingestion and Groq scoring will create pending rows here for editorial approval.
+            Configure feeds in <a href="{{ url_for('admin_sources') }}">Sources</a>.
+          </p>
+        {% endif %}
       </div>
     {% else %}
       <div class="queue-list">
         {% for item in items %}
-          <article class="qcard"
-                   data-sub-id="{{ item.id }}"
-                   data-one-liner="{{ item.one_liner }}"
-                   data-body="{{ item.body }}"
-                   data-source-url="{{ item.source_url }}"
-                   data-source-date="{{ item.source_date or '' }}"
-                   data-phases="{{ item.phases|join(' ') }}">
-            <div class="qcard__main">
+          <article class="qcard">
+            {% if status == 'pending' %}
+              <a class="qcard__main qcard__link" href="{{ url_for('admin_queue_item', sub_id=item.id) }}">
+            {% else %}
+              <div class="qcard__main">
+            {% endif %}
               <div class="qcard__source">
                 {% if item.source_name %}<strong>{{ item.source_name }}</strong>{% endif %}
                 {% if item.source_name and item.source_date %}<span class="sub__dot" aria-hidden="true"></span>{% endif %}
@@ -79,125 +93,26 @@
                   {{ item.body|safe }}
                 </div>
               {% endif %}
-
-              {% if item.source_url %}
-                <div class="qcard__source-link">
-                  <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">View source ↗</a>
-                </div>
-              {% endif %}
-            </div>
+            {% if status == 'pending' %}</a>{% else %}</div>{% endif %}
 
             <aside class="qcard__aside" aria-label="Actions">
-              <form method="post" action="{{ url_for('admin_queue_approve', sub_id=item.id) }}">
-                <button type="submit" class="btn btn--primary qcard__btn">Approve</button>
-              </form>
-              <button type="button" class="btn qcard__btn" data-action="edit-approve" data-sub-id="{{ item.id }}">
-                Edit &amp; approve
-              </button>
-              <form method="post" action="{{ url_for('admin_queue_reject', sub_id=item.id) }}">
-                <button type="submit" class="btn btn--danger btn--sm qcard__btn">Reject</button>
-              </form>
+              {% if status == 'pending' %}
+                <a class="btn btn--primary qcard__btn" href="{{ url_for('admin_queue_item', sub_id=item.id) }}">Open</a>
+                <form method="post" action="{{ url_for('admin_queue_reject', sub_id=item.id) }}">
+                  <button type="submit" class="btn btn--danger btn--sm qcard__btn">Reject</button>
+                </form>
+              {% else %}
+                <form method="post" action="{{ url_for('admin_queue_unreject', sub_id=item.id) }}">
+                  <button type="submit" class="btn btn--primary qcard__btn">Re-queue</button>
+                </form>
+              {% endif %}
+              {% if item.source_url %}
+                <a class="btn btn--quiet btn--sm qcard__btn"
+                   href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">Source ↗</a>
+              {% endif %}
             </aside>
           </article>
         {% endfor %}
       </div>
     {% endif %}
-
-    <dialog id="edit-approve-dialog" class="edit-dialog" aria-label="Edit and approve">
-      <form method="post" id="edit-approve-form">
-        <header class="edit-dialog__header">
-          <h2>Edit &amp; approve</h2>
-          <button type="button" class="btn btn--quiet btn--sm" data-action="dialog-close" aria-label="Close">✕</button>
-        </header>
-
-        <div class="edit-dialog__field">
-          <label for="edit-one-liner">One-liner <span class="edit-dialog__hint">(≤ 240 chars, terse)</span></label>
-          <input type="text" id="edit-one-liner" name="one_liner" maxlength="240" required>
-        </div>
-
-        <div class="edit-dialog__field">
-          <label for="edit-body">Body <span class="edit-dialog__hint">(plain text — server wraps in &lt;p&gt;)</span></label>
-          <textarea id="edit-body" name="body" rows="6"></textarea>
-        </div>
-
-        <div class="edit-dialog__row">
-          <div class="edit-dialog__field">
-            <label for="edit-source-url">Source URL</label>
-            <input type="url" id="edit-source-url" name="source_url">
-          </div>
-          <div class="edit-dialog__field">
-            <label for="edit-source-date">Source date</label>
-            <input type="date" id="edit-source-date" name="source_date">
-          </div>
-        </div>
-
-        <div class="edit-dialog__field">
-          <label for="edit-cons-id">Destination consideration</label>
-          <select id="edit-cons-id" name="consideration_id" required>
-            <option value="">— pick one —</option>
-            {% for opt in cons_options %}
-              <option value="{{ opt.id }}">{{ opt.label }}</option>
-            {% endfor %}
-          </select>
-          <span class="edit-dialog__hint">The umbrella this item belongs under. Where it appears (page-types, components, categories) is set below.</span>
-        </div>
-
-        <fieldset class="edit-dialog__destinations" id="edit-destinations" hidden>
-          <legend>Where should this consideration appear? <span class="edit-dialog__hint">(checked rows = current; uncheck to remove)</span></legend>
-
-          <div class="edit-dialog__dest-group">
-            <h4>Categories</h4>
-            {% for cat in dest_palette.categories %}
-              <label class="edit-dialog__dest">
-                <input type="checkbox" name="dest_category" value="{{ cat.slug }}" data-dest="category:{{ cat.slug }}">
-                <span>{{ cat.label }}</span>
-              </label>
-            {% endfor %}
-          </div>
-
-          <div class="edit-dialog__dest-group">
-            <h4>Page types</h4>
-            {% for pt in dest_palette.page_types %}
-              <label class="edit-dialog__dest">
-                <input type="checkbox" name="dest_page_type" value="{{ pt.slug }}" data-dest="page_type:{{ pt.slug }}">
-                <span>{{ pt.label }}</span>
-              </label>
-            {% endfor %}
-          </div>
-
-          <div class="edit-dialog__dest-group">
-            <h4>Components</h4>
-            {% for cmp in dest_palette.components %}
-              <label class="edit-dialog__dest">
-                <input type="checkbox" name="dest_component" value="{{ cmp.slug }}" data-dest="component:{{ cmp.slug }}">
-                <span>{{ cmp.label }}</span>
-              </label>
-            {% endfor %}
-          </div>
-        </fieldset>
-
-        <fieldset class="edit-dialog__phases">
-          <legend>Phases <span class="edit-dialog__hint">(zero = applies to all)</span></legend>
-          {% for phase in all_phases %}
-            <label class="edit-dialog__phase">
-              <input type="checkbox" name="phase" value="{{ phase.slug }}">
-              <span>{{ phase.label }}</span>
-            </label>
-          {% endfor %}
-        </fieldset>
-
-        {# Per-consideration current destinations, consumed by queue.js #}
-        <script type="application/json" id="edit-cons-destinations">{{ cons_destinations | tojson }}</script>
-
-        <footer class="edit-dialog__footer">
-          <button type="button" class="btn" data-action="dialog-close">Cancel</button>
-          <button type="submit" class="btn btn--primary">Save &amp; approve</button>
-        </footer>
-      </form>
-    </dialog>
-{% endblock %}
-
-{% block scripts %}
-  {{ super() }}
-  <script src="{{ asset('js/queue.js') }}" defer></script>
 {% endblock %}

@@ -24,6 +24,9 @@ instance/
 # Structured-source snapshots (collect_structured.py diffs against these)
 data/cache/
 
+# Dev-server stdout/stderr logs
+*_run.log
+
 # Build / cache
 dist/
 build/

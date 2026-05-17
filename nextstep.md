@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-16 (Session 11 — Slice C+D: source-roster refit + structured-source pipeline + 4 adapters)
+Last updated: 2026-05-17 (Session 12 — full-page approval stepper + sub-level placements + rejected bin)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -898,7 +898,273 @@ prod box is still on Session 9 chrome. Merge plan:
    log rotation (parked since Session 2; now critical given the DB
    mutates on every run).
 
-### Parked feature ideas (potential Slice E+)
+---
+
+## Session 12 — full-page approval stepper + sub-level placements + rejected bin ✅ shipped 2026-05-17 (`main`)
+
+User asked to rethink the approval flow. The inline `<dialog>` on
+`/admin/queue` made high-volume review awkward: one item at a time,
+dropdown picker for a single destination, no keyboard fast-path, and the
+"edit & approve" form had to be reopened from scratch after every action.
+Also: a sub-consideration was pinned to one consideration, so guidance
+that genuinely applied across page-types had to be either tagged at the
+consideration level (clumsy) or duplicated.
+
+The rebuild lands a full-page stepper at `/admin/queue/<id>` with
+prev/next, Enter-to-approve, and per-destination consideration pickers.
+Underneath, a new join table lets a sub appear under different
+considerations on different pages.
+
+### Done
+- [x] **`sub_consideration_placements(sub_id, consideration_id, position)`
+      table.** Composite PK; mirrors the shape of
+      `sub_consideration_phases`. `init_db.py:migrate()` creates the
+      table + indices and backfills one placement per approved sub
+      (`position=0` mirroring its current `consideration_id`). Pending
+      rows get placements only at approval time.
+      `sub_considerations.consideration_id` stays NOT NULL as the
+      "primary placement" — `_sync_fts_row` still joins on it for
+      `cons_title` / `cons_intro`, and ingest writes still need a
+      home (typically `ingest-inbox`).
+- [x] **Read-path swap.** `load_parent_view` (app.py) no longer joins
+      `sub_considerations.consideration_id` directly. The sub-fetch
+      block joins `sub_consideration_placements` and groups by
+      `p.consideration_id` — semantics preserved, multi-destination
+      surfaces naturally. Verified: `/page-type/article-page` 60 subs,
+      `/page-type/site-wide` 5, `/component/image` 8 — identical to
+      pre-change counts.
+- [x] **`GET /admin/queue/<int:sub_id>`.** Renders
+      `templates/admin/queue_item.html`: header strip (breadcrumb,
+      source, "X of Y" counter, relevance score chip, Prev/Next), two
+      columns (left: one-liner + body + source + phases; right: Page
+      types + Components destinations, each a `<details>` whose
+      `<summary>` checkbox expands a `<select>` of considerations on
+      that destination, grouped by `group_label`). Already-actioned ids
+      flash "Already actioned." and 302 to `/admin/queue`.
+- [x] **`POST /admin/queue/<id>/approve` (rewritten).** Accepts the
+      full edit form; parses `dest_key` + the matching
+      `placement_cons_id__{kind}__{slug}` selects; requires ≥1 valid
+      placement (validation re-render preserves form state, no DB
+      write). Writes `sub_considerations` (one_liner, body, source,
+      status='approved', `consideration_id` = first placement),
+      replaces phases (DELETE+INSERT), replaces placements
+      (DELETE+INSERT with `position` from form order), `_sync_fts_row`,
+      auto-advances to next pending or `/admin/queue` if empty.
+      No longer mutates `consideration_destinations` as a side effect.
+- [x] **`POST /admin/queue/<id>/reject` (auto-advance).** Status →
+      `rejected`. Flashes `f"{sub_id}|{one_liner}"` with category
+      `undo-reject`; the next page renders that as a yellow strip
+      with an Undo button.
+- [x] **`POST /admin/queue/<id>/unreject` (new).** Flips
+      `rejected` → `pending`, flashes "Restored to pending.",
+      redirects to `/admin/queue/<id>`. Powers both the Undo flash
+      and the Re-queue button on the Rejected bin.
+- [x] **Rejected bin.** `/admin/queue?status=rejected` renders the
+      rejected list ordered by `last_updated DESC`. Tabs at the top
+      switch between Pending / Rejected with counters. Each rejected
+      card has a Re-queue button (POST `.../unreject`). `Save edits
+      without status change` was tried, removed after it caused
+      confusion — operators kept thinking saved-but-not-approved was
+      a commit and worrying it couldn't be undone.
+- [x] **`POST /admin/considerations/new` (JSON).** Inline-create a
+      consideration on a page-type / component. Slug from kebab-case
+      of title, with `-2`, `-3`, … suffixes on collision. Reuses or
+      appends to the picked `group_label`. Inserts the matching
+      `consideration_destinations` row so the read path picks it up
+      immediately. Returns `{ok, id, label}` for JS to append a
+      selected `<option>` to the active picker.
+- [x] **`static/js/queue_item.js`.** ~75 lines: Enter on a non-textarea
+      input fires Approve+Next; `dest_key` checkbox change toggles
+      the row's `<details open>` and the select's disabled state;
+      `[data-action]` delegation handles Reject (confirm + submit to
+      `data-reject-action`) and new-cons (`prompt()` + `fetch()` +
+      append `<option>`). Deleted the older `static/js/queue.js` —
+      its dialog markup no longer renders.
+- [x] **Categories dropped from approval UI.** Schema
+      (`page_type_categories`, `consideration_destinations dest_kind=category`)
+      + the read-path expansion via `page_type_in_category` still
+      work; the new approval flow only exposes Page types +
+      Components because the "checkbox expands to pick a consideration"
+      idiom doesn't map onto a multi-page umbrella, and prod had
+      zero category-destination rows anyway.
+- [x] **Nested-form Undo bug.** First pass put the Undo `<form>`
+      inside the approve `<form>` (rendered by the `_flash.html`
+      macro from inside the form body). HTML5 parser drops the inner
+      `<form>` start tag, which made the Undo button submit the outer
+      approve form with whatever was in the page — producing a false
+      "One-liner is required" on any unedited next-pending item.
+      Fixed by moving `{{ render_flashes() }}` ABOVE the `<form>`
+      open in `queue_item.html`. Also removed the Save button +
+      `/save` route + JS handler that confused operators about
+      "what does Save actually do" (answer: persist edits, stay
+      pending — but that fact wasn't legible from the button).
+- [x] **`query_db.py` helper.** Single-file SQLite query script with
+      a built-in refusal for mutating SQL (UPDATE/INSERT/DELETE/DROP/
+      ALTER/REPLACE/PRAGMA…=). Bypass with `--write`. Replaces the
+      transcript-littered `python -c "import sqlite3; …"` idiom and
+      is safe to allowlist (`Bash(python query_db.py *)`) without
+      granting arbitrary code execution.
+- [x] **`.claude/settings.json` (project-shared).** Allowlists this
+      project's intended Python invocations (`python app.py *`,
+      `python init_db.py *`, `python collect.py *`,
+      `python collect_structured.py *`, `python score.py *`,
+      `python query_db.py *`, `sqlite3 *`), the three read-only
+      Playwright MCP tools, and sets
+      `permissions.defaultMode: "acceptEdits"`. `.gitignore` already
+      blocks `.claude/settings.local.json` so per-machine prefs stay
+      local.
+- [x] **`app.secret_key`.** Pulled from `BESTPRACTICE_SECRET` env
+      var with a `"dev-only-not-secret"` fallback. Required for
+      Flask flashes (used by the Undo flow and "Already actioned"
+      redirect). Production must set the env var.
+
+### How tested — local (passed 2026-05-17)
+1. `python init_db.py` on the existing DB succeeds; backfill yields
+   73 placements (= 73 approved subs). Re-running is a no-op.
+2. `/page-type/article-page` (60 subs), `/page-type/site-wide` (5),
+   `/component/image` (8) — counts identical to pre-Session-12.
+3. `/admin/queue` lists pending with two tabs (Pending 264 /
+   Rejected 175). Card click → `/admin/queue/<id>`.
+4. `/admin/queue/<pending_id>` GET renders the stepper. Prev disabled
+   at top of queue; Next link present; counter "1 of 264".
+5. POST `/approve` with two placements (article-page + component/image)
+   succeeds; the approved sub appears under both `/page-type/article-page`
+   and `/component/image` in the read view (via `sub_consideration_placements`).
+6. POST `/approve` with zero placements re-renders 400 with
+   "Pick at least one destination and a consideration on it." — no
+   DB write.
+7. POST `/reject` 302s to the next pending; the next page shows a
+   yellow `queue-flash--undo` strip outside the approve form with a
+   working Undo button. Clicking Undo POSTs `/unreject`, flips status
+   back to `pending`, redirects to the un-rejected item.
+8. `/admin/queue?status=rejected` shows 175 rows with Re-queue
+   buttons. Clicking Re-queue → status=`pending`, lands on the
+   stepper for that id.
+9. POST `/admin/considerations/new` returns
+   `{"ok":true,"id":…,"label":"Group → Title"}` and writes the
+   `consideration_destinations` row so the new cons surfaces on its
+   parent's read view immediately.
+10. GET `/admin/queue/<approved_id>` flashes "Already actioned." and
+    302s to `/admin/queue`. GET `/admin/queue/9999999` → 404.
+11. `/search?q=heading` still returns FTS hits (FTS row keying is
+    untouched; placements don't affect indexing).
+12. `static/js/queue.js` deleted; `templates/admin/queue.html` has no
+    `edit-approve-dialog`, `edit-cons-destinations`, or
+    `data-action="edit-approve"` markers.
+
+### How tested — production (NOT YET)
+Pending push + deploy. Production checklist:
+1. **Set `BESTPRACTICE_SECRET`** in `/opt/bestpractice/.env` before
+   the first restart after this deploy. Without it Flask sessions
+   fall back to the dev placeholder and flashes won't survive a
+   restart — and a production-grade signing key shouldn't sit in
+   the repo.
+2. `ssh root@77.42.40.207 'cd /opt/bestpractice && python3 init_db.py'`
+   to run the migration. Verify
+   `SELECT COUNT(*) FROM sub_consideration_placements` ==
+   `SELECT COUNT(*) FROM sub_considerations WHERE status='approved'`.
+3. Walk `/admin/queue` via the Caddy basic-auth domain
+   (`https://best.amusealot.com/admin/queue`). Open one pending,
+   approve with two destinations, verify it surfaces on both target
+   pages, reject another and use Undo, click into the Rejected tab,
+   Re-queue an old rejection.
+
+### Files changed
+- **Schema + migration:** `schema.sql`,
+  `init_db.py:migrate()`.
+- **Routes + helpers:** `app.py` — added
+  `_slugify`, `_utcnow_iso`, `_unwrap_body`, `_pending_queue_ids`,
+  `_neighbors`, `_dest_keys_for_cons`, `_cons_by_parent`,
+  `_load_queue_item`, `_queue_item_context`, `_parse_placements`,
+  `_write_placements`, `_write_phases`, `_next_after`. Added routes:
+  `admin_queue_item`, `admin_queue_unreject`, `admin_considerations_new`.
+  Rewrote `admin_queue_approve` and `admin_queue_reject`. Deleted
+  `load_queue_catalog` and `admin_queue_edit_approve` (Slice C dialog
+  path). Added `app.secret_key`, `flash`/`jsonify` imports. Read-path
+  query in `load_parent_view` swapped to join
+  `sub_consideration_placements`.
+- **Templates:** `templates/admin/queue.html` rewritten (tabs +
+  card-as-link + Re-queue affordance + macro-rendered flashes).
+  `templates/admin/queue_item.html` new. `templates/admin/_flash.html`
+  new (shared `render_flashes()` macro).
+- **JS + CSS:** `static/js/queue_item.js` new. `static/js/queue.js`
+  deleted. `static/styles/components.css` added `.qitem__*` block,
+  `.queue-tabs`, `.queue-tab__count`, `.queue-flash--undo` + the
+  `.qcard__link` hover affordance.
+- **Tooling:** `query_db.py` new. `.claude/settings.json` new
+  (project-shared allowlist + `defaultMode: "acceptEdits"`).
+- **Docs:** `CLAUDE.md` repository-status refreshed; this entry.
+
+### Lessons / decisions worth noting (non-obvious)
+- **HTML5 drops nested `<form>` start tags silently.** When a flash
+  message contains its own POST `<form>` (the Undo button), placing
+  it inside another `<form>` makes the inner tag get parsed away
+  — the inner submit button inherits the outer form's action. Net
+  effect: a button labelled "Undo" cheerfully submits the
+  surrounding Approve form with default field values. Diagnosed via
+  "why is one_liner suddenly empty?" → form went to /approve, not
+  /unreject. Rule: render flash messages OUTSIDE any wrapping form,
+  or use `<button formaction="…">` if you must keep them inline.
+- **Jinja `.items` collides with `dict.items()`.** A template field
+  named `items` resolves to the bound method, not the field, when
+  the parent is a `dict`. Renamed to `options` in
+  `_cons_by_parent`'s shape. Same gotcha as Python attribute
+  shadowing — only louder because the failure is a `TypeError` deep
+  in the template stack.
+- **Keep the primary `consideration_id` column.** The temptation was
+  to drop it from `sub_considerations` once `sub_consideration_placements`
+  is the truth. But `_sync_fts_row` joins on it to pull `cons_title`
+  / `cons_intro`, ingest writes still need a home for pending rows
+  (the ingest-inbox), and the NOT-NULL constraint is load-bearing
+  for those write paths. Treating it as "primary placement, mirror
+  of position=0" keeps both worlds working without an ALTER.
+- **Save was a third state masquerading as a verb.** Approve / Reject
+  are commits; Save was supposed to be "persist edits while staying
+  pending" but operators read it as a commit and worried it locked
+  them in. Removed entirely — Approve writes the edits, Reject
+  doesn't need them, leaving mid-edit drops your draft (standard
+  form UX). Simpler footer, fewer questions.
+- **Allowlist `Bash(python <script>.py *)` only when the script is
+  load-bearing.** The fewer-permission-prompts skill explicitly
+  refuses `python:*` because that's arbitrary code. Per-script
+  entries are safe and dramatically cut friction for the project's
+  own bins (`init_db.py`, `score.py`, etc.). For ad-hoc DB queries,
+  `query_db.py` with a built-in mutating-SQL refusal slides into the
+  same safe-pattern slot without granting code execution.
+- **`acceptEdits` is the right default for a single-user admin
+  tool.** Edits prompt-free; Bash and destructive ops still gated.
+  `bypassPermissions` available per-session via `/permission-mode`
+  if you want zero prompts during a heavy refactor.
+
+### Next-session pointer
+
+Now that the approval UX is fast, the bottleneck moves back to
+content quality. Pick the next slice from this list in priority order:
+
+1. **MDN browser-compat-data adapter** (`ingestors/mdn_bcd.py`).
+   Component-side counterpart to caniuse. Strong cap essential —
+   thousands of compat entries.
+2. **Per-source-type score threshold.** Structured-source items
+   should never be auto-rejected (a WCAG SC scored 3 by Groq is
+   still a WCAG SC). Add `--structured-threshold 0` or detect by
+   `source.type` and skip the auto-reject branch.
+3. **`/admin/considerations/<slug>` editor.** Now that subs can have
+   many placements, a consideration-level edit page is the missing
+   piece (rename, change destinations, change group, reorder subs).
+4. **`/admin/sources` UX gaps:** last-error display + retry,
+   `config_json` editor, more prominent source-type column.
+5. **Content-diff for structured sources.** Adapters URL-dedup; add
+   hash comparison so an in-place caniuse description change can
+   surface as a new candidate.
+6. **Cron / scheduled ingestion + daily SQLite backup.** systemd
+   timer for `collect.py + collect_structured.py + score.py`.
+   Backup parked since Session 2; now load-bearing.
+7. **Approve from the Rejected bin without re-opening the stepper?**
+   The Re-queue button currently always sends you to
+   `/admin/queue/<id>` (full page). Maybe inline-approve from the
+   rejected card too. Defer until the workflow shape settles.
+
+
 - **Google Programmable Search Engine integration.** Build a whitelisted
   PSE (NN/g, web.dev, w3.org, Google Search Central, GOV.UK) and use
   the Custom Search JSON API for two narrow user-facing roles — NOT

@@ -326,6 +326,26 @@ def migrate(conn: sqlite3.Connection) -> None:
             )"""
     )
 
+    # Session 13: per-sub placements. Every approved sub gets one
+    # placement mirroring its current consideration_id (position=0).
+    # Pending rows get placements only at approval time.
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS sub_consideration_placements (
+              sub_id            INTEGER NOT NULL REFERENCES sub_considerations(id) ON DELETE CASCADE,
+              consideration_id  INTEGER NOT NULL REFERENCES considerations(id)     ON DELETE CASCADE,
+              position          INTEGER NOT NULL DEFAULT 0,
+              PRIMARY KEY (sub_id, consideration_id)
+            )"""
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sub_placements_cons ON sub_consideration_placements(consideration_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_sub_placements_sub  ON sub_consideration_placements(sub_id)")
+    cur.execute(
+        """INSERT OR IGNORE INTO sub_consideration_placements (sub_id, consideration_id, position)
+           SELECT id, consideration_id, 0
+             FROM sub_considerations
+            WHERE status = 'approved'"""
+    )
+
     conn.commit()
 
 

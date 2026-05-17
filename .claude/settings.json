@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(python app.py *)",
+      "Bash(python init_db.py *)",
+      "Bash(python collect.py *)",
+      "Bash(python collect_structured.py *)",
+      "Bash(python score.py *)",
+      "Bash(python query_db.py *)",
+      "Bash(sqlite3 *)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for"
+    ]
+  }
+}

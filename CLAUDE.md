@@ -6,17 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Slice A of the Flask app is shipped and live at `https://best.amusealot.com` (Caddy basic auth, single user). `/page-type/article-page` renders the prototype's considerations from SQLite. The v3 chrome (topbar + collapsible sidebar nav + filters drawer, Phosphor icons) is templated from `prototype/page-type-v3.html` and applies to every route. `/search`, `/admin/queue`, `/admin/sources`, `/component/<slug>` all ship.
 
-**Slice C + D shipped locally on branch `slice-c` (Sessions 10–11, not yet merged to `main`).** The editorial loop is end-to-end:
+**Slice C + D merged to `main` (Sessions 10–11).** The editorial loop is end-to-end:
 
-- `/admin/queue` write paths (approve / reject / edit-and-approve with `<dialog>`) live (`app.py:558-694`).
 - RSS ingestion via `collect.py` (4 active feeds: web.dev, A11y Project, NN/g, Google Search Central; 3 deprioritized feeds paused in-DB).
 - Structured ingestion via `collect_structured.py` + 5 adapters under `ingestors/`: WCAG 2.2, Schema.org WebPage subtree, caniuse (capped 25/run), OWASP Top 10, GOV.UK Design System. All 5 PROJECT.md §5.1 sources live.
 - Groq scoring via `score.py` (`llama-3.3-70b-versatile`, raw HTTP, auto-reject at `<4`).
 - `.env` loads `GROQ_API_KEY` via python-dotenv. `requirements.txt` ships feedparser + requests + python-dotenv.
 
-Still pending: `/admin/considerations/<slug>` editor, MDN browser-compat-data adapter, per-source-type score threshold, inline auto-save on queue cards, `/admin/sources` UX polish (error display, config_json editor), content-diff for structured sources, cron + daily SQLite backup. See `nextstep.md` Session 12 pointer.
+**Session 12 — full-page approval stepper + sub-level placements (merged to `main`).** The editorial UI was rewritten around `/admin/queue/<id>`:
 
-The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths). Schema changes still need a manual `python3 init_db.py` on the VPS post-deploy. **Deploy of Slice C+D needs `GROQ_API_KEY` in `/opt/bestpractice/.env` and `pip3 install -r requirements.txt` on the VPS as one-time setup.**
+- A sub-consideration is no longer pinned to a single consideration. New `sub_consideration_placements(sub_id, consideration_id, position)` table lets one row appear under different considerations on different page-types / components. Backfilled in `init_db.py:migrate()`; `load_parent_view` reads through it. The `sub_considerations.consideration_id` column remains as the primary placement and FTS join.
+- Full-page approval at `GET /admin/queue/<id>` replaces the inline `<dialog>`. Prev/Next stepper, Enter = Approve+Next, page-types + components as checkboxes (each expands to a `<select>` of considerations on that destination grouped by `group_label`).
+- `POST /admin/queue/<id>/approve` requires ≥1 placement (validation re-renders with form state preserved); auto-advances to next pending or back to `/admin/queue`. `POST .../reject` flashes an Undo link + auto-advances. `POST .../unreject` flips rejected → pending; same endpoint powers the Re-queue button.
+- `/admin/queue?status=rejected` is a Rejected bin alongside Pending; both shown as tabs on the list. `POST /admin/considerations/new` returns JSON for the "+ new consideration here" inline create.
+- The category mechanism stays in schema and read path but is **not exposed in the approval UI** — categories had 0 production destinations and the "checkbox expands to pick a consideration" model doesn't fit a multi-page umbrella.
+- Templates: `templates/admin/queue_item.html` (new), `templates/admin/_flash.html` (shared flash macro), `templates/admin/queue.html` (rewritten: tabs + card links). JS: `static/js/queue_item.js` (under 100 lines, replaces the deleted `queue.js`).
+- Tooling: `query_db.py` is a thin SQLite read helper (refuses mutating SQL unless `--write`). Project-shared `.claude/settings.json` allowlists this project's `python *.py` script invocations + Playwright read-only MCP tools + `sqlite3 *`, and sets `permissions.defaultMode: "acceptEdits"`.
+
+Still pending: `/admin/considerations/<slug>` editor, MDN browser-compat-data adapter, per-source-type score threshold, `/admin/sources` UX polish (error display, config_json editor), content-diff for structured sources, cron + daily SQLite backup. See `nextstep.md` Session 13 pointer.
+
+The GHA workflow at `.github/workflows/deploy.yml` rsyncs to `root@77.42.40.207:/opt/bestpractice/` and restarts `bestpractice.service` on every push to `main` (excluding doc-only paths). Schema changes still need a manual `python3 init_db.py` on the VPS post-deploy. **First Slice C+D deploy needs `GROQ_API_KEY` in `/opt/bestpractice/.env` and `pip3 install -r requirements.txt` on the VPS as one-time setup. Session 12's deploy also needs `BESTPRACTICE_SECRET` in `/opt/bestpractice/.env` (Flask session signing for flash messages); a `dev-only-not-secret` fallback is wired in for local dev only.**
 
 The prototype remains a hard input — canonical file is `prototype/page-type-v3.html`. Visual decisions live in `prototype/DECISIONS.md` and `prototype/BUILD_NOTES.md`. Older prototype iterations live in `prototype/archive/v1/` for reference but are not the source of truth. Don't redesign; wire it up.
 

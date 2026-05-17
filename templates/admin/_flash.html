@@ -1,0 +1,20 @@
+{# Shared flash renderer for admin/queue + admin/queue_item.
+   The 'undo-reject' category carries an "<id>|<one_liner>" payload and
+   renders an inline Undo button that POSTs to /admin/queue/<id>/unreject. #}
+{% macro render_flashes() %}
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in msgs %}
+      {% if cat == 'undo-reject' %}
+        {% set parts = msg.split('|', 1) %}
+        <div class="queue-flash queue-flash--undo" role="status">
+          <span>Rejected: <em>{{ parts[1] if parts|length > 1 else '' }}</em></span>
+          <form method="post" action="{{ url_for('admin_queue_unreject', sub_id=parts[0]) }}" class="queue-flash__form">
+            <button type="submit" class="btn btn--quiet btn--sm">Undo</button>
+          </form>
+        </div>
+      {% else %}
+        <div class="queue-flash" role="status">{{ msg }}</div>
+      {% endif %}
+    {% endfor %}
+  {% endwith %}
+{% endmacro %}
