@@ -15,7 +15,7 @@ Seeded via `init_db.py:seed_scaffolds()` from the inline `SCAFFOLDS` list:
 
 The stray `Verify group / Inline test ...` row on `article-page` was removed in the same pass (one-shot cleanup in `migrate()`).
 
-`seed_scaffolds()` is idempotent — it inserts only missing `(parent_type, parent_slug, slug)` rows and never overwrites a title or group_label, so an editor-side rename via `/admin/considerations/<slug>` survives a re-seed. Adding a new entry to `SCAFFOLDS` and re-running picks up the addition without disturbing anything else.
+`seed_scaffolds()` is idempotent — it inserts only missing `(parent_type, parent_slug, slug)` rows and never overwrites a title or group_label, so an editor-side rename via `/admin/considerations/<slug>` survives a re-seed. Adding a new entry to `SCAFFOLDS` and re-running picks up the addition without disturbing anything else. Both seeders also write a `consideration_destinations` row at insert time so a newly-seeded scaffold is pickable in the approval `<select>` after one `init_db.py` invocation — without this, the row exists but the destination JOIN excludes it until `migrate()`'s backfill runs on a subsequent invocation.
 
 ## Components not yet covered (43)
 
