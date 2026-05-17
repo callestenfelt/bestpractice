@@ -29,8 +29,14 @@
     </nav>
 
     <footer class="sidebar__footer">
-      <a href="{{ url_for('admin_queue') }}">Review queue</a>
-      <a href="{{ url_for('admin_sources') }}">Sources</a>
+      <a href="{{ url_for('admin_queue') }}">
+        <span>Review queue</span>
+        <span class="topbar__toggle-count">{{ nav_queue_count }}</span>
+      </a>
+      <a href="{{ url_for('admin_sources') }}">
+        <span>Sources</span>
+        <span class="topbar__toggle-count">{{ nav_sources_count }}</span>
+      </a>
     </footer>
   </div>
 </aside>

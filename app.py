@@ -81,11 +81,20 @@ def _inject_nav():
         current_kind = "component"
         current_slug = request.view_args.get("slug") if request.view_args else None
 
+    queue_count = db.execute(
+        "SELECT COUNT(*) FROM sub_considerations WHERE status='pending'"
+    ).fetchone()[0]
+    sources_count = db.execute(
+        "SELECT COUNT(*) FROM sources WHERE status='active'"
+    ).fetchone()[0]
+
     return {
         "nav_page_types": nav_page_types,
         "nav_components": nav_components,
         "current_kind": current_kind,
         "current_slug": current_slug,
+        "nav_queue_count": queue_count,
+        "nav_sources_count": sources_count,
     }
 
 
