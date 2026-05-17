@@ -91,7 +91,7 @@
   // Filters-button count badge (on topbar settings icon).
   // ---------------------------------------------------------------
   function updateFiltersBadge() {
-    var badge = document.querySelector('.topbar__toggle-count');
+    var badge = document.querySelector('.topbar .topbar__toggle-count');
     var railCount = document.querySelector('[data-role="filters-count"]');
     var boxes = document.querySelectorAll('input[name="phase"]');
     var on = 0;
