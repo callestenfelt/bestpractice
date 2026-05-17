@@ -705,6 +705,7 @@ SCAFFOLDS: list[dict] = [
             "Label wording (verb-first, specific)",
             "Disabled vs aria-disabled",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "form", "groups": [
@@ -728,6 +729,7 @@ SCAFFOLDS: list[dict] = [
             "Labels & associations",
             "Keyboard & screen-reader flow",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "header", "groups": [
@@ -746,6 +748,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard navigation",
             "Focus management on mobile menu",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "hero", "groups": [
@@ -764,6 +767,7 @@ SCAFFOLDS: list[dict] = [
             "Reduced-motion / autoplay",
             "Alt text & decorative media",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "modal", "groups": [
@@ -782,6 +786,7 @@ SCAFFOLDS: list[dict] = [
             "Escape & dismiss semantics",
             "role / aria-modal & labelling",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "navigation", "groups": [
@@ -800,6 +805,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard operation (arrow keys, Esc)",
             "State announcement",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "footer", "groups": [
@@ -813,6 +819,7 @@ SCAFFOLDS: list[dict] = [
             "Link clarity",
             "Contrast on dark footers",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "card", "groups": [
@@ -831,6 +838,7 @@ SCAFFOLDS: list[dict] = [
             "Avoiding nested interactive elements",
             "Keyboard reachability",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "link", "groups": [
@@ -848,6 +856,7 @@ SCAFFOLDS: list[dict] = [
             "Focus visibility",
             "Link vs button semantics",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "table", "groups": [
@@ -871,6 +880,7 @@ SCAFFOLDS: list[dict] = [
             "Sortable-column announcement",
             "Keyboard navigation of large tables",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "input-field", "groups": [
@@ -889,6 +899,7 @@ SCAFFOLDS: list[dict] = [
             "Error association (aria-describedby / invalid)",
             "Visible focus",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "search", "groups": [
@@ -907,6 +918,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard navigation of suggestions",
             "Result-count announcement",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "tabs", "groups": [
@@ -925,6 +937,7 @@ SCAFFOLDS: list[dict] = [
             "Arrow-key navigation",
             "Focus management",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "toast", "groups": [
@@ -943,6 +956,7 @@ SCAFFOLDS: list[dict] = [
             "Not sole channel for critical info",
             "Dismiss & keyboard reach",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "tooltip", "groups": [
@@ -960,6 +974,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard & touch reachability",
             "Not a label replacement",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "video", "groups": [
@@ -978,6 +993,25 @@ SCAFFOLDS: list[dict] = [
             "Controls & keyboard operation",
             "Reduced-motion / no-autoplay",
             "Accessible content",
+            "Accessible media",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "audio", "groups": [
+        ("Embedding & playback", [
+            "Hosted vs embedded",
+            "Autoplay / muted / loop policy",
+            "Format & codec choice",
+        ]),
+        ("Performance", [
+            "Lazy-load & on-demand fetching",
+            "Bitrate & bandwidth impact",
+        ]),
+        ("Accessibility", [
+            "Transcripts",
+            "Captions for lyrics or speech",
+            "Controls & keyboard operation",
+            "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "cookie-banner", "groups": [
@@ -990,6 +1024,7 @@ SCAFFOLDS: list[dict] = [
             "Equal accept / reject prominence",
             "Granular-options entry point",
             "Accessible content",
+            "Accessible media",
         ]),
         ("Behaviour", [
             "No pre-ticked non-essential",
@@ -1018,6 +1053,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard operation of drop zone",
             "Status announcements",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
     {"parent_type": "component", "parent_slug": "pagination", "groups": [
@@ -1036,6 +1072,7 @@ SCAFFOLDS: list[dict] = [
             "Keyboard operation",
             "Crawlable links & rel attributes",
             "Accessible content",
+            "Accessible media",
         ]),
     ]},
 ]
