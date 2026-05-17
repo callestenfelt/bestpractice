@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -237,6 +238,784 @@ SITE_WIDE_SCAFFOLDS: list[dict] = [
 ]
 
 
+# Empty-container scaffolds for the 19 remaining page-types and the first wave
+# of components. Same shape as SITE_WIDE_SCAFFOLDS — title + group identity,
+# no sub_considerations — so the approval `<select>` has somewhere meaningful
+# to land queue items. See docs/CONSIDERATION_SCAFFOLDS.md for the rationale
+# (5–12 per page type, 5–9 per component, restraint over completeness).
+#
+# Idempotent: seed_scaffolds() checks (parent_type, parent_slug, slug) and
+# inserts only the missing rows. Titles are NOT overwritten on re-runs so an
+# editor-side rename via /admin/considerations/<slug> won't be clobbered.
+SCAFFOLDS: list[dict] = [
+    # ---------- PAGE TYPES ----------
+    {"parent_type": "page_type", "parent_slug": "landing-page", "groups": [
+        ("Before you start", [
+            "Campaign goal & single conversion action",
+            "Audience & traffic-source match (message match)",
+        ]),
+        ("Above the fold", [
+            "Hero & value proposition",
+            "Primary CTA (above the fold)",
+        ]),
+        ("Persuasion body", [
+            "Benefit framing",
+            "Social proof & trust signals",
+            "Objection handling",
+        ]),
+        ("Conversion", [
+            "Conversion mechanism (form / signup)",
+            "Friction reduction",
+            "Post-submit path",
+        ]),
+        ("Behind the scenes", [
+            "LCP & page speed",
+            "Conversion tracking & attribution",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "start-page", "groups": [
+        ("Before you start", [
+            "Purpose & primary audiences",
+            "Entry-point strategy (who goes where)",
+        ]),
+        ("Top of page", [
+            "Header & global navigation",
+            "Hero / brand statement",
+            "Primary task pathways",
+        ]),
+        ("Body", [
+            "Content prioritisation & hierarchy",
+            "Featured / latest content",
+            "Calls to action",
+        ]),
+        ("End of page", [
+            "Footer & secondary navigation",
+            "Newsletter / contact prompt",
+        ]),
+        ("Behind the scenes", [
+            "Core Web Vitals",
+            "Site-name & sitelinks markup",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "collection-page", "groups": [
+        ("Before you start", [
+            "Collection purpose & scope",
+            "Default sort & relevance",
+        ]),
+        ("Top of page", [
+            "Page title & intro",
+            "Result count & context",
+        ]),
+        ("The list", [
+            "Item card / row design",
+            "Pagination vs infinite scroll vs load-more",
+            "Empty state",
+        ]),
+        ("Refinement", [
+            "Filtering & facets",
+            "Sorting controls",
+            "Applied-filter feedback",
+        ]),
+        ("Behind the scenes", [
+            "Crawlability of paginated lists",
+            "Performance with large result sets",
+            "Structured data (ItemList)",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "item-page", "groups": [
+        ("Before you start", [
+            "Purpose & primary action",
+            "Audience intent",
+        ]),
+        ("Top of page", [
+            "Title & key identifiers",
+            "Primary media / gallery",
+            "Key facts (price / status / specs)",
+        ]),
+        ("Detail body", [
+            "Description & specifications",
+            "Variants / options",
+            "Related & cross-sell",
+            "Reviews & ratings",
+        ]),
+        ("Conversion", [
+            "Primary CTA (add / book / contact)",
+            "Availability & urgency signals",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (Product / Person / etc.)",
+            "Media performance",
+            "Canonical & duplicate handling",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "checkout-page", "groups": [
+        ("Before you start", [
+            "Conversion goal & abandonment risks",
+            "Guest vs account decision",
+        ]),
+        ("Flow & structure", [
+            "Step structure & progress indication",
+            "Order summary persistence",
+            "Edit-cart affordances",
+        ]),
+        ("Inputs & validation", [
+            "Field minimisation",
+            "Inline validation & error recovery",
+            "Address & payment input UX",
+            "Autofill & input modes",
+        ]),
+        ("Trust & security", [
+            "Trust signals & reassurance",
+            "Security & PCI considerations",
+            "Decline & error handling",
+        ]),
+        ("Completion", [
+            "Final review & confirm",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "confirmation-page", "groups": [
+        ("Before you start", [
+            "Purpose & what the user must know now",
+        ]),
+        ("Confirmation", [
+            "Success acknowledgement",
+            "Order / reference details",
+            "What happens next & when",
+        ]),
+        ("Next steps", [
+            "Primary next action",
+            "Receipt / account access",
+            "Secondary engagement",
+        ]),
+        ("Behind the scenes", [
+            "Conversion tracking (fire once)",
+            "Email / receipt parity",
+            "Refresh & resubmission safety",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "auth-page", "groups": [
+        ("Before you start", [
+            "Flows on this page (login / register / reset)",
+            "Friction vs security balance",
+        ]),
+        ("The form", [
+            "Field design (email, password)",
+            "Show-password & input aids",
+            "Social / SSO options",
+            "Persistent session (remember me)",
+        ]),
+        ("Errors & recovery", [
+            "Error messaging (no field-existence leak)",
+            "Forgotten-password recovery",
+            "Lockout & rate-limit feedback",
+        ]),
+        ("Security", [
+            "Credential handling & 2FA",
+            "Bot & abuse protection",
+            "Session & redirect safety",
+        ]),
+        ("Behind the scenes", [
+            "Password-manager & autofill support",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "profile-page", "groups": [
+        ("Before you start", [
+            "Whose profile & who's viewing (owner vs public)",
+            "Privacy defaults",
+        ]),
+        ("Top of page", [
+            "Identity (name, avatar, role)",
+            "Primary contact / follow action",
+        ]),
+        ("Body", [
+            "Bio & details",
+            "Activity / contributions",
+            "Related people / content",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (Person / ProfilePage)",
+            "PII exposure & privacy",
+            "Edit vs view modes",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "contact-page", "groups": [
+        ("Before you start", [
+            "Primary contact goal",
+            "Channel strategy (form / email / phone / chat)",
+        ]),
+        ("Contact options", [
+            "Direct contact details",
+            "Location, map & hours",
+            "Department / routing",
+        ]),
+        ("The form", [
+            "Field minimisation",
+            "Validation & spam protection",
+            "Success & expected response time",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (ContactPoint)",
+            "Accessibility of embedded map",
+            "Deliverability & spam handling",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "about-page", "groups": [
+        ("Before you start", [
+            "Purpose (trust / recruiting / brand) & audience",
+        ]),
+        ("Top of page", [
+            "One-line who-we-are",
+            "Brand statement",
+        ]),
+        ("Body", [
+            "Story & history",
+            "People / team",
+            "Values & proof",
+            "Calls to action (careers, contact)",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (Organization)",
+            "Media performance",
+            "Entity & E-E-A-T signals",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "faq-page", "groups": [
+        ("Before you start", [
+            "Purpose & whether FAQ is the right pattern",
+            "Sourcing real user questions",
+        ]),
+        ("Structure", [
+            "Grouping & ordering of questions",
+            "On-page search / filter",
+            "Disclosure pattern (accordion vs full)",
+        ]),
+        ("Question design", [
+            "Question phrasing (user's words)",
+            "Answer brevity & links to depth",
+            "Deflection vs escalation to support",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (FAQPage) & rich-result eligibility",
+            "Deep-linking to a question",
+            "Accessibility of disclosures",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "pricing-page", "groups": [
+        ("Before you start", [
+            "Pricing strategy & target segments",
+            "Number of tiers",
+        ]),
+        ("Plan presentation", [
+            "Tier comparison layout",
+            "Feature matrix",
+            "Highlighting the recommended plan",
+        ]),
+        ("Decision support", [
+            "Billing toggle (monthly / annual)",
+            "Currency, tax & region",
+            "Objection handling & FAQ",
+        ]),
+        ("Conversion", [
+            "Primary CTA per tier",
+            "Trial vs contact-sales paths",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (Offer)",
+            "Price localisation",
+            "A/B test instrumentation",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "search-results-page", "groups": [
+        ("Before you start", [
+            "Search intent types & success definition",
+            "Ranking & relevance strategy",
+        ]),
+        ("Query & context", [
+            "Query echo & interpretation",
+            "Result count & timing",
+            "Did-you-mean / spelling correction",
+        ]),
+        ("Results", [
+            "Result item design & snippets",
+            "Grouping / blended results",
+            "Zero-results state",
+        ]),
+        ("Refinement", [
+            "Filters & facets",
+            "Sort options",
+            "Pagination / load-more",
+        ]),
+        ("Behind the scenes", [
+            "Perceived speed",
+            "Search analytics (queries, zero-results)",
+            "Indexability (usually noindex)",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "dashboard-page", "groups": [
+        ("Before you start", [
+            "Primary user goal & key metrics",
+            "Personalisation & roles",
+        ]),
+        ("Layout & hierarchy", [
+            "Information prioritisation",
+            "Widget / card structure",
+            "Empty & first-run states",
+        ]),
+        ("Data presentation", [
+            "Data-visualisation choices",
+            "Numbers, trends & thresholds",
+            "Data freshness (real-time vs cached)",
+        ]),
+        ("Interaction", [
+            "Filtering & date ranges",
+            "Drill-down & detail",
+            "Customisation / saved views",
+        ]),
+        ("Behind the scenes", [
+            "Performance with heavy data",
+            "Accessibility of charts",
+            "Auth & data scoping",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "event-page", "groups": [
+        ("Before you start", [
+            "Purpose (inform vs register) & audience",
+        ]),
+        ("Top of page", [
+            "Title, date, time & timezone",
+            "Location / online access",
+            "Key visual",
+        ]),
+        ("Details", [
+            "Description & agenda",
+            "Speakers / hosts",
+            "Pricing & availability",
+        ]),
+        ("Conversion", [
+            "Register / RSVP / add-to-calendar",
+            "Reminders & follow-up",
+        ]),
+        ("Behind the scenes", [
+            "Structured data (Event) & rich results",
+            "Timezone & i18n handling",
+            "Past-event state",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "404-page", "groups": [
+        ("Before you start", [
+            "Purpose (recover, not dead-end) & tone",
+        ]),
+        ("The message", [
+            "Clear not-found acknowledgement",
+            "No blame or jargon",
+        ]),
+        ("Recovery", [
+            "Search",
+            "Primary navigation / popular links",
+            "Report-broken-link option",
+        ]),
+        ("Behind the scenes", [
+            "Correct 404 status code",
+            "404 logging & monitoring",
+            "Noindex handling",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "error-page", "groups": [
+        ("Before you start", [
+            "States covered (500 / 503 / offline)",
+        ]),
+        ("The message", [
+            "Plain-language explanation",
+            "Reassurance & honesty",
+            "Status / ETA if known",
+        ]),
+        ("Recovery", [
+            "Retry affordance",
+            "Alternative paths / contact",
+            "Cached / offline fallback content",
+        ]),
+        ("Behind the scenes", [
+            "Correct status codes (500 / 503 + Retry-After)",
+            "Error logging & alerting",
+            "Graceful degradation",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "legal-page", "groups": [
+        ("Before you start", [
+            "Document & jurisdiction",
+            "Last-updated & versioning policy",
+        ]),
+        ("Structure & readability", [
+            "Sectioning & navigation (TOC / anchors)",
+            "Plain-language summary",
+            "Change history",
+        ]),
+        ("Required content", [
+            "Mandatory disclosures (per regulation)",
+            "Data-controller / contact details",
+            "Accessibility-statement specifics",
+        ]),
+        ("Behind the scenes", [
+            "Indexability & canonical",
+            "Print / export friendliness",
+            "Update-notification mechanism",
+        ]),
+    ]},
+    {"parent_type": "page_type", "parent_slug": "cookie-page", "groups": [
+        ("Before you start", [
+            "Regulatory regime (GDPR / ePrivacy / CCPA) & scope",
+        ]),
+        ("Consent content", [
+            "Cookie inventory & categories",
+            "Purpose & duration disclosure",
+            "Third-party / processor list",
+        ]),
+        ("Controls", [
+            "Granular consent toggles",
+            "Withdraw / change consent",
+            "Relationship to the cookie banner",
+        ]),
+        ("Behind the scenes", [
+            "Consent logging & proof",
+            "Tag / script gating",
+            "Re-consent triggers (policy change)",
+        ]),
+    ]},
+
+    # ---------- COMPONENTS (first wave) ----------
+    {"parent_type": "component", "parent_slug": "button", "groups": [
+        ("Anatomy & hierarchy", [
+            "Variants (primary / secondary / tertiary)",
+            "Size & touch target",
+            "Icon + label pairing",
+        ]),
+        ("States & behaviour", [
+            "Interactive states (hover / focus / active / disabled)",
+            "Loading / pending state",
+            "Destructive-action treatment",
+        ]),
+        ("Accessibility & content", [
+            "Semantics (button vs link)",
+            "Label wording (verb-first, specific)",
+            "Disabled vs aria-disabled",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "form", "groups": [
+        ("Structure", [
+            "Field grouping & order",
+            "Single vs multi-column",
+            "Required vs optional indication",
+        ]),
+        ("Input & validation", [
+            "Input types & inputmode",
+            "Inline vs on-submit validation",
+            "Helpful constraints & formatting",
+        ]),
+        ("Errors & recovery", [
+            "Error placement & wording",
+            "Error summary",
+            "Preserving entered data",
+        ]),
+        ("Submission & accessibility", [
+            "Submit affordance & pending state",
+            "Labels & associations",
+            "Keyboard & screen-reader flow",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "header", "groups": [
+        ("Structure & content", [
+            "Logo & home link",
+            "Primary nav placement",
+            "Utility actions (search / account / cart)",
+        ]),
+        ("Behaviour", [
+            "Sticky / hide-on-scroll",
+            "Responsive collapse (hamburger)",
+            "Active-section indication",
+        ]),
+        ("Accessibility", [
+            "Landmark & skip link",
+            "Keyboard navigation",
+            "Focus management on mobile menu",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "hero", "groups": [
+        ("Structure & content", [
+            "Headline & value proposition",
+            "Primary CTA",
+            "Supporting copy length",
+        ]),
+        ("Media", [
+            "Background image / video choice",
+            "Text-over-media contrast",
+            "Art direction across viewports",
+        ]),
+        ("Performance & accessibility", [
+            "LCP impact & preloading",
+            "Reduced-motion / autoplay",
+            "Alt text & decorative media",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "modal", "groups": [
+        ("Structure & content", [
+            "When to use a modal (vs page / inline)",
+            "Title & primary action",
+            "Size & content scrolling",
+        ]),
+        ("Behaviour", [
+            "Open / dismiss triggers",
+            "Backdrop & outside-click",
+            "Stacking & nested modals",
+        ]),
+        ("Accessibility", [
+            "Focus trap & restore",
+            "Escape & dismiss semantics",
+            "role / aria-modal & labelling",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "navigation", "groups": [
+        ("Structure", [
+            "IA & grouping",
+            "Depth (flyout / mega-menu vs flat)",
+            "Mobile pattern",
+        ]),
+        ("Behaviour & states", [
+            "Current-location indication",
+            "Hover / focus reveal timing",
+            "Overflow handling",
+        ]),
+        ("Accessibility", [
+            "Landmark & list semantics",
+            "Keyboard operation (arrow keys, Esc)",
+            "State announcement",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "footer", "groups": [
+        ("Structure & content", [
+            "Link grouping & priority",
+            "Legal / compliance links",
+            "Secondary actions (newsletter / social / locale)",
+        ]),
+        ("Accessibility", [
+            "Landmark semantics",
+            "Link clarity",
+            "Contrast on dark footers",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "card", "groups": [
+        ("Anatomy & content", [
+            "Content slots (media / title / meta / actions)",
+            "Truncation & consistent height",
+            "Visual grouping (border vs shadow)",
+        ]),
+        ("Interaction", [
+            "Whole-card vs element click target",
+            "Hover / focus affordance",
+            "Actions within a card",
+        ]),
+        ("Accessibility", [
+            "Single accessible name & link",
+            "Avoiding nested interactive elements",
+            "Keyboard reachability",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "link", "groups": [
+        ("Appearance & affordance", [
+            "Distinguishing from body text",
+            "Visited / hover / focus states",
+            "Inline vs standalone",
+        ]),
+        ("Behaviour", [
+            "Same-tab vs new-tab (and signalling)",
+            "Download / external indication",
+        ]),
+        ("Accessibility", [
+            "Descriptive link text (no click here)",
+            "Focus visibility",
+            "Link vs button semantics",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "table", "groups": [
+        ("Structure", [
+            "Column choice & priority",
+            "Header & caption",
+            "Row density",
+        ]),
+        ("Data presentation", [
+            "Number / date alignment & formatting",
+            "Empty & null handling",
+            "Totals / summary rows",
+        ]),
+        ("Interaction", [
+            "Sorting",
+            "Pagination vs scroll",
+            "Responsive strategy (reflow / scroll / priority columns)",
+        ]),
+        ("Accessibility", [
+            "th / scope & caption",
+            "Sortable-column announcement",
+            "Keyboard navigation of large tables",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "input-field", "groups": [
+        ("Anatomy", [
+            "Label & placeholder roles",
+            "Helper & error text slots",
+            "Sizing & affordance",
+        ]),
+        ("Behaviour & validation", [
+            "Input type & inputmode",
+            "Validation timing & feedback",
+            "Autocomplete attributes",
+        ]),
+        ("Accessibility", [
+            "Label association",
+            "Error association (aria-describedby / invalid)",
+            "Visible focus",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "search", "groups": [
+        ("Input & affordance", [
+            "Placement & discoverability",
+            "Placeholder & scope hint",
+            "Clear / submit controls",
+        ]),
+        ("Behaviour", [
+            "Autosuggest / typeahead",
+            "Debounce & loading feedback",
+            "Recent / popular queries",
+        ]),
+        ("Accessibility", [
+            "role=search & labelling",
+            "Keyboard navigation of suggestions",
+            "Result-count announcement",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "tabs", "groups": [
+        ("Structure", [
+            "Tabs vs separate pages / accordion",
+            "Label brevity",
+            "Overflow (scroll vs more-menu)",
+        ]),
+        ("Behaviour", [
+            "Activation (automatic vs manual)",
+            "Default & deep-linkable selection",
+            "Lazy content loading",
+        ]),
+        ("Accessibility", [
+            "tablist / tab / tabpanel roles",
+            "Arrow-key navigation",
+            "Focus management",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "toast", "groups": [
+        ("Behaviour & timing", [
+            "When to use (vs inline / alert)",
+            "Auto-dismiss timing & pause-on-hover",
+            "Stacking & limits",
+        ]),
+        ("Content", [
+            "Message brevity",
+            "Optional action (undo)",
+            "Severity treatment",
+        ]),
+        ("Accessibility", [
+            "aria-live politeness",
+            "Not sole channel for critical info",
+            "Dismiss & keyboard reach",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "tooltip", "groups": [
+        ("Behaviour", [
+            "Hover / focus triggers & delay",
+            "Positioning & collision",
+            "Dismissal (Escape, blur)",
+        ]),
+        ("Content", [
+            "Short, supplementary only",
+            "No interactive content",
+        ]),
+        ("Accessibility", [
+            "aria-describedby",
+            "Keyboard & touch reachability",
+            "Not a label replacement",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "video", "groups": [
+        ("Embedding & playback", [
+            "Hosted vs embedded",
+            "Autoplay / muted / loop policy",
+            "Poster & aspect ratio",
+        ]),
+        ("Performance", [
+            "Lazy-load & facade pattern",
+            "Adaptive quality",
+            "LCP & bandwidth impact",
+        ]),
+        ("Accessibility", [
+            "Captions & transcripts",
+            "Controls & keyboard operation",
+            "Reduced-motion / no-autoplay",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "cookie-banner", "groups": [
+        ("Before you show it", [
+            "Regulatory basis & when to show",
+            "What must block vs not",
+        ]),
+        ("Content & choices", [
+            "Plain-language purpose",
+            "Equal accept / reject prominence",
+            "Granular-options entry point",
+        ]),
+        ("Behaviour", [
+            "No pre-ticked non-essential",
+            "Persistence of choice",
+            "Re-prompt triggers",
+        ]),
+        ("Behind the scenes", [
+            "Script / tag gating until consent",
+            "Consent logging",
+            "Relationship to the cookie page",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "file-upload", "groups": [
+        ("Affordance & input", [
+            "Click vs drag-and-drop",
+            "Accepted types & size guidance",
+            "Single vs multiple",
+        ]),
+        ("Feedback & validation", [
+            "Progress indication",
+            "Client + server validation",
+            "Error & retry handling",
+        ]),
+        ("Accessibility", [
+            "Native input semantics",
+            "Keyboard operation of drop zone",
+            "Status announcements",
+        ]),
+    ]},
+    {"parent_type": "component", "parent_slug": "pagination", "groups": [
+        ("Pattern choice", [
+            "Pagination vs infinite scroll vs load-more",
+            "Page size",
+            "Position (top / bottom)",
+        ]),
+        ("Controls", [
+            "Prev / next & numbered links",
+            "Current-page indication",
+            "Boundary & jump-to states",
+        ]),
+        ("Accessibility & SEO", [
+            "nav landmark & current page",
+            "Keyboard operation",
+            "Crawlable links & rel attributes",
+        ]),
+    ]},
+]
+
+
 # Page-type categories — virtual umbrellas grouping several page_types so a
 # consideration can attach to "all pages with a header" rather than picking
 # each page_type. (slug, label, definition, [member page_type slugs]).
@@ -262,6 +1041,17 @@ PAGE_TYPE_CATEGORIES: list[tuple[str, str, str, list[str]]] = [
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+
+def slugify(text: str) -> str:
+    """Kebab-case slug from arbitrary text. Strips punctuation, collapses
+    whitespace, lowercases. Stable across re-runs so SCAFFOLDS round-trips
+    cleanly with the (parent_type, parent_slug, slug) uniqueness check."""
+    s = text.lower()
+    s = re.sub(r"[^a-z0-9\s-]", " ", s)
+    s = re.sub(r"\s+", "-", s.strip())
+    s = re.sub(r"-+", "-", s)
+    return s.strip("-")
 
 
 def apply_schema(conn: sqlite3.Connection) -> None:
@@ -344,6 +1134,16 @@ def migrate(conn: sqlite3.Connection) -> None:
            SELECT id, consideration_id, 0
              FROM sub_considerations
             WHERE status = 'approved'"""
+    )
+
+    # 2026-05-17 cleanup: stray test consideration left over from Session 12
+    # inline-create verification. No subs or placements depend on it (checked
+    # before adding this fix). Safe to drop on every box.
+    cur.execute(
+        """DELETE FROM considerations
+            WHERE parent_type='page_type'
+              AND parent_slug='article-page'
+              AND slug='inline-test-1779020126'"""
     )
 
     conn.commit()
@@ -501,6 +1301,42 @@ def seed_site_wide_scaffolds(conn: sqlite3.Connection) -> int:
     return added
 
 
+def seed_scaffolds(conn: sqlite3.Connection) -> int:
+    """Seed empty consideration containers from SCAFFOLDS for the 19 remaining
+    page-types and the first-wave components. Same idempotency contract as
+    seed_site_wide_scaffolds: insert only the missing (parent_type, parent_slug,
+    slug) rows, never overwrite an existing title/group_label so editor-side
+    renames survive a re-seed. Returns number of rows added this run."""
+    cur = conn.cursor()
+    now = now_iso()
+    added = 0
+    for scaffold in SCAFFOLDS:
+        pt = scaffold["parent_type"]
+        ps = scaffold["parent_slug"]
+        for g_order, (group_label, titles) in enumerate(scaffold["groups"], start=1):
+            group_slug = slugify(group_label)
+            for d_order, title in enumerate(titles, start=1):
+                slug = slugify(title)
+                row = cur.execute(
+                    "SELECT id FROM considerations WHERE parent_type=? AND parent_slug=? AND slug=?",
+                    (pt, ps, slug),
+                ).fetchone()
+                if row:
+                    continue
+                cur.execute(
+                    """INSERT INTO considerations
+                          (slug, parent_type, parent_slug, title, intro,
+                           group_label, group_slug, group_order, display_order,
+                           status, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, 'approved', ?, ?)""",
+                    (slug, pt, ps, title, group_label, group_slug,
+                     g_order, d_order, now, now),
+                )
+                added += 1
+    conn.commit()
+    return added
+
+
 def seed_sources(conn: sqlite3.Connection) -> int:
     """Seed default sources keyed on URL. Idempotent. Returns rows added.
     config_json is written on first insert and never overwritten — so an
@@ -638,6 +1474,9 @@ def main() -> None:
         print("seeding site-wide scaffolds...")
         sw_added = seed_site_wide_scaffolds(conn)
         print(f"  site-wide scaffolds added: {sw_added} (existing rows preserved)")
+        print("seeding page-type & component scaffolds...")
+        sc_added = seed_scaffolds(conn)
+        print(f"  scaffolds added: {sc_added} (existing rows preserved)")
         print("seeding default sources...")
         added = seed_sources(conn)
         print(f"  sources added: {added} (existing rows preserved)")
