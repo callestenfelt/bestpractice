@@ -1350,14 +1350,10 @@ mistakes rather than build from scratch. Out of scope this session.
   preserved. Worth ~3 lines of template; useful when present.
 
 ### Next-session pointer
-**AI-assisted destination selection** is the headline next item. The
-infra is already partly there — `score.py` writes
-`consideration_id` (one primary placement) and the catalog
-(`fetch_consideration_catalog`) gives Groq the full page-type +
-component list. Extending this to **multiple** placements (the
-`sub_consideration_placements` table that Session 12 introduced)
-needs prompt changes + `apply_result()` writing to the placements
-table not just the primary `consideration_id` column.
+**AI-assisted destination selection** lands as Session 14b below (in
+the same working day) — fast-follow after Session 14 because the kind
+filter alone left destination-picking entirely manual, and that was
+the actual slow part of approval.
 
 Earlier deferred items still apply: MDN BCD adapter, per-source-type
 score threshold, `/admin/considerations/<slug>` editor, `/admin/sources`
@@ -1372,3 +1368,104 @@ cd /opt/bestpractice
 python3 init_db.py          # ALTER TABLE adds content_kind
 python3 score.py --rescore  # one-shot reclassification of the live pending queue
 ```
+
+
+## Session 14b — AI multi-placement on approval page ✅ shipped 2026-05-17 (`main`)
+
+Session 14's kind filter trimmed the Pending bin but the editor still
+had to pick destinations (page-type / component / consideration on
+each) from scratch on every item, with the queue UI showing zero
+pre-checked placements even when Groq had already chosen one. Root
+cause: `score.py` wrote the AI's suggested home to the legacy single-
+pointer `sub_considerations.consideration_id` column, but the approval
+template reads from the multi-row `sub_consideration_placements` table
+(introduced in Session 12). The columns weren't bridged.
+
+This session bridges them AND extends the Groq output to multiple
+placements per item so the approval page opens with a draft set the
+editor reviews-and-edits, not builds from scratch.
+
+### Done
+- [x] **Replace `consideration_id` with `placements: [int, ...]` in
+      Groq output.** New JSON contract returns 0–4 consideration ids
+      (cap'd by `MAX_PLACEMENTS = 4` in `score.py`). Prompt explicitly
+      tells the model to prefer few strong fits over many weak ones,
+      and to NOT default to site-wide when a specific page-type or
+      component is the right home — site-wide should accompany a
+      specific destination, not replace it.
+- [x] **`validate_result()` deduplicates + filters + caps.** Walks
+      `result["placements"]` preserving order, drops invalid ids
+      (anything not in `valid_consideration_ids`), drops duplicates,
+      truncates at `MAX_PLACEMENTS`. Backward-compat: if the model
+      omits `placements` but returns the old `consideration_id`, wrap
+      it as a one-element list. Empty list is valid and means "leave
+      the row in inbox; user picks destinations manually."
+- [x] **`apply_result()` writes to `sub_consideration_placements`.**
+      Idempotent: `DELETE` for the sub_id then `INSERT` each placement
+      with position 1..N. The first placement also goes into the
+      legacy `consideration_id` column so the queue list's "Suggested
+      home" breadcrumb keeps rendering without a join change.
+- [x] **Log line shows the full placement set.** Was `→ {cons_id}`,
+      now `→ [12,87,265] [pending]` so a glance at the rescore output
+      tells you how confident the model was about destinations vs how
+      much manual picking is still expected.
+- [x] **Sample-verified locally on items 67–91.** Items with clear
+      homes get sensible multi-placements:
+      `#77 "Fixed-height cards can break" → [card/Content slots,
+      card/Truncation & height]`,
+      `#91 "Optimize image LCP" → [hero/LCP impact, image/Responsive
+      delivery, site-wide/Accessible content]`. Items without an
+      obvious home (CSS spec rotations) get empty placements — the
+      model isn't padding to look thorough.
+
+### Lessons / decisions worth noting (non-obvious)
+- **The legacy `consideration_id` column is now derived state.** Kept
+  populated for the breadcrumb but the source of truth is
+  `sub_consideration_placements`. If we ever want to drop the legacy
+  column entirely, the approval page already reads from the new
+  table — only `load_queue_view`'s "Suggested home" JOIN would need
+  changing.
+- **`MAX_PLACEMENTS = 4` is editorial tuning, not a hard limit.** The
+  model would happily return 8 if asked; the cap exists because
+  beyond ~4 destinations the suggestions stop being "yes this clearly
+  belongs here" and start being padding. The editor can add more
+  manually if a topic genuinely cross-cuts. Worth revisiting once we
+  have a few weeks of real approval data.
+- **Backward-compat on `consideration_id` matters because of model
+  drift.** Llama 3.3 might temporarily revert to the old field if a
+  newer fine-tune is more conservative about array outputs. Wrapping
+  the legacy field as `[id]` keeps `--rescore` working on a model
+  flip without a code change.
+- **DELETE-then-INSERT on placements, not UPSERT.** UPSERT would let
+  stale rows accumulate if Groq removed a placement on rescore. The
+  full-refresh pattern means the AI's current opinion fully replaces
+  the previous one — same idempotency contract as the
+  `sub_consideration_phases` block right next to it.
+
+### Next-session pointer
+Open questions for the editor's first real approval session with the
+new AI placements:
+- Are 0–4 placements the right ceiling, or is the model
+  under-suggesting at the upper end? Easy tune via `MAX_PLACEMENTS`.
+- Does the "don't default to site-wide" instruction land, or does
+  the model still over-route to it? If so, consider a per-placement
+  weight or a soft penalty in the prompt.
+- The approval form still requires ≥1 placement at submit; with AI
+  pre-selection, this stops being a tax on the editor but starts
+  being a tax on items where the AI returned `[]`. Worth a small UI
+  tweak to surface "AI didn't suggest a placement" as a hint, not an
+  error.
+
+Earlier deferred items unchanged: MDN BCD adapter, per-source-type
+score threshold, `/admin/considerations/<slug>` editor,
+`/admin/sources` UX polish, content-diff, cron + backup.
+
+Prod deploy steps for Session 14b: GHA will rsync code; then on the
+VPS:
+```
+ssh root@77.42.40.207
+cd /opt/bestpractice
+python3 score.py --rescore  # idempotent — re-populates sub_consideration_placements
+```
+(No schema migration needed; `sub_consideration_placements` was
+introduced in Session 12.)

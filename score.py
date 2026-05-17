@@ -54,6 +54,11 @@ REJECT_THRESHOLD = 4  # PROJECT.md §6.1 starting threshold
 KEEP_KINDS = {"guidance", "reference"}
 VALID_KINDS = KEEP_KINDS | {"news", "discussion", "tutorial", "case-study", "marketing", "other"}
 
+# Session 14b: cap on multi-placement suggestions per item. Anything beyond
+# ~4 destinations is usually the model padding to look thorough; the editor
+# can add more manually if a topic genuinely cross-cuts.
+MAX_PLACEMENTS = 4
+
 SYSTEM_PROMPT = """You score and route items for "bestpractice", a personal reference tool of web/UX best practices used by one senior product professional. The audience is experienced: a working UX/frontend lead, not a beginner.
 
 Be selective. Most items will be tier 3 (skip). Promote only what is specific, actionable, and grounded in primary sources (specs, WCAG, web platform docs, original research). Penalise marketing, vague opinion, recycled commentary, listicles, and beginner explainers.
@@ -85,9 +90,15 @@ For each item, return a JSON object with EXACTLY these fields:
   strategy, concept, ux, design, frontend, backend, content, seo,
   measurement, maintenance, legal
 
-- "consideration_id": integer id of the best-fit consideration from the
-  list provided in the user message, OR null if no existing
-  consideration is a good home. Pick null rather than forcing a bad fit.
+- "placements": array of 0-4 consideration ids from the list provided in
+  the user message. Each id is one destination (page-type or component)
+  where this item belongs. Most items have 1-3 placements; reach for 4
+  only when the guidance clearly applies broadly. Prefer few strong fits
+  over many weak ones — empty list is better than forcing bad fits.
+  Don't default to site-wide; prefer specific page-types/components when
+  the guidance applies there directly. A cross-cutting topic (a11y,
+  security, performance, content) often deserves a site-wide placement
+  PLUS one specific page-type/component where it has a focused angle.
 
 - "one_liner": rewritten one-line summary, ≤ 120 characters, terse,
   no marketing language, no emoji. Make it scannable and specific.
@@ -212,14 +223,29 @@ def validate_result(result: dict, valid_consideration_ids: set[int], valid_phase
     if not isinstance(phases, list):
         return None, "phases not a list"
     phases = [p for p in phases if isinstance(p, str) and p in valid_phases]
-    cons_id = result.get("consideration_id")
-    if cons_id is not None:
+    # Multi-placement output (Session 14b). Dedupe while preserving order,
+    # filter to valid ids, cap at MAX_PLACEMENTS. Empty list is valid and
+    # means "leave attached to inbox; user picks placements manually".
+    raw_placements = result.get("placements")
+    if raw_placements is None:
+        # Backward-compat with the old single-pointer field — if the model
+        # falls back to it, wrap as a one-element list.
+        legacy = result.get("consideration_id")
+        raw_placements = [legacy] if legacy is not None else []
+    if not isinstance(raw_placements, list):
+        return None, "placements not a list"
+    placements: list[int] = []
+    seen: set[int] = set()
+    for p in raw_placements:
         try:
-            cons_id = int(cons_id)
+            pid = int(p)
         except (TypeError, ValueError):
-            cons_id = None
-        if cons_id not in valid_consideration_ids:
-            cons_id = None
+            continue
+        if pid in valid_consideration_ids and pid not in seen:
+            placements.append(pid)
+            seen.add(pid)
+        if len(placements) >= MAX_PLACEMENTS:
+            break
     one_liner = (result.get("one_liner") or "").strip()
     if not one_liner:
         return None, "one_liner empty"
@@ -237,7 +263,7 @@ def validate_result(result: dict, valid_consideration_ids: set[int], valid_phase
         "score": score,
         "kind": kind,
         "phases": phases,
-        "consideration_id": cons_id,
+        "placements": placements,
         "one_liner": one_liner,
         "body": f"<p>{body}</p>" if body else "",
     }, None
@@ -249,9 +275,14 @@ def apply_result(conn: sqlite3.Connection, item_id: int, parsed: dict, threshold
     reject_for_kind = parsed["kind"] not in KEEP_KINDS
     reject_for_score = parsed["score"] < threshold
     new_status = "rejected" if (reject_for_kind or reject_for_score) else "pending"
-    new_cons_id = parsed["consideration_id"]
-    if new_cons_id is None:
-        # Leave the row attached to inbox; record the score only.
+    # The legacy consideration_id column stays in sync with the first
+    # placement so the queue list's "Suggested home" breadcrumb keeps
+    # working. If Groq returns no placements, leave consideration_id
+    # untouched — the row stays attached to its current parent (inbox on
+    # fresh collect, or the previous placement on rescore).
+    placements: list[int] = parsed["placements"]
+    primary_cons_id = placements[0] if placements else None
+    if primary_cons_id is None:
         conn.execute(
             """UPDATE sub_considerations
                   SET relevance_score = ?, content_kind = ?, one_liner = ?,
@@ -265,7 +296,16 @@ def apply_result(conn: sqlite3.Connection, item_id: int, parsed: dict, threshold
                   SET consideration_id = ?, relevance_score = ?, content_kind = ?,
                       one_liner = ?, body = ?, status = ?, last_updated = ?
                 WHERE id = ?""",
-            (new_cons_id, parsed["score"], parsed["kind"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
+            (primary_cons_id, parsed["score"], parsed["kind"], parsed["one_liner"], parsed["body"], new_status, now, item_id),
+        )
+
+    # Idempotent placement write: clear and re-insert so rescoring on a
+    # row with stale AI picks fully refreshes the destination set.
+    conn.execute("DELETE FROM sub_consideration_placements WHERE sub_id = ?", (item_id,))
+    for pos, cons_id in enumerate(placements, start=1):
+        conn.execute(
+            "INSERT INTO sub_consideration_placements (sub_id, consideration_id, position) VALUES (?, ?, ?)",
+            (item_id, cons_id, pos),
         )
 
     conn.execute("DELETE FROM sub_consideration_phases WHERE sub_consideration_id = ?", (item_id,))
@@ -338,8 +378,8 @@ def main() -> int:
         else:
             approved += 1
         phases_short = ",".join(parsed["phases"]) or "-"
-        cons_short = parsed["consideration_id"] if parsed["consideration_id"] else "inbox"
-        print(f"[{idx}/{len(pending)}] #{item['id']} score={parsed['score']} kind={parsed['kind']} phases={phases_short} → {cons_short} [{status}]")
+        placements_short = ",".join(str(p) for p in parsed["placements"]) or "inbox"
+        print(f"[{idx}/{len(pending)}] #{item['id']} score={parsed['score']} kind={parsed['kind']} phases={phases_short} → [{placements_short}] [{status}]")
 
         time.sleep(DELAY_BETWEEN_CALLS)
 
