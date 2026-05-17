@@ -235,6 +235,12 @@ SITE_WIDE_SCAFFOLDS: list[dict] = [
         "intro": "lang attribute, locale formatting, RTL support, language switcher patterns. Site-wide because i18n is impossible to retrofit per page-type — the scaffolding lives once for the whole product.",
         "display_order": 8,
     },
+    {
+        "slug": "sw-accessible-content",
+        "title": "Accessible content",
+        "intro": "Author-time accessibility patterns that apply wherever content is produced: alt text for images, captions and transcripts for video, transcripts and descriptions for audio, descriptive link text, heading hierarchy discipline, plain-language norms, and not conveying meaning through colour or sensory cues alone. Lives site-wide because these are editorial conventions, not per-page-type rules.",
+        "display_order": 9,
+    },
 ]
 
 

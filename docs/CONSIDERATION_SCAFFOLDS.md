@@ -8,8 +8,10 @@ Seeded via `init_db.py:seed_scaffolds()` from the inline `SCAFFOLDS` list:
 
 | Scope | Destinations | Considerations |
 |---|---|---|
-| Page types | 21 of 21 | 247 |
+| Page types | 21 of 21 | 248 |
 | Components | 20 of 63 | 177 |
+
+`site-wide` carries 9 cross-cutting considerations (the contrast/keyboard pair plus security, privacy, performance, error handling, measurement, i18n, and accessible content — the last covering author-time patterns like alt text, captions, transcripts, link text, and plain language) seeded from `SITE_WIDE_SCAFFOLDS`, plus the `ingest-inbox` placeholder.
 
 The stray `Verify group / Inline test ...` row on `article-page` was removed in the same pass (one-shot cleanup in `migrate()`).
 
