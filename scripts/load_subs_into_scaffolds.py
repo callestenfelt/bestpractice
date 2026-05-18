@@ -35,7 +35,7 @@ def now_iso() -> str:
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
 
-def load(conn: sqlite3.Connection, fixture_path: Path, apply: bool) -> dict:
+def load(conn: sqlite3.Connection, fixture_path: Path, apply: bool, update: bool = False) -> dict:
     data = json.loads(fixture_path.read_text(encoding="utf-8"))
     parent_type = data["parent_type"]
     parent_slug = data["parent_slug"]
@@ -47,6 +47,7 @@ def load(conn: sqlite3.Connection, fixture_path: Path, apply: bool) -> dict:
         "cons_missing": 0,
         "subs_inserted": 0,
         "subs_existed": 0,
+        "subs_updated": 0,
         "placements_added": 0,
         "phases_added": 0,
     }
@@ -74,8 +75,31 @@ def load(conn: sqlite3.Connection, fixture_path: Path, apply: bool) -> dict:
                 ).fetchone()
                 if existing:
                     sub_id = existing[0]
-                    stats["subs_existed"] += 1
-                    action = "exists"
+                    if update:
+                        action = "would-update" if not apply else "update"
+                        stats["subs_updated"] += 1
+                        if apply:
+                            # Overwrite content + source fields. Status,
+                            # display_order, last_updated also refreshed.
+                            # placement / phases follow normal idempotent path
+                            # below so editor-added extras aren't clobbered.
+                            cur.execute(
+                                """UPDATE sub_considerations
+                                      SET one_liner=?, body=?,
+                                          source_name=?, source_suffix=?,
+                                          source_title=?, source_url=?,
+                                          source_date=?, display_order=?,
+                                          last_updated=?
+                                    WHERE id=?""",
+                                (sub["one_liner"], sub.get("body", ""),
+                                 sub.get("source_name", ""), sub.get("source_suffix", ""),
+                                 sub.get("source_title", ""), sub.get("source_url", ""),
+                                 sub.get("source_date"), sub["display_order"],
+                                 sub["last_updated"], sub_id),
+                            )
+                    else:
+                        stats["subs_existed"] += 1
+                        action = "exists"
                 else:
                     action = "would-insert" if not apply else "insert"
                     sub_id = None
@@ -99,7 +123,8 @@ def load(conn: sqlite3.Connection, fixture_path: Path, apply: bool) -> dict:
 
                 print(f"  [{action}] {cons['slug']}/{sub['slug']}")
 
-                # Placement (idempotent on PK sub_id+consideration_id)
+                # Placement + phases (idempotent on PK). Run for inserts AND
+                # updates so back-filling a missing placement still happens.
                 if apply and sub_id is not None:
                     cur.execute(
                         "INSERT OR IGNORE INTO sub_consideration_placements (sub_id, consideration_id, position) VALUES (?, ?, ?)",
@@ -135,6 +160,11 @@ def main() -> int:
     parser.add_argument("fixture", help="Path to fixture JSON")
     parser.add_argument("--apply", action="store_true", help="Commit. Omit to dry-run.")
     parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Overwrite one_liner/body/source_* on existing subs. Without this flag, existing subs are left alone.",
+    )
+    parser.add_argument(
         "--db",
         default=os.environ.get("BESTPRACTICE_DB", str(DEFAULT_DB)),
         help=f"SQLite path (default: {DEFAULT_DB})",
@@ -156,7 +186,7 @@ def main() -> int:
     conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys = ON")
     try:
-        stats = load(conn, fixture_path, apply=args.apply)
+        stats = load(conn, fixture_path, apply=args.apply, update=args.update)
     finally:
         conn.close()
     print()
