@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-18 (Session 15 — edit-in-place link on approved subs)
+Last updated: 2026-05-18 (Session 19 — one_liner collision guard in score.py)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -2017,3 +2017,99 @@ Net-new from this session:
   scan the tab, click Edit on anything that needs correcting,
   Save bounces back to the public read view. Use it when you
   spot an approved sub whose placement set looks wrong.
+
+---
+
+## Session 19 — one_liner collision guard in score.py ✅ shipped 2026-05-18 (`main`)
+
+Editor noticed two queue items with the same one-liner. Investigation
+showed the ingest path's URL-based dedup (`collect.py:96-99`,
+`collect.py:173-175`; structured side leans on `UNIQUE(consideration_id, slug)`)
+is working — zero exact-URL dupes among pending/rejected rows. The
+collisions came from Groq's rewrite step: `score.py` overwrites the
+RSS feed title with a model-generated `one_liner`, and the model can
+collapse two distinct source URLs down to the same short phrase. Three
+real pairs in the DB:
+
+| Pair | IDs (status)              | Colliding one_liner                              | Underlying truth |
+|------|---------------------------|--------------------------------------------------|------------------|
+| 1    | #299 (approved) / #301 (rejected) | "Prerecorded video requires audio description"   | WCAG 1.2.3 (Audio Description **or** Media Alternative) vs WCAG 1.2.5 (Audio Description alone) — genuinely different criteria |
+| 2    | #282 / #283 (both rejected) | "Job opening at NNGroup"                         | Two NNGroup job posts (Europe vs US) — auto-rejected anyway as `kind=other` |
+| 3    | #68 (pending) / #69 (rejected) | "CSS rotateX() function"                         | rotateX vs rotateY; #69's `source_url` is `https://example.com/edited` so this pair is partly a manual-edit test artifact |
+
+### Done
+- [x] **Collision guard in `apply_result`** (`score.py:366-395`).
+      Before writing the parsed row, query for any other
+      `sub_considerations` row with case-insensitive matching
+      `one_liner` AND a different `source_url`. On hit, swap
+      `parsed["one_liner"]` for the row's original `source_title`
+      (truncated to the existing 240-char cap), print an indented
+      `one_liner collision with #<id>: '...' → falling back to
+      source_title` notice, and continue. Skipped when
+      `source_title` is empty (defensive). The check spans all
+      statuses, so a new pending row won't collide with an existing
+      approved or rejected sibling.
+- [x] **Signature change.** `apply_result(conn, item_id, parsed, threshold)`
+      → `apply_result(conn, item, parsed, threshold)` so the guard
+      has `source_url` + `source_title` without a second SELECT.
+      Single call site in `main()` updated.
+- [x] **Retroactive cleanup of the 3 existing collisions.** Direct
+      SQL via `query_db.py --write`:
+      `UPDATE sub_considerations SET one_liner = substr(source_title, 1, 240) WHERE id IN (301, 283, 69)`.
+      Picked the rejected/lower-priority row in each pair so the
+      approved/curated one (#299, #282, #68) kept its Groq summary.
+      Verified zero remaining one_liner duplicates afterwards. Chose
+      direct SQL over `score.py --rescore` because rescore only
+      touches `status='pending'` rows (230 of them) and would only
+      stochastically fix one of the three pairs.
+
+### Why this approach, not the alternatives
+- *Prompt-side guidance to Groq.* Cheap, imperfect — model still
+  free to ignore. Worth doing as a backstop later but not the
+  primary defense.
+- *Editor-side "duplicate" badge in the queue UI.* Surfaces the
+  problem but doesn't prevent it; still requires manual fixup. The
+  post-score guard prevents the bad row from ever landing in the
+  queue with a colliding text.
+- *Fuzzy-match on near-misses (trailing punctuation, etc.).* Skipped
+  for now — case-insensitive exact match catches the observed cases
+  and avoids false positives.
+
+### Files changed
+- `score.py` — `apply_result` signature + collision-guard block.
+- `nextstep.md`, `CLAUDE.md` — this session note.
+
+### How to test
+- `python score.py --limit 1` on a fresh pending row to confirm the
+  normal path still writes correctly.
+- Manually seed two pending rows with the same Groq-style one_liner
+  via SQL, run `score.py --rescore --limit 2`, watch the collision
+  notice fire on the second row.
+
+### Next-session pointer
+Carry-over still open from Session 17/18:
+- Tune the universal-prompt for `sw-performance` / `sw-security`
+  (rename or add in-prompt examples).
+- "Inherits N from categories" chip on each page-type's approval
+  summary.
+- More feature-presence categories (`has-listing`, `has-rich-media`,
+  `has-primary-cta`) when demand shows up.
+- MDN browser-compat-data adapter, per-source-type score threshold,
+  `/admin/considerations/<slug>` editor, `/admin/sources` UX polish,
+  content-diff for structured sources.
+
+Net-new from this session:
+- **Watch for soft near-misses.** The guard only catches exact
+  case-insensitive matches on `one_liner`. If the editor starts
+  seeing pairs that differ by only a trailing period, plural, or
+  word order, layer normalized comparison on top — strip
+  punctuation, collapse whitespace, lowercase — and re-test.
+- **No prod deploy step required for the code change.** Pure Python
+  edit to `score.py`; the next push auto-deploys via GHA and the
+  next `python3 score.py` run on the VPS picks up the new logic.
+  The retroactive UPDATE was on local DB only — prod has its own
+  ingested+scored corpus, so the colliding row IDs (if any) differ.
+  Post-deploy, run this on the VPS DB to find prod collisions:
+  `python3 query_db.py "SELECT one_liner, COUNT(*) c, GROUP_CONCAT(id) ids FROM sub_considerations WHERE one_liner <> '' GROUP BY LOWER(one_liner) HAVING c > 1"`
+  then apply the same `UPDATE … SET one_liner = substr(source_title, 1, 240) WHERE id IN (…)`
+  for the sibling rows in each pair.

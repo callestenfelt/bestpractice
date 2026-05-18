@@ -363,12 +363,35 @@ def validate_result(result: dict, valid_consideration_ids: set[int], valid_phase
     }, None
 
 
-def apply_result(conn: sqlite3.Connection, item_id: int, parsed: dict, threshold: int) -> str:
+def apply_result(conn: sqlite3.Connection, item: sqlite3.Row, parsed: dict, threshold: int) -> str:
     """Write scoring result. Returns the new status."""
     now = now_iso()
+    item_id = item["id"]
     reject_for_kind = parsed["kind"] not in KEEP_KINDS
     reject_for_score = parsed["score"] < threshold
     new_status = "rejected" if (reject_for_kind or reject_for_score) else "pending"
+
+    # One-liner collision guard. Groq sometimes summarizes two distinct
+    # source URLs down to the same short phrase (e.g. WCAG 1.2.3 and 1.2.5
+    # both became "Prerecorded video requires audio description"). If the
+    # rewritten one_liner already exists verbatim on a different row with a
+    # different source_url, fall back to the original source_title so the
+    # editor can tell them apart in the queue.
+    src_url = item["source_url"] or ""
+    src_title = (item["source_title"] or "").strip()
+    if src_title:
+        clash = conn.execute(
+            """SELECT id FROM sub_considerations
+                WHERE LOWER(one_liner) = LOWER(?)
+                  AND source_url <> ?
+                  AND id <> ?
+                LIMIT 1""",
+            (parsed["one_liner"], src_url, item_id),
+        ).fetchone()
+        if clash is not None:
+            fallback = src_title[:240]
+            print(f"    one_liner collision with #{clash['id']}: '{parsed['one_liner']}' → falling back to source_title")
+            parsed["one_liner"] = fallback
     # The legacy consideration_id column stays in sync with the first
     # placement so the queue list's "Suggested home" breadcrumb keeps
     # working. If Groq returns no placements, leave consideration_id
@@ -467,7 +490,7 @@ def main() -> int:
             time.sleep(DELAY_BETWEEN_CALLS)
             continue
 
-        status = apply_result(conn, item["id"], parsed, args.threshold)
+        status = apply_result(conn, item, parsed, args.threshold)
         if status == "rejected":
             rejected += 1
         else:
