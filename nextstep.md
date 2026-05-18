@@ -1622,6 +1622,11 @@ session adds an OS-level daily snapshot — small, lock-safe, with
 - `scripts/backup_db.sh` — new.
 - `scripts/systemd/bestpractice-backup.service` — new.
 - `scripts/systemd/bestpractice-backup.timer` — new.
+- `.github/workflows/deploy.yml` — new "Install system packages on
+  VPS" step that runs `apt-get install -y -qq sqlite3` before the
+  pip step. Idempotent, sub-second no-op on every deploy after the
+  first. Added in response to the install-time surprise (see
+  Lessons).
 - `CLAUDE.md` — Session 16 paragraph; removed "cron + daily SQLite
   backup" from the Still-pending list.
 
@@ -1655,8 +1660,38 @@ session adds an OS-level daily snapshot — small, lock-safe, with
   this VPS are inconsistent about TZ (system clock is UTC; logs
   print local). Pinning the filename to UTC removes ambiguity when
   comparing against `journalctl -u bestpractice-backup`.
+- **The VPS shipped without the `sqlite3` CLI.** Caught at first
+  service run — only `libsqlite3-0` was installed (used by Python's
+  stdlib `sqlite3` module). `.backup` is a CLI builtin, not a
+  Python API call, so the script needs the binary. Fixed by adding
+  an `apt-get install -y sqlite3` step to `deploy.yml` so any
+  future redeploy onto a fresh VPS (or rebuild after disk loss)
+  gets the dependency without manual intervention. The previous
+  CLAUDE.md / settings.json references to `sqlite3 *` only proved
+  the *operator's* shell had it locally — Slice A never actually
+  exercised the CLI in production.
+- **`systemctl status` returns exit 3 for a successfully-completed
+  oneshot.** Caught during install when `set -euo pipefail` made
+  the script abort after a clean service run. For oneshot services
+  the "inactive (dead)" state IS the success state — wrap status
+  checks in `|| true` inside a chained command, or split into
+  separate commands.
 
-### One-time install on the VPS
+### Install status (2026-05-18)
+
+Done on the VPS:
+- `sqlite3` CLI installed (apt-get install sqlite3 — and now also
+  pinned into the GHA workflow's "Install system packages on VPS"
+  step so future fresh VPS provisioning is one-shot).
+- `bestpractice-backup.service` and `bestpractice-backup.timer`
+  copied to `/etc/systemd/system/`, `daemon-reload`'d.
+- Timer enabled + started: `active (waiting)`, next fire
+  Tue 2026-05-19 03:17:00 UTC, then daily.
+- First snapshot taken via manual `systemctl start`:
+  `/var/backups/bestpractice/bestpractice-20260518T063459Z.db.gz`
+  (227 KB gzipped).
+
+### One-time install on the VPS (preserved for fresh-VPS rebuilds)
 
 ```bash
 ssh root@77.42.40.207

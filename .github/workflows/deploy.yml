@@ -67,6 +67,19 @@ jobs:
             --exclude='instance/' \
             ./ "$SSH_USER@$SSH_HOST:/opt/bestpractice/"
 
+      - name: Install system packages on VPS
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        # sqlite3 CLI is needed by scripts/backup_db.sh (Session 16's
+        # systemd-driven daily backup). Python's stdlib sqlite3 module
+        # uses libsqlite3-0 which is already there, but the .backup
+        # command lives in the sqlite3 CLI package. Idempotent — every
+        # deploy after the first is a sub-second no-op.
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sqlite3"
+
       - name: Install Python deps on VPS
         if: steps.gate.outputs.ready == 'true'
         env:
