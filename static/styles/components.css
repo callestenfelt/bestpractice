@@ -1410,6 +1410,10 @@ mark {
   color: var(--gray-10);
   margin: var(--space-3) 0 4px 0;
 }
+.qitem__dest-hint {
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+}
 .qitem__dest-group {
   display: flex;
   flex-direction: column;

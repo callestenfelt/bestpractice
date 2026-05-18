@@ -93,8 +93,9 @@
       <h3 class="qitem__side-title">Placements</h3>
       <p class="qitem__hint">Check a destination, then pick where on that page/component it should show.</p>
 
-      {% macro dest_group(kind, heading, items) %}
+      {% macro dest_group(kind, heading, items, hint='') %}
         <h4 class="qitem__dest-heading">{{ heading }}</h4>
+        {% if hint %}<p class="qitem__hint qitem__dest-hint">{{ hint }}</p>{% endif %}
         <div class="qitem__dest-group">
           {% for it in items %}
             {% set key = kind ~ ':' ~ it.slug %}
@@ -136,10 +137,12 @@
       {% endmacro %}
 
       {% if dest_palette.site_wide %}
-        {{ dest_group('page_type', 'Site-wide (every page)', [dest_palette.site_wide]) }}
+        {{ dest_group('page_type', 'Cross-cutting umbrellas', [dest_palette.site_wide],
+            "Renders in a trailing bucket at the bottom of every page. Use for rules without a single per-page home — performance, security, privacy, accessibility umbrellas, etc.") }}
       {% endif %}
       {% if dest_palette.categories %}
-        {{ dest_group('category',  'Page categories',        dest_palette.categories) }}
+        {{ dest_group('category',  'Page categories', dest_palette.categories,
+            "Renders inline in the page's natural group. 'All pages' covers every page-type (URL, page title, meta description, SEO). Other categories target subsets.") }}
       {% endif %}
       {{ dest_group('page_type', 'Page types', dest_palette.page_types) }}
       {{ dest_group('component', 'Components', dest_palette.components) }}
