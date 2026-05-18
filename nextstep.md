@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-18 (Session 20b — approval UI relabel)
+Last updated: 2026-05-18 (Session 21 — queue source filter)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -2338,3 +2338,146 @@ needed. No Groq spend.
 Nothing net-new; carry-overs from Session 20 still apply
 (ingest-inbox leak on every page render; no admin view for
 `category:all-pages` cons).
+
+---
+
+## Session 21 — queue source filter (chips + persistent through prev/next) ✅ shipped 2026-05-18 (`main`)
+
+The review queue at `/admin/queue` lists pending/approved/rejected
+sub-considerations as cards with the source name in the header.
+With 9 active ingest sources and a growing backlog, finding "all
+the WCAG items I haven't approved yet" or "show me only caniuse"
+meant eyeballing every card. Added a chip-style source filter
+above the list and threaded it through the full approval flow so
+the stepper (and the per-card Reject button) only walks items
+matching the active filter.
+
+### Done
+- [x] **Chip filter row above the queue list** (`templates/admin/queue.html`).
+      Renders only when ≥2 distinct `source_name` values are in
+      the current tab. Pill checkboxes per source, all ticked =
+      no filter. "Show all" reset button appears when any chip
+      is unticked. Empty-state hint when zero sources are ticked.
+      Pure presentational — no count recomputation, tab totals
+      stay global.
+- [x] **`static/js/queue_filter.js`** (new). Toggles `hidden` on
+      `.qcard[data-source]` per checkbox state. Mirrors the
+      selection to `?sources=A&sources=B` via
+      `history.replaceState` so reload + back-nav preserve it,
+      and URLs are shareable. URL stays clean when all chips
+      are ticked. On every change, also rewrites every
+      `a[href]` and `form[action]` inside each `.qcard` that
+      targets `/admin/queue/...` so the sidebar Open/Edit
+      anchors and the per-card Reject/Re-queue POST forms carry
+      the filter into the next request.
+- [x] **`.qcard[hidden] { display: none }` specificity rule**
+      (`static/styles/components.css`). `.qcard { display: grid }`
+      outranks the UA's `[hidden] { display: none }`, so without
+      this rule unticking a chip silently did nothing — fixed
+      in the second commit of the session.
+- [x] **Server-side filter in the stepper.** `_pending_queue_ids`
+      gained an optional `sources: list[str]` arg → `WHERE
+      source_name IN (...)`. `_neighbors`, `_next_after`, and
+      `_queue_item_context` thread it through. New helper
+      `_active_sources()` reads `request.values.getlist('sources')`
+      so it picks up both `?sources=` on GET and hidden
+      `<input name="sources">` from POST bodies.
+- [x] **Approve/Reject POST handlers preserve the filter.**
+      `admin_queue_approve` and `admin_queue_reject` call
+      `_active_sources()`, pass to `_next_after`, and include
+      `sources=sources or None` on the redirect's `url_for`. The
+      approve form ships hidden `<input name="sources">` inputs
+      per active source (same form is reused by the in-item
+      Reject button via `form.action` swap), so both submits
+      carry them.
+- [x] **Filtering badge in the item view.** Header now renders
+      "Filtering by source: X · Clear" (chip rendered with the
+      reserved blue accent, since active-filter state is one of
+      blue's allowed uses per CLAUDE.md). Clear link points to
+      the same item without the `?sources=` param. Prev/Next
+      anchors append the filter to their hrefs. The "← Queue"
+      crumb also propagates it.
+
+### Lessons / decisions worth noting (non-obvious)
+- **`.qcard { display: grid }` beats `[hidden] { display: none }`
+  on specificity** (class > attribute). Setting `hidden` on a
+  styled container is *not* enough — you need an explicit
+  `[hidden] { display: none }` rule at the same or higher
+  specificity. This is the second time this codebase has been
+  caught by it; worth remembering for any future card-style
+  show/hide.
+- **URL params over localStorage** for filter persistence.
+  Tradeoffs: URL is shareable, survives reload, AND is readable
+  by the server-side stepper (which has no access to
+  localStorage). The only downside is the URL grows with 5
+  unticked sources, which is fine — it's an admin tool, the URL
+  is not exposed to readers.
+- **Repeated `?sources=A&sources=B` over comma-joined**. Source
+  names can contain spaces, periods, slashes; URL-encoding each
+  value independently is simpler than reserving a separator.
+  Flask's `request.values.getlist` and `url_for(sources=[...])`
+  handle both directions natively.
+- **Two render paths needed coordination.** Hidden inputs in the
+  approve form (server-rendered) cover POST. URL params on
+  redirects (server-rendered) cover GET. JS rewriting of
+  `a[href]` and `form[action]` inside each card (client-side)
+  covers the queue list. Skipping any one path leaks the filter.
+- **Per-card forms inside `.qcard` aren't obvious.** The first
+  fix only rewrote the main `.qcard__link` (the big click
+  target). The sidebar Reject button is its own tiny
+  `<form method="post">`, and Open/Edit are `<a class="qcard__btn">`
+  — neither matches `.qcard__link`. Required a third commit to
+  walk every `a[href^="/admin/queue/"]` and `form[action^="/admin/queue/"]`
+  inside each card.
+
+### Files changed
+- `templates/admin/queue.html` — chip filter `<fieldset>` below
+  the toolbar; `data-source` attribute on each `.qcard`;
+  initial chip state restored from `request.args.getlist('sources')`;
+  script tag for `queue_filter.js`.
+- `templates/admin/queue_item.html` — hidden `<input name="sources">`
+  inputs in the approve form; "Filtering by source: …" badge in
+  the header; `?sources=` on Prev/Next/"← Queue" `url_for` calls.
+- `static/js/queue_filter.js` (new) — chip → card visibility,
+  URL mirror, and link/form rewrite.
+- `static/styles/components.css` — `.queue-source-filter` chip
+  styling (pill, `:has(input:not(:checked))` for dim state);
+  `.qcard[hidden] { display: none }`; `.qitem__filter`,
+  `.qitem__filter-clear`, `.chip--filter`.
+- `app.py` — `_pending_queue_ids(sources=None)`, `_active_sources()`,
+  threading through `_queue_item_context` and `_next_after`,
+  filter-preserving redirects in approve + reject handlers.
+
+### How to test
+1. Hard-reload `/admin/queue` after deploy. Chip row appears
+   above the list (only on tabs with ≥2 distinct sources).
+2. Untick "WCAG 2.2" → all WCAG cards hide, URL becomes
+   `?sources=…` (every other source). Re-tick → URL goes
+   clean.
+3. Click a card → item view URL carries `?sources=…`.
+   "Filtering by source: …" badge visible. Prev/Next steps
+   only through matching items. Position counter reflects
+   filtered total.
+4. Approve a filtered item → redirect lands on the next
+   matching pending row with the same filter. When the filter
+   pool empties, you get a clear "No more pending items match
+   the active source filter" flash.
+5. Reject a card from the list view (small sidebar button) →
+   redirect carries the filter too.
+6. Same for the Re-queue button on the Rejected tab.
+
+### Prod deploy
+Pure template + JS + CSS + app.py change. No schema. No
+migration. GHA rsync only.
+
+### Next-session pointer
+- Tab links on `/admin/queue` (Pending/Approved/Rejected) don't
+  carry `?sources=` yet — switching tabs resets chips to
+  all-ticked. Reasonable next nicety. Same idea as the per-card
+  link rewrite, but applied to `.queue-tab` anchors.
+- The chip set is computed per-tab from the items in that tab.
+  Switching tabs gives you a different set of chips. If a
+  source has 5 pending and 0 rejected items, it won't appear on
+  the Rejected tab's chips. That's fine for now.
+- Carry-overs from Sessions 20/20b still apply (ingest-inbox
+  leak, no admin view for `category:all-pages` cons).
