@@ -805,6 +805,7 @@ mark {
   color: var(--gray-11);
   font-size: var(--fs-13);
 }
+.qcard[hidden] { display: none; }
 
 .queue-list {
   display: flex;
