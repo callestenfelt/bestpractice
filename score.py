@@ -101,13 +101,17 @@ For each item, return a JSON object with EXACTLY these fields:
     2. Is that feature universal (every page), categorical (a subset of
        pages share the feature), or specific (one page-type/component)?
     3. Pick from the catalog accordingly:
-       - Universal → the [SITE-WIDE] consideration. NEVER enumerate
-         page-types for guidance that obviously applies everywhere. If
-         the rule is about URLs, page titles, meta descriptions,
-         heading hierarchy, Core Web Vitals, security, privacy,
-         accessibility, performance, measurement, or internationalization,
-         it belongs on the matching [SITE-WIDE] consideration. Listing
-         five page-types here is wrong.
+       - Universal-on-pages → the matching [CAT:all-pages] consideration.
+         Use this for per-page essentials that every page render has:
+         URLs, page title & H1, meta description, SEO basics
+         (canonicals, indexability, crawlability). NEVER enumerate
+         individual page-types for these.
+       - Cross-cutting umbrella (no natural per-page home) → the matching
+         [SITE-WIDE] consideration. Use this for rules that apply broadly
+         but don't belong in a single page section: performance / Core
+         Web Vitals, security, privacy & consent, accessibility umbrellas
+         (contrast, keyboard nav, accessible content), error handling,
+         measurement, internationalization.
        - Categorical → the [CAT:<slug>] consideration. The cheat-sheet
          at the bottom of this message lists each category's members.
          Form-validation guidance belongs on [CAT:has-form], not on
@@ -265,9 +269,12 @@ CATEGORY CHEAT-SHEET (which page-types belong to each [CAT:*]):
 {cat_lines}
 
 Pick placements by reasoning about page-feature scope first (see system
-prompt). Use [SITE-WIDE] for universal rules, [CAT:*] for categorical
-ones, specific page-types/components only when the angle is tied to
-that surface. Return one JSON object as specified."""
+prompt). Use [CAT:all-pages] for per-page universals (URL, page title,
+meta description, SEO basics), [SITE-WIDE] for cross-cutting umbrellas
+without a single per-page home (performance, security, privacy,
+accessibility umbrellas), [CAT:*] for other category-scoped rules, and
+specific page-types/components only when the angle is tied to that
+surface. Return one JSON object as specified."""
 
 
 def groq_call(messages: list[dict]) -> tuple[dict | None, str | None]:

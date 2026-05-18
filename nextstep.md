@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-18 (Session 19 — one_liner collision guard in score.py)
+Last updated: 2026-05-18 (Session 20 — `all-pages` category + universals render inline)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -2113,3 +2113,168 @@ Net-new from this session:
   `python3 query_db.py "SELECT one_liner, COUNT(*) c, GROUP_CONCAT(id) ids FROM sub_considerations WHERE one_liner <> '' GROUP BY LOWER(one_liner) HAVING c > 1"`
   then apply the same `UPDATE … SET one_liner = substr(source_title, 1, 240) WHERE id IN (…)`
   for the sibling rows in each pair.
+
+---
+
+## Session 20 — `all-pages` category, universals render inline, site-wide off components ✅ shipped 2026-05-18 (`main`)
+
+Editor flagged four interrelated issues with the site-wide
+mechanism:
+
+1. URL structure / Page title / Meta description / SEO weren't
+   really site-wide — they apply to pages, not components, but
+   were leaking onto every `/component/<slug>` render anyway.
+2. When rendered under the trailing "Site-wide considerations"
+   group, "Page title" lost its natural position at the top of
+   the page.
+3. Editor preference: those cons should live under a "Pages"
+   grouping that renders inline with other page-natural groups
+   (Before you start, Top of page, Behind the scenes).
+4. To spread a cons like "Eyebrow / kicker" to every page-type,
+   the editor had to either scaffold empty cons on each
+   page-type or tick 20 destination checkboxes — no clean primitive
+   for "every page".
+
+Root cause: `site-wide` was three things at once — a page_type row,
+a destination class, AND a hardcoded render bucket (`group_label`
+forced to "Site-wide considerations", `group_order=999`). The
+overlay block in `load_parent_view` ran on every non-site-wide
+parent, including components.
+
+### Done
+- [x] **`all-pages` page_type_category seeded.** Added to
+      `PAGE_TYPE_CATEGORIES` at the top of the list
+      (`init_db.py:1091+`) so it gets `display_order=1` and renders
+      first in the approval form's "Page categories" section.
+      Members: all 20 real page-types (everything except the
+      synthetic `site-wide`). `seed_categories` clear-then-fill
+      keeps membership in sync on re-runs.
+- [x] **`scripts/migrate_universals_to_all_pages.py`.** One-shot,
+      idempotent, dry-run-default migration. For each of
+      `url-structure`, `page-title-h1`, `meta-description`,
+      `sw-seo`: updates `parent_slug` to the sentinel
+      `category:all-pages`; sets natural
+      `group_label`/`group_slug`/`group_order`/`display_order`;
+      DELETEs the `(page_type, site-wide)` row from
+      `consideration_destinations` and INSERTs a
+      `(category, all-pages)` row. Picked group placements to
+      land each cons inline:
+      | Cons | New group | order.display |
+      |------|-----------|---------------|
+      | url-structure | Before you start | 1.3 |
+      | page-title-h1 | Top of page | 2.1 |
+      | meta-description | Behind the scenes | 5.1 |
+      | sw-seo | Behind the scenes | 5.4 |
+- [x] **`app.py` overlay scoped to page-types only.** The
+      site-wide overlay block (`load_parent_view`, around line
+      208) now runs only when `parent_type == 'page_type'`.
+      Components no longer pick up site-wide cons. Comment
+      block updated to explain the page-vs-component split.
+- [x] **Groq prompt rewritten around the new split.** System
+      prompt (`score.py`) previously routed "URLs, page titles,
+      meta descriptions, headings, performance, security,
+      privacy, accessibility, …" all to `[SITE-WIDE]`. After
+      migration the first four moved to `[CAT:all-pages]`.
+      Two-bucket guidance now:
+      - **Universal-on-pages → `[CAT:all-pages]`** for URL,
+        page title & H1, meta description, SEO basics
+        (canonicals, indexability, crawlability).
+      - **Cross-cutting umbrella → `[SITE-WIDE]`** for
+        performance / Core Web Vitals, security, privacy,
+        accessibility umbrellas (contrast, keyboard,
+        accessible content), error handling, measurement,
+        internationalization.
+      The trailing user-prompt reminder was updated to match.
+      Catalog tagging in `fetch_consideration_catalog` already
+      handled `[CAT:all-pages]` from Session 17, no code change
+      there.
+
+### Verified locally
+- `/page-type/start-page` renders in natural order: Before you
+  start (Purpose, Entry-points, **URL structure**) → Top of page
+  (Header, **Page title & H1**, Hero, Tasks) → Body → End of page
+  → Behind the scenes (Core Web Vitals, **Meta description**,
+  Site-name markup, **SEO**) → Site-wide considerations (9
+  umbrellas) → Ingest inbox.
+- `/page-type/article-page` renders the same shape with
+  article-page-specific cons interleaved.
+- `/component/image` has zero site-wide cons in the render
+  (overlay correctly gated off components).
+- `/page-type/site-wide` editor view shows only the 9 remaining
+  umbrellas (URL/title/meta/SEO no longer appear there as
+  primary owners).
+- `/admin/queue/67` approval UI shows "All pages" as a
+  destination in the "Page categories" section — single-click
+  primitive for fanning a sub to every page.
+
+### Files changed
+- `init_db.py` — `all-pages` in `PAGE_TYPE_CATEGORIES`.
+- `scripts/migrate_universals_to_all_pages.py` — new.
+- `app.py` — overlay gated to page-types only, comment updated.
+- `score.py` — system prompt + trailing reminder updated for
+  the two-bucket model.
+- `CLAUDE.md`, `nextstep.md` — this session note.
+
+### Deciding why this shape, not the alternatives
+- *Kill the trailing Site-wide bucket entirely* — would have
+  required assigning natural groups to the 9 umbrellas
+  (Performance, Security, Privacy, etc.) and inflating every
+  page-type's accordion list. Editor confirmed "keep for
+  umbrellas (recommended)" — they earn their bottom-of-page
+  spot as genuinely cross-cutting umbrellas.
+- *Move umbrellas to `all-pages` with natural groups* — same
+  outcome, more upfront work for negligible win.
+- *Introduce a symmetric `all-components` category* — editor
+  confirmed "not now". Add when a real need surfaces.
+- *Surface a UI toggle for "show site-wide on this view"* —
+  doesn't fix the deeper "wrong group" problem; only papers
+  over the leak.
+
+### Prod deploy steps (do once, in order)
+1. Push auto-deploys via GHA (rsync + service restart).
+2. **Required:** `python3 init_db.py` on the VPS — seeds the
+   `all-pages` category row + 20 memberships. Idempotent;
+   no-op on subsequent runs.
+3. **Required:** `python3 scripts/migrate_universals_to_all_pages.py --apply`
+   on the VPS — moves the 4 cons. Idempotent; no-op on
+   subsequent runs. Dry-run first (`python3 scripts/migrate_universals_to_all_pages.py`)
+   to preview before applying.
+4. **Optional but recommended:** `python3 score.py --rescore`
+   to let Groq re-route any pending items currently placed on
+   `[SITE-WIDE]` cons that should hit `[CAT:all-pages]`. Burns
+   Groq calls (~230 pending rows on local, prod count differs)
+   but cleans up placements left over from the pre-migration
+   prompt. Safe to interrupt — each row commits before next.
+
+### Next-session pointer
+Carry-over still open:
+- Tune the prompt's umbrella examples (`sw-performance` /
+  `sw-security` rename or in-prompt examples) — partly
+  addressed this session by sharpening the umbrella list, but
+  worth re-checking on real items.
+- "Inherits N from categories" chip on each page-type's
+  approval-UI summary.
+- More feature-presence categories (`has-listing`,
+  `has-rich-media`, `has-primary-cta`) when demand shows up.
+- MDN browser-compat-data adapter, per-source-type score
+  threshold, `/admin/considerations/<slug>` editor,
+  `/admin/sources` UX polish, content-diff for structured
+  sources.
+
+Net-new from this session:
+- **`Ingest inbox` still leaks onto every page-type render.**
+  It's the queue inbox cons, anchored on `(page_type, site-wide)`
+  with `group_label='Inbox'`, `group_order=998`. The overlay
+  pulls it through. Reader-facing pages shouldn't show "Ingest
+  inbox" at the bottom — pre-existed Session 20, just more
+  visible now that the trailing bucket is smaller. Quick fix
+  next session: filter `c.slug != 'ingest-inbox'` in the
+  overlay query, or move it off the `site-wide` destination
+  entirely.
+- **The `category:all-pages` parent_slug sentinel doesn't have a
+  natural admin view.** There's no `/category/<slug>` route, so
+  the 4 migrated cons can only be viewed in-context (on a
+  page-type render). If the editor wants to edit one, they
+  currently need to find a page-type that renders it and
+  click through. Worth adding a route or a "by all-pages"
+  list view to `/admin/considerations` if/when that lands.

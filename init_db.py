@@ -1089,6 +1089,17 @@ SCAFFOLDS: list[dict] = [
 # each page_type. (slug, label, definition, [member page_type slugs]).
 # Membership is editorial; tweak via SQL if the heuristic feels wrong.
 PAGE_TYPE_CATEGORIES: list[tuple[str, str, str, list[str]]] = [
+    # `all-pages` is the catch-all built-in: every real page-type is a member.
+    # Use it for guidance that applies to every page render but NOT to
+    # components (URL structure, page title, meta description, SEO).
+    # Cons anchored here render inline in their own group_label/group_order,
+    # not in the trailing "Site-wide" bucket.
+    ("all-pages", "All pages", "Every page-type. Considerations anchored here render on every page render inline in their natural group (Before you start, Top of page, etc.) — they don't get pushed into the trailing Site-wide bucket and they don't appear on component views.",
+     ["start-page", "landing-page", "auth-page", "article-page", "collection-page",
+      "item-page", "pricing-page", "profile-page", "search-results-page", "faq-page",
+      "about-page", "contact-page", "checkout-page", "confirmation-page",
+      "event-page", "legal-page", "cookie-page", "error-page", "404-page",
+      "dashboard-page"]),
     ("has-header", "Has a header", "Pages that render a top-of-page header with title/H1 and primary nav. Almost every page-type except thin system shells.",
      ["start-page", "landing-page", "auth-page", "article-page", "collection-page",
       "item-page", "pricing-page", "profile-page", "search-results-page", "faq-page",

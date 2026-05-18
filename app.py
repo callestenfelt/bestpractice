@@ -201,12 +201,16 @@ def load_parent_view(parent_type: str, parent_slug: str):
         ).fetchall()
 
     # Site-wide remains a special page_type bucket: any consideration destined
-    # to (page_type, site-wide) layers onto every other parent's view as a
-    # trailing group. The category mechanism doesn't change this — a
-    # consideration that's only attached to a category (not site-wide) won't
-    # show in the overlay; it'll show directly on the matching pages.
-    is_sitewide_self = parent_type == "page_type" and parent_slug == "site-wide"
-    if not is_sitewide_self:
+    # to (page_type, site-wide) layers onto every page-type's view as a
+    # trailing group. Components don't get the overlay — site-wide cons
+    # describe pages (Performance, Security, Privacy, Accessible content,
+    # etc.), not buttons or modals. Per-page universals that aren't
+    # umbrellas (URL structure, Page title, Meta description, SEO) live on
+    # the `all-pages` category instead so they render inline on every
+    # page-type in their natural group.
+    is_page_type = parent_type == "page_type"
+    is_sitewide_self = is_page_type and parent_slug == "site-wide"
+    if is_page_type and not is_sitewide_self:
         already_ids = {r["id"] for r in cons_rows}
         sw_rows_raw = db.execute(
             """SELECT DISTINCT c.id, c.slug, c.title, c.intro,
