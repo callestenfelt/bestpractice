@@ -1,0 +1,14 @@
+[Unit]
+Description=Daily SQLite backup for bestpractice.db (timer)
+
+[Timer]
+# Fires every day at 03:17 UTC — off the hour to avoid contention with
+# other system cron jobs. Persistent=true catches up missed runs after
+# downtime (so a VPS reboot at 03:00 doesn't silently skip a day).
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+AccuracySec=1min
+Unit=bestpractice-backup.service
+
+[Install]
+WantedBy=timers.target

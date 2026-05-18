@@ -1587,3 +1587,141 @@ Open items after a few days of edit-in-place usage:
 
 Prod deploy: GHA rsync + service restart on push to `main`. No
 schema change, no manual VPS step required for Session 15.
+
+## Session 16 — daily SQLite backup via systemd timer ✅ shipped 2026-05-18 (`main`)
+
+The editorial DB is now actively accruing approvals (Sessions 12–15
+wrote thousands of placements + a hand-curated content_kind for every
+row), and there was no backup. A botched migration or a `rm` in the
+wrong directory would lose months of editorial decisions. This
+session adds an OS-level daily snapshot — small, lock-safe, with
+14-day rotation.
+
+### Done
+- [x] **`scripts/backup_db.sh`.** `sqlite3 .backup` into a temp file
+      under `/var/backups/bestpractice/`, run `PRAGMA integrity_check`
+      against the snapshot, gzip into a `.tmp` file, atomic
+      `mv .tmp` → `bestpractice-<UTC>.db.gz`. `find -mtime +14 -delete`
+      prunes old snapshots. `set -euo pipefail` + an `EXIT` trap
+      cleans temp files on failure. Paths overridable via
+      `BESTPRACTICE_DB` / `BESTPRACTICE_BACKUP_DIR` /
+      `BESTPRACTICE_BACKUP_RETAIN_DAYS` for testing or alternate
+      hosts.
+- [x] **`scripts/systemd/bestpractice-backup.service`.** Oneshot,
+      `ExecStart=/usr/bin/bash /opt/bestpractice/scripts/backup_db.sh`,
+      `User=root` (DB and `/opt/bestpractice` are root-owned to match
+      `bestpractice.service`), `Nice=10` + `IOSchedulingClass=idle`
+      to stay out of the way of the live app, stdout/stderr to the
+      journal.
+- [x] **`scripts/systemd/bestpractice-backup.timer`.** Daily at
+      03:17 UTC (off the hour to avoid contention with stock cron
+      jobs), `Persistent=true` so a missed run after a reboot fires
+      on next boot, `AccuracySec=1min`.
+
+### Files changed
+- `scripts/backup_db.sh` — new.
+- `scripts/systemd/bestpractice-backup.service` — new.
+- `scripts/systemd/bestpractice-backup.timer` — new.
+- `CLAUDE.md` — Session 16 paragraph; removed "cron + daily SQLite
+  backup" from the Still-pending list.
+
+### Lessons / decisions worth noting (non-obvious)
+- **`sqlite3 .backup`, not `cp` and not `dump`.** `cp` of a live
+  WAL'd database can produce a torn file (different page versions in
+  the snapshot than in the journal). `.backup` is the online
+  backup API; it acquires the right locks transparently and produces
+  a consistent file even with concurrent writers. `.dump` produces
+  SQL text which is bigger, slower, and harder to validate
+  byte-for-byte against a future restore — the file format is the
+  contract here, not the schema.
+- **Backups live in `/var/backups/`, not `/opt/bestpractice/backups/`.**
+  Two reasons: (a) FHS convention — `/var/backups` is the conventional
+  spot for periodic dumps, separates ops data from app data;
+  (b) defensive — the GHA rsync doesn't currently use `--delete`,
+  but if a future deploy adds it the `/var/backups` location is
+  immune.
+- **Service runs as root.** The DB and `/opt/bestpractice` tree are
+  root-owned (matching how `bestpractice.service` was set up in
+  Slice A); creating a dedicated `bestpractice-backup` user would
+  require a chown sweep or ACL gymnastics for no real security gain
+  on a single-tenant VPS. Revisit if the app ever runs as a
+  non-root user.
+- **`PRAGMA integrity_check` on the snapshot, not the source.** The
+  source DB is the live one; if it's corrupt, we'd want to know but
+  the backup script isn't the right place to discover it. Checking
+  the snapshot specifically catches snapshot-time corruption (rare
+  but possible on a degraded disk) before we commit it to gzip.
+- **UTC timestamp in the filename.** Server-side cron-y scripts on
+  this VPS are inconsistent about TZ (system clock is UTC; logs
+  print local). Pinning the filename to UTC removes ambiguity when
+  comparing against `journalctl -u bestpractice-backup`.
+
+### One-time install on the VPS
+
+```bash
+ssh root@77.42.40.207
+
+# 1. The script itself rsyncs in via GHA on the next push to main;
+#    confirm it landed:
+ls -l /opt/bestpractice/scripts/backup_db.sh
+
+# 2. Install systemd units. They live in the repo for source-of-truth
+#    but systemd only reads /etc/systemd/system/:
+cp /opt/bestpractice/scripts/systemd/bestpractice-backup.service /etc/systemd/system/
+cp /opt/bestpractice/scripts/systemd/bestpractice-backup.timer   /etc/systemd/system/
+systemctl daemon-reload
+
+# 3. Sanity-run the service once to populate /var/backups/bestpractice
+#    and surface any path/permission issues immediately:
+systemctl start bestpractice-backup.service
+systemctl status bestpractice-backup.service --no-pager
+ls -lh /var/backups/bestpractice/
+
+# 4. Enable + start the timer:
+systemctl enable --now bestpractice-backup.timer
+systemctl list-timers bestpractice-backup.timer --no-pager
+```
+
+`systemctl list-timers` should show the next fire at 03:17 UTC of
+the upcoming day. Subsequent days require zero attention — failures
+will show in `journalctl -u bestpractice-backup.service` and as
+`failed` state in `systemctl status`.
+
+### Restore drill (when needed)
+
+```bash
+# Pick a snapshot:
+ls /var/backups/bestpractice/
+
+# Decompress + verify before swapping anything in:
+gunzip -k /var/backups/bestpractice/bestpractice-20260518T031700Z.db.gz
+sqlite3 /var/backups/bestpractice/bestpractice-20260518T031700Z.db "PRAGMA integrity_check;"
+
+# Cold-swap (stop the app, replace the file, restart):
+systemctl stop bestpractice
+cp /var/backups/bestpractice/bestpractice-20260518T031700Z.db /opt/bestpractice/data/bestpractice.db
+systemctl start bestpractice
+```
+
+Not worth scripting the restore — the manual steps above are the
+right shape for a high-stakes, low-frequency operation (the operator
+should be reading what they're doing, not running a one-liner).
+
+### Next-session pointer
+Remaining deferred items (now without "cron + daily SQLite backup"):
+- MDN browser-compat-data adapter — natural pair with caniuse, would
+  expand the structured-source roster from 5 → 6 and pull in deep
+  per-feature support tables.
+- Per-source-type score threshold — WCAG-class sources probably
+  want a lower bar than blog-ish ones once BCD is in.
+- `/admin/considerations/<slug>` editor — Session 15's edit-in-place
+  link drained most of the pressure; defer until a consideration
+  needs renaming/regrouping.
+- `/admin/sources` UX polish — error display + `config_json` editor.
+- Content-diff for structured sources — re-ingestion currently
+  skips on content-hash match; a real diff would flag *changes* in
+  upstream specs.
+
+Prod deploy: GHA rsync deposits the script + unit files but the
+systemd install is a one-time manual step (see above). Verify with
+`systemctl list-timers bestpractice-backup.timer` after install.

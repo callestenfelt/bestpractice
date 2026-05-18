@@ -1,0 +1,17 @@
+[Unit]
+Description=Daily SQLite backup for bestpractice.db
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /opt/bestpractice/scripts/backup_db.sh
+# The backup script needs to read /opt/bestpractice/data/bestpractice.db
+# (owned by root, same as bestpractice.service) and write under
+# /var/backups/bestpractice. Run as root to match the app's ownership.
+User=root
+Group=root
+Nice=10
+IOSchedulingClass=idle
+# Don't spam the journal if the script is quiet on success — it echoes
+# the destination path which is enough for `journalctl -u`.
+StandardOutput=journal
+StandardError=journal
