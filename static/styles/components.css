@@ -1305,6 +1305,26 @@ mark {
   gap: var(--space-2);
 }
 .qitem__counter strong { color: var(--gray-12); }
+.qitem__filter {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-13);
+  color: var(--gray-11);
+}
+.qitem__filter-label { color: var(--gray-11); }
+.qitem__filter-clear {
+  color: var(--gray-12);
+  text-decoration: underline;
+  font-size: var(--fs-12);
+  margin-left: var(--space-2);
+}
+.chip--filter {
+  background: var(--blue-3, var(--gray-3));
+  border-color: var(--blue-6, var(--gray-6));
+}
 .qitem__score {
   background: var(--gray-3);
   border: 1px solid var(--gray-5);

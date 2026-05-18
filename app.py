@@ -532,12 +532,30 @@ def _unwrap_body(html: str) -> str:
     return s
 
 
-def _pending_queue_ids(db: sqlite3.Connection) -> list[int]:
-    return [r["id"] for r in db.execute(
-        """SELECT id FROM sub_considerations
-            WHERE status='pending'
-            ORDER BY COALESCE(relevance_score, 0) DESC, created_at DESC"""
-    ).fetchall()]
+def _pending_queue_ids(db: sqlite3.Connection, sources: list[str] | None = None) -> list[int]:
+    sql = "SELECT id FROM sub_considerations WHERE status='pending'"
+    params: list = []
+    if sources:
+        ph = ",".join("?" * len(sources))
+        sql += f" AND source_name IN ({ph})"
+        params.extend(sources)
+    sql += " ORDER BY COALESCE(relevance_score, 0) DESC, created_at DESC"
+    return [r["id"] for r in db.execute(sql, params).fetchall()]
+
+
+def _active_sources() -> list[str]:
+    """Source filter carried via repeated ?sources=<name>&sources=<name> on
+    GET, or hidden <input name="sources"> entries on POST. Returns names in
+    submitted order, de-duped, empty strings dropped."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for s in request.values.getlist("sources"):
+        s = (s or "").strip()
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        out.append(s)
+    return out
 
 
 def _neighbors(ids: list[int], sub_id: int):
@@ -815,11 +833,13 @@ def _load_queue_item(db: sqlite3.Connection, sub_id: int):
     }
 
 
-def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
+def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = "",
+                         sources: list[str] | None = None):
     """Common template context: prev/next + the destination palette and
     cons-by-parent map. Pulled out so re-rendering on validation error
     can reuse the same shape without re-running the full GET handler."""
-    queue_ids = _pending_queue_ids(db)
+    sources = sources or []
+    queue_ids = _pending_queue_ids(db, sources=sources or None)
     prev_id, next_id, pos_index, pos_total = _neighbors(queue_ids, sub["id"])
     page_types_pal_all = [
         {"slug": r["slug"], "label": r["label"]}
@@ -862,6 +882,7 @@ def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
         "phases": phases,
         "error": error,
         "is_edit": is_edit,
+        "active_sources": sources,
     }
 
 
@@ -877,7 +898,8 @@ def admin_queue_item(sub_id):
     if sub["status"] not in ("pending", "approved"):
         flash("Already actioned.")
         return redirect(url_for("admin_queue"))
-    ctx = _queue_item_context(db, sub, error=request.args.get("error", "").strip())
+    ctx = _queue_item_context(db, sub, error=request.args.get("error", "").strip(),
+                                sources=_active_sources())
     return render_template("admin/queue_item.html", **ctx)
 
 
@@ -930,11 +952,13 @@ def _write_phases(db: sqlite3.Connection, sub_id: int, phase_slugs: list[str]):
         )
 
 
-def _next_after(db: sqlite3.Connection, current_id: int) -> int | None:
+def _next_after(db: sqlite3.Connection, current_id: int,
+                 sources: list[str] | None = None) -> int | None:
     """Top pending id after the current row has transitioned. Re-queries
     fresh so the row we just transitioned is excluded. Highest-relevance
-    first matches the queue sort, so the operator keeps working top-down."""
-    ids = _pending_queue_ids(db)
+    first matches the queue sort, so the operator keeps working top-down.
+    Respects the source filter when one is supplied."""
+    ids = _pending_queue_ids(db, sources=sources or None)
     return ids[0] if ids else None
 
 
@@ -957,6 +981,7 @@ def admin_queue_approve(sub_id):
     phase_slugs = request.form.getlist("phase")
 
     placements, _submitted_keys = _parse_placements(db, request.form)
+    sources = _active_sources()
 
     def _rerender(err: str):
         sub = _load_queue_item(db, sub_id)
@@ -971,7 +996,7 @@ def admin_queue_approve(sub_id):
         sub["phase_slugs"] = set(phase_slugs)
         sub["placement_ids"] = {cid for cid, _ in placements}
         sub["dest_keys"] = {key for _, key in placements}
-        ctx = _queue_item_context(db, sub, error=err)
+        ctx = _queue_item_context(db, sub, error=err, sources=sources)
         return render_template("admin/queue_item.html", **ctx), 400
 
     if not one_liner:
@@ -1013,11 +1038,14 @@ def admin_queue_approve(sub_id):
             return redirect(f"{url}#{anchor['cons_slug']}.{anchor['sub_slug']}")
         return redirect(url_for("admin_queue"))
 
-    nxt = _next_after(db, sub_id)
+    nxt = _next_after(db, sub_id, sources=sources)
     if nxt is None:
-        flash("Queue is empty — nothing left to review.")
-        return redirect(url_for("admin_queue"))
-    return redirect(url_for("admin_queue_item", sub_id=nxt))
+        if sources:
+            flash("No more pending items match the active source filter.")
+        else:
+            flash("Queue is empty — nothing left to review.")
+        return redirect(url_for("admin_queue", sources=sources or None))
+    return redirect(url_for("admin_queue_item", sub_id=nxt, sources=sources or None))
 
 
 @app.route("/admin/queue/<int:sub_id>/reject", methods=["POST"])
@@ -1036,10 +1064,11 @@ def admin_queue_reject(sub_id):
     # Stash id + one_liner so the next page can render an Undo link.
     # Pipe-delimited because flash messages are plain strings.
     flash(f"{sub_id}|{one_liner[:120]}", category="undo-reject")
-    nxt = _next_after(db, sub_id)
+    sources = _active_sources()
+    nxt = _next_after(db, sub_id, sources=sources)
     if nxt is None:
-        return redirect(url_for("admin_queue"))
-    return redirect(url_for("admin_queue_item", sub_id=nxt))
+        return redirect(url_for("admin_queue", sources=sources or None))
+    return redirect(url_for("admin_queue_item", sub_id=nxt, sources=sources or None))
 
 
 @app.route("/admin/queue/<int:sub_id>/unreject", methods=["POST"])

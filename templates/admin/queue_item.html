@@ -14,12 +14,25 @@
       data-reject-action="{{ url_for('admin_queue_reject', sub_id=sub.id) }}"
       data-new-cons-action="{{ url_for('admin_considerations_new') }}">
 
+  {# Hidden source-filter state so approve/reject POSTs preserve the
+     active filter and the redirect step keeps stepping within it. #}
+  {% for s in active_sources %}
+    <input type="hidden" name="sources" value="{{ s }}">
+  {% endfor %}
+
   <header class="qitem__header">
     <nav class="qitem__crumbs">
-      <a href="{{ url_for('admin_queue') }}">← Queue</a>
+      <a href="{{ url_for('admin_queue', sources=active_sources or none) }}">← Queue</a>
       {% if sub.source_name %}<span class="qitem__crumb-sep">·</span><span>{{ sub.source_name }}</span>{% endif %}
       {% if sub.source_date %}<span class="qitem__crumb-sep">·</span><span>{{ sub.source_date }}</span>{% endif %}
     </nav>
+    {% if active_sources %}
+      <div class="qitem__filter" role="status">
+        <span class="qitem__filter-label">Filtering by source:</span>
+        {% for s in active_sources %}<span class="chip chip--filter">{{ s }}</span>{% endfor %}
+        <a class="qitem__filter-clear" href="{{ url_for('admin_queue_item', sub_id=sub.id) }}">Clear</a>
+      </div>
+    {% endif %}
     <div class="qitem__counter">
       {% if not is_edit %}<strong>{{ pos_index }}</strong> of {{ pos_total }}{% else %}<span class="chip">editing</span>{% endif %}
       {% if sub.relevance_score %}
@@ -32,12 +45,12 @@
     {% if not is_edit %}
     <div class="qitem__nav">
       {% if prev_id %}
-        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=prev_id) }}">← Prev</a>
+        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=prev_id, sources=active_sources or none) }}">← Prev</a>
       {% else %}
         <span class="btn btn--quiet btn--sm" aria-disabled="true">← Prev</span>
       {% endif %}
       {% if next_id %}
-        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=next_id) }}">Next →</a>
+        <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=next_id, sources=active_sources or none) }}">Next →</a>
       {% else %}
         <span class="btn btn--quiet btn--sm" aria-disabled="true">Next →</span>
       {% endif %}

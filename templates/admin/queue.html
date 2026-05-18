@@ -51,16 +51,18 @@
     </div>
 
     {% set source_options = items|map(attribute='source_name')|reject('equalto', '')|reject('equalto', None)|unique|sort|list %}
+    {% set url_sources = request.args.getlist('sources') %}
     {% if source_options|length > 1 %}
       <fieldset class="queue-source-filter" data-queue-source-filter>
         <legend class="queue-source-filter__legend">Filter by source</legend>
         {% for src in source_options %}
+          {% set is_on = (not url_sources) or (src in url_sources) %}
           <label class="queue-source-filter__chip">
-            <input type="checkbox" value="{{ src }}" checked>
+            <input type="checkbox" value="{{ src }}" {% if is_on %}checked{% endif %}>
             <span>{{ src }}</span>
           </label>
         {% endfor %}
-        <button type="button" class="queue-source-filter__reset" data-queue-source-reset hidden>Show all</button>
+        <button type="button" class="queue-source-filter__reset" data-queue-source-reset {% if not url_sources %}hidden{% endif %}>Show all</button>
       </fieldset>
       <p class="queue-source-filter__empty" data-queue-source-empty hidden role="status">
         All sources hidden by filter. Tick a source above to bring cards back.
