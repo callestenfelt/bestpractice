@@ -29,6 +29,11 @@
          {% if status == 'pending' %}aria-current="page"{% endif %}>
         Pending <span class="queue-tab__count">{{ pending_count }}</span>
       </a>
+      <a class="queue-tab {% if status == 'approved' %}queue-tab--active{% endif %}"
+         href="{{ url_for('admin_queue', status='approved') }}"
+         {% if status == 'approved' %}aria-current="page"{% endif %}>
+        Approved <span class="queue-tab__count">{{ approved_count }}</span>
+      </a>
       <a class="queue-tab {% if status == 'rejected' %}queue-tab--active{% endif %}"
          href="{{ url_for('admin_queue', status='rejected') }}"
          {% if status == 'rejected' %}aria-current="page"{% endif %}>
@@ -50,6 +55,9 @@
         {% if status == 'rejected' %}
           <div class="empty__title">No rejected items.</div>
           <p class="empty__body">Rejected items show up here so you can re-queue them if you change your mind.</p>
+        {% elif status == 'approved' %}
+          <div class="empty__title">Nothing approved yet.</div>
+          <p class="empty__body">Approve a row from the Pending tab and it'll show up here.</p>
         {% else %}
           <div class="empty__title">No pending items.</div>
           <p class="empty__body">
@@ -62,7 +70,7 @@
       <div class="queue-list">
         {% for item in items %}
           <article class="qcard">
-            {% if status == 'pending' %}
+            {% if status in ('pending', 'approved') %}
               <a class="qcard__main qcard__link" href="{{ url_for('admin_queue_item', sub_id=item.id) }}">
             {% else %}
               <div class="qcard__main">
@@ -96,7 +104,7 @@
                   {{ item.body|safe }}
                 </div>
               {% endif %}
-            {% if status == 'pending' %}</a>{% else %}</div>{% endif %}
+            {% if status in ('pending', 'approved') %}</a>{% else %}</div>{% endif %}
 
             <aside class="qcard__aside" aria-label="Actions">
               {% if status == 'pending' %}
@@ -104,6 +112,8 @@
                 <form method="post" action="{{ url_for('admin_queue_reject', sub_id=item.id) }}">
                   <button type="submit" class="btn btn--danger btn--sm qcard__btn">Reject</button>
                 </form>
+              {% elif status == 'approved' %}
+                <a class="btn btn--primary qcard__btn" href="{{ url_for('admin_queue_item', sub_id=item.id) }}">Edit</a>
               {% else %}
                 <form method="post" action="{{ url_for('admin_queue_unreject', sub_id=item.id) }}">
                   <button type="submit" class="btn btn--primary qcard__btn">Re-queue</button>

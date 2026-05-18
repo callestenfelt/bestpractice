@@ -624,10 +624,11 @@ def _format_relative(iso: str | None) -> str:
 
 
 def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
-    # Rejected list orders by last_updated DESC (most-recently-rejected
-    # first) — relevance_score is less interesting once the editorial
-    # call has been made. Pending keeps the relevance-first ordering.
-    if status == "rejected":
+    # Rejected and Approved both order by last_updated DESC (most-recent
+    # editorial decision first) — relevance_score is less interesting
+    # once the editorial call has been made. Pending keeps the
+    # relevance-first ordering.
+    if status in ("rejected", "approved"):
         order = "ORDER BY s.last_updated DESC"
     else:
         order = "ORDER BY COALESCE(s.relevance_score, 0) DESC, s.created_at DESC"
@@ -700,6 +701,9 @@ def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
     rejected_count = db.execute(
         "SELECT COUNT(*) FROM sub_considerations WHERE status='rejected'"
     ).fetchone()[0]
+    approved_count = db.execute(
+        "SELECT COUNT(*) FROM sub_considerations WHERE status='approved'"
+    ).fetchone()[0]
 
     last_sync_row = db.execute(
         "SELECT MAX(last_collected) AS lc FROM sources WHERE status='active'"
@@ -711,6 +715,7 @@ def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
         "status": status,
         "pending_count": pending_count,
         "approved_week": approved_week,
+        "approved_count": approved_count,
         "rejected_count": rejected_count,
         "last_sync": last_sync,
     }
@@ -720,7 +725,7 @@ def load_queue_view(db: sqlite3.Connection, status: str = "pending"):
 def admin_queue():
     db = get_db()
     status = request.args.get("status", "pending").strip()
-    if status not in ("pending", "rejected"):
+    if status not in ("pending", "rejected", "approved"):
         status = "pending"
     view = load_queue_view(db, status=status)
     view["error"] = request.args.get("error", "").strip()
