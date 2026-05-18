@@ -50,6 +50,23 @@
       </div>
     </div>
 
+    {% set source_options = items|map(attribute='source_name')|reject('equalto', '')|reject('equalto', None)|unique|sort|list %}
+    {% if source_options|length > 1 %}
+      <fieldset class="queue-source-filter" data-queue-source-filter>
+        <legend class="queue-source-filter__legend">Filter by source</legend>
+        {% for src in source_options %}
+          <label class="queue-source-filter__chip">
+            <input type="checkbox" value="{{ src }}" checked>
+            <span>{{ src }}</span>
+          </label>
+        {% endfor %}
+        <button type="button" class="queue-source-filter__reset" data-queue-source-reset hidden>Show all</button>
+      </fieldset>
+      <p class="queue-source-filter__empty" data-queue-source-empty hidden role="status">
+        All sources hidden by filter. Tick a source above to bring cards back.
+      </p>
+    {% endif %}
+
     {% if not items %}
       <div class="empty">
         {% if status == 'rejected' %}
@@ -69,7 +86,7 @@
     {% else %}
       <div class="queue-list">
         {% for item in items %}
-          <article class="qcard">
+          <article class="qcard" data-source="{{ item.source_name or '' }}">
             {% if status in ('pending', 'approved') %}
               <a class="qcard__main qcard__link" href="{{ url_for('admin_queue_item', sub_id=item.id) }}">
             {% else %}
@@ -128,4 +145,6 @@
         {% endfor %}
       </div>
     {% endif %}
+
+    <script src="{{ url_for('static', filename='js/queue_filter.js') }}" defer></script>
 {% endblock %}
