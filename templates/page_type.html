@@ -19,6 +19,11 @@
             <span class="sub__dot" aria-hidden="true"></span>
             <span>{{ sub.source_date }}</span>
           {% endif %}
+          {% if sub.id %}
+            <span class="sub__dot" aria-hidden="true"></span>
+            <a class="sub__edit" href="{{ url_for('admin_queue_item', sub_id=sub.id) }}"
+               onclick="event.stopPropagation()">Edit</a>
+          {% endif %}
         </div>
       </div>
       {{ chevron() }}

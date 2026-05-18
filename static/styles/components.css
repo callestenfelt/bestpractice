@@ -420,6 +420,13 @@ details[open] > summary .chev {
   border-radius: 50%;
   display: inline-block;
 }
+.sub__edit {
+  color: inherit;
+  text-decoration: underline;
+}
+.sub__edit:hover {
+  color: var(--gray-12);
+}
 
 .sub__body {
   padding: var(--space-2) var(--space-3) var(--space-4);

@@ -257,6 +257,7 @@ def load_parent_view(parent_type: str, parent_slug: str):
         cons_slug_by_id = {r["id"]: r["slug"] for r in cons_rows + list(sw_rows)}
         for r in sub_rows:
             subs_by_cons[r["consideration_id"]].append({
+                "id": r["id"],
                 "slug": r["slug"],
                 "cons_slug": cons_slug_by_id[r["consideration_id"]],
                 "one_liner": r["one_liner"],
@@ -824,6 +825,7 @@ def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
     # Jinja can't index a dict by a tuple via .get((kind, slug), ...); flatten
     # to a "{kind}:{slug}"-keyed dict so the template stays simple.
     cons_by_dest_key = {f"{k[0]}:{k[1]}": v for k, v in cons_by_parent.items()}
+    is_edit = sub.get("status") == "approved"
     return {
         "sub": sub,
         "prev_id": prev_id,
@@ -834,6 +836,7 @@ def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
         "cons_by_dest_key": cons_by_dest_key,
         "phases": phases,
         "error": error,
+        "is_edit": is_edit,
     }
 
 
@@ -843,7 +846,10 @@ def admin_queue_item(sub_id):
     sub = _load_queue_item(db, sub_id)
     if sub is None:
         abort(404)
-    if sub["status"] != "pending":
+    # Rejected rows still bounce — operator should requeue first via the
+    # Rejected bin, then edit. Pending = normal review flow; approved =
+    # edit mode (no stepper, redirect back to the read view on save).
+    if sub["status"] not in ("pending", "approved"):
         flash("Already actioned.")
         return redirect(url_for("admin_queue"))
     ctx = _queue_item_context(db, sub, error=request.args.get("error", "").strip())
@@ -910,8 +916,14 @@ def _next_after(db: sqlite3.Connection, current_id: int) -> int | None:
 @app.route("/admin/queue/<int:sub_id>/approve", methods=["POST"])
 def admin_queue_approve(sub_id):
     db = get_db()
-    if _ensure_pending(db, sub_id) is None:
+    existing = db.execute(
+        "SELECT id, status FROM sub_considerations WHERE id = ?", (sub_id,)
+    ).fetchone()
+    if not existing:
+        abort(404)
+    if existing["status"] not in ("pending", "approved"):
         return redirect(url_for("admin_queue"))
+    was_approved = existing["status"] == "approved"
 
     one_liner = (request.form.get("one_liner") or "").strip()
     body_text = (request.form.get("body") or "").strip()
@@ -957,6 +969,24 @@ def admin_queue_approve(sub_id):
     _write_phases(db, sub_id, phase_slugs)
     _sync_fts_row(db, sub_id)
     db.commit()
+
+    if was_approved:
+        # Edit flow: jump back to the public anchor under the (possibly
+        # new) primary placement, rather than auto-advancing into the
+        # pending queue.
+        anchor = db.execute(
+            """SELECT s.slug AS sub_slug, c.slug AS cons_slug,
+                      c.parent_type, c.parent_slug
+                 FROM sub_considerations s
+                 JOIN considerations c ON c.id = s.consideration_id
+                WHERE s.id = ?""",
+            (sub_id,),
+        ).fetchone()
+        if anchor:
+            route = "page_type" if anchor["parent_type"] == "page_type" else "component"
+            url = url_for(route, slug=anchor["parent_slug"])
+            return redirect(f"{url}#{anchor['cons_slug']}.{anchor['sub_slug']}")
+        return redirect(url_for("admin_queue"))
 
     nxt = _next_after(db, sub_id)
     if nxt is None:

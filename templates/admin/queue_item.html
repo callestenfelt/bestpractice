@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "admin/_flash.html" import render_flashes %}
-{% block title %}Approve: {{ sub.one_liner[:60] }} · bestpractice{% endblock %}
+{% block title %}{% if is_edit %}Edit{% else %}Approve{% endif %}: {{ sub.one_liner[:60] }} · bestpractice{% endblock %}
 
 {% block content %}
 {# Flashes render OUTSIDE the approve form. The "Undo" flash contains its
@@ -21,7 +21,7 @@
       {% if sub.source_date %}<span class="qitem__crumb-sep">·</span><span>{{ sub.source_date }}</span>{% endif %}
     </nav>
     <div class="qitem__counter">
-      <strong>{{ pos_index }}</strong> of {{ pos_total }}
+      {% if not is_edit %}<strong>{{ pos_index }}</strong> of {{ pos_total }}{% else %}<span class="chip">editing</span>{% endif %}
       {% if sub.relevance_score %}
         <span class="qitem__score" title="AI relevance score, 1–10">{{ sub.relevance_score }}/10</span>
       {% endif %}
@@ -29,6 +29,7 @@
         <span class="chip chip--kind" title="AI-classified kind">{{ sub.content_kind }}</span>
       {% endif %}
     </div>
+    {% if not is_edit %}
     <div class="qitem__nav">
       {% if prev_id %}
         <a class="btn btn--quiet btn--sm" href="{{ url_for('admin_queue_item', sub_id=prev_id) }}">← Prev</a>
@@ -41,6 +42,7 @@
         <span class="btn btn--quiet btn--sm" aria-disabled="true">Next →</span>
       {% endif %}
     </div>
+    {% endif %}
   </header>
 
   {% if error %}<div class="queue-error" role="alert">{{ error }}</div>{% endif %}
@@ -140,8 +142,12 @@
   </div>
 
   <footer class="qitem__footer">
-    <button type="button" class="btn btn--danger" data-action="reject">Reject</button>
-    <button type="submit" class="btn btn--primary" data-action="approve">Approve &amp; Next</button>
+    {% if not is_edit %}
+      <button type="button" class="btn btn--danger" data-action="reject">Reject</button>
+    {% endif %}
+    <button type="submit" class="btn btn--primary" data-action="approve">
+      {% if is_edit %}Save{% else %}Approve &amp; Next{% endif %}
+    </button>
   </footer>
 </form>
 {% endblock %}

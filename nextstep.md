@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-17 (Session 12 — full-page approval stepper + sub-level placements + rejected bin)
+Last updated: 2026-05-18 (Session 15 — edit-in-place link on approved subs)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -1469,3 +1469,121 @@ python3 score.py --rescore  # idempotent — re-populates sub_consideration_plac
 ```
 (No schema migration needed; `sub_consideration_placements` was
 introduced in Session 12.)
+
+---
+
+## Session 15 — edit-in-place link on approved subs ✅ shipped 2026-05-18 (`main`)
+
+Approving an item from `/admin/queue/<id>` was a one-way door:
+`admin_queue_item` early-returned with "Already actioned" for any
+non-pending row, and the only fix for a destination misclick was raw
+SQL. This session opens the back door — any approved sub on the
+public read view now has a small "Edit" link that re-opens the same
+approval editor against the existing row.
+
+The editor itself was already status-agnostic: `_load_queue_item`
+returns the same shape regardless of status, and the write path
+(`_write_placements` / `_write_phases`) is `DELETE + re-INSERT`,
+which is exactly what a re-edit needs. So the change was small —
+loosen two status guards, hide the queue stepper + Reject button
+in edit mode, and redirect back to the public anchor on save
+instead of advancing to the next pending row.
+
+### Done
+- [x] **Surface `sub.id` to the read-view template.** `load_parent_view`
+      already selected `s.id` in the subs query but dropped it from
+      the dict passed to Jinja. Added one line; nothing else needed.
+- [x] **`/page-type/<slug>` and `/component/<slug>` Edit link.**
+      In `templates/page_type.html` (used by both routes via the
+      shared partial), an `<a class="sub__edit">` sits inside
+      `.sub__metarow` after the source-date span, separated by the
+      existing `.sub__dot` bullet. Styled with `color: inherit;
+      text-decoration: underline;` so it visually matches the
+      surrounding 12-px gray-10 metadata with only the underline
+      to distinguish it. Hover goes to gray-12 — blue stays
+      reserved for "new" + active filter per `CLAUDE.md`.
+      `onclick="event.stopPropagation()"` prevents the click from
+      toggling the parent `<details>`.
+- [x] **GET handler allows `approved` in addition to `pending`.**
+      Rejected rows still bounce to `/admin/queue` (operator should
+      requeue via the Rejected bin first; that flow's already a
+      one-click `Re-queue` button). One-line condition change.
+- [x] **`is_edit` flag threaded through `_queue_item_context`.**
+      Derived from `sub.status == 'approved'`. Template uses it to:
+      (a) hide the `<X> of <Y>` position counter, swap it for an
+      `editing` chip; (b) hide the Prev/Next nav buttons (they're
+      pending-queue specific); (c) hide the Reject button — an
+      already-approved item shouldn't be rejected from the editor,
+      that's an unusual flow; (d) change the submit label from
+      "Approve & Next" to "Save"; (e) prefix the `<title>` with
+      "Edit:" rather than "Approve:".
+- [x] **POST handler: allow approved status, branch redirect.**
+      Replaced the `_ensure_pending` guard with an explicit load
+      that accepts `pending` OR `approved`. After the existing
+      UPDATE + placement/phase rewrites, if `was_approved` it
+      looks up the (possibly newly chosen) primary placement's
+      `parent_type` + `parent_slug` + `cons.slug` + `sub.slug` and
+      redirects to the public anchor (`/page-type/<slug>#<cons>.<sub>`
+      or `/component/...`). Pending path is unchanged — still
+      auto-advances via `_next_after`.
+- [x] **Test-client verification.** GET on approved → 200; GET on
+      rejected → 302 to /admin/queue; POST on approved → 302 to
+      `/page-type/article-page#body-typography.measure`, status
+      stays `approved`, placement set preserved.
+
+### Files changed
+- `app.py` — added `"id"` to subs_by_cons dict in `load_parent_view`;
+  loosened status guard in `admin_queue_item` GET; added `is_edit`
+  to `_queue_item_context`; replaced `_ensure_pending` with explicit
+  pending/approved check in `admin_queue_approve` and added the
+  was_approved redirect branch to the public anchor.
+- `templates/page_type.html` — Edit link inside `.sub__metarow`.
+- `static/styles/components.css` — `.sub__edit` + `:hover` rules.
+- `templates/admin/queue_item.html` — `is_edit` branches on title,
+  counter, nav, footer.
+- `CLAUDE.md` — Session 15 paragraph.
+
+### Lessons / decisions worth noting (non-obvious)
+- **`stopPropagation` on the Edit link is load-bearing.** Without
+  it, clicking the link both navigates AND toggles the parent
+  `<details>` open/closed (different browsers handle nested
+  interactive descendants of `<summary>` inconsistently). The
+  one-line `onclick="event.stopPropagation()"` is the smallest
+  fix that avoids creating a per-route JS file.
+- **Edit always visible, not gated on "logged in".** Auth is at
+  Caddy basic-auth for a single user, so anyone seeing the page
+  is already the operator. Adding a `current_user`-style check
+  would be cargo-cult — kept the markup unconditional.
+- **`last_updated` still bumps on re-edit.** A cosmetic save will
+  re-flag the row as "new" for 14 days (the `is_new` filter looks
+  at `last_updated`). Not a bug per se but worth flagging: if it
+  becomes noisy, the cheapest fix is gating the `SET last_updated
+  = ?` on a content-change check, or splitting `last_updated`
+  from a separate `first_approved_at` and using the latter for
+  the "new" dot.
+- **Rejected rows can't be edited directly.** Intentional — the
+  operator flow for rejected items is `Rejected bin → Re-queue →
+  edit on the queue page`. The Edit link doesn't appear on the
+  read view for rejected subs because rejected subs don't render
+  on the read view at all.
+- **No `/admin/considerations/<slug>` editor yet.** This session
+  closed the most-painful gap (per-sub destination fixes), so the
+  pressure to build the full consideration editor is lower. Still
+  on the deferred list for when consideration titles / intros /
+  group_labels need editorial revision.
+
+### Next-session pointer
+Open items after a few days of edit-in-place usage:
+- Does the operator actually use the read-view Edit link, or do
+  they navigate via `/admin/queue/<id>` URLs from memory? If the
+  former, consider whether the link wants a small icon (pencil)
+  alongside the word.
+- If `last_updated` bumping on cosmetic edits becomes annoying,
+  pick one of the fixes flagged in Lessons.
+- Still pending and unchanged: MDN BCD adapter, per-source-type
+  score threshold, `/admin/considerations/<slug>` editor,
+  `/admin/sources` UX polish, content-diff for structured sources,
+  cron + daily SQLite backup.
+
+Prod deploy: GHA rsync + service restart on push to `main`. No
+schema change, no manual VPS step required for Session 15.
