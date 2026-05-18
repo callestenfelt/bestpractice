@@ -1906,3 +1906,114 @@ Same list as Session 16, plus possible follow-ups from this session:
 Prod deploy: GHA rsync deposits the script + unit files but the
 systemd install is a one-time manual step (see above). Verify with
 `systemctl list-timers bestpractice-backup.timer` after install.
+
+## Session 18 — Approved tab + generic loader + sw-seo (2026-05-18, shipped to `main`)
+
+Session 17 closed with the editor pointing at `/page-type/collection-page`
+("empty now") and asking how to spread already-approved subs. This
+session shipped the small surface area that closes the loop:
+
+### Done
+- [x] **Approved tab on `/admin/queue`.** Third tab next to Pending
+      and Rejected, sorted by `last_updated DESC` so the most-recent
+      editorial decisions surface first. Each card shows the same
+      breadcrumb/source/phase chips and a single "Edit" button
+      linking to `/admin/queue/<id>` (the queue-side mirror of
+      Session 15's in-place edit link). No destructive button on
+      approved cards — corrections only go through the existing
+      edit form. Files: `app.py:723` (status guard), `app.py:626-720`
+      (`load_queue_view` order + `approved_count` query),
+      `templates/admin/queue.html` (third tab, card-link branch
+      extended to `('pending','approved')`, new empty-state copy).
+      Commit `09ca16b`.
+- [x] **Cross-cutting spread of 5 approved subs.** Direct SQL on
+      prod (after dry-run preview) added these placements:
+      | Sub | Original home | Spread to |
+      |-----|---------------|-----------|
+      | #30 width/height | article-page | image:stability-format |
+      | #31 loading=lazy | article-page | image:responsive-delivery |
+      | #32 alt-text rule | article-page | image:alt-text |
+      | #34 no "click here" | article-page | link:descriptive-link-text |
+      | #35 underline links | article-page | link:distinguishing-from-body-text |
+      All `INSERT OR IGNORE` against the `(sub_id, consideration_id)`
+      PK so re-running is a no-op.
+- [x] **Pre-staged 2 pending subs on collection-page.** #189
+      (pagination) → cons 58, #261 (RealEstateListing schema) →
+      cons 65. Both are `status='pending'` — placements just
+      mean when the editor opens the approval form, the
+      destination box is already ticked.
+- [x] **`scripts/load_subs_into_scaffolds.py`.** Generic loader
+      that walks a fixture, matches each cons by
+      `(parent_type, parent_slug, slug)` against existing scaffold
+      rows, inserts subs idempotently (UNIQUE on cons_id+slug),
+      and rewires `sub_consideration_placements` +
+      `sub_consideration_phases`. Honours the
+      `group_slug='site-wide'` rebucket the same way
+      `init_db.load_fixture` does. Insert mode is the default;
+      `--update` flag overwrites `one_liner`/`body`/`source_*` on
+      existing subs without clobbering placements or phases.
+      Rebuilds FTS after each apply.
+- [x] **`sw-seo` added to `SITE_WIDE_SCAFFOLDS`.** Catch-all
+      umbrella for cross-cutting SEO guidance — crawlability,
+      sitemaps, canonicals, hreflang, internal linking,
+      structured data strategy, indexability, mobile-friendliness.
+      `display_order=10`. Per-page SEO specifics (URL structure,
+      page title & H1, meta description) keep their own dedicated
+      site-wide cons from Session 17. Commit `4c13af3`.
+
+### Rolled back
+- [x] **Claude-drafted starter fixtures.** Drafted
+      `fixtures/collection_page.json` (29 subs) and
+      `fixtures/start_page.json` (24 subs) from general
+      knowledge, sourced as `Claude (draft)` for honest provenance.
+      Loaded to prod; editor reviewed; decided AI-drafted
+      placeholder content isn't the path even when transparently
+      marked. All 53 subs deleted from both DBs via a targeted
+      `DELETE FROM sub_considerations WHERE source_name='Claude (draft)'`
+      (cascade handles placements + phases); FTS rebuilt. Both
+      JSON files removed from the repo in commit `e5615fa`.
+
+### Lessons / decisions worth noting
+- **Honest provenance is necessary but not sufficient.** The
+  editor's bar is "primary source verified", not "AI-attributed".
+  `source_name="Claude (draft)"` was a defensible compromise but
+  still added 53 unverified rows to the live read view — and that
+  conflicts with the project's primary-source bias
+  (`PROJECT.md` §9). Future fixtures need real sources from the
+  start; don't use the loader as a way to "ship now, source later".
+- **The generic loader is the right tool with the right content.**
+  `scripts/load_subs_into_scaffolds.py` works fine — the issue
+  was the content. Keep the loader; it shines when the next
+  fixture comes from a real spec (WCAG, schema.org, MDN BCD) or
+  from hand-written editorial content that already has citations.
+- **Direct SQL beats the admin UI for batch placement spreads.**
+  When 5+ already-approved subs need to fan out to existing
+  considerations, `INSERT OR IGNORE` is faster and clearer than
+  five round-trips through the approval form. Always preview by
+  SELECT first.
+
+### Next-session pointer
+Carry-over from Session 17 (still open):
+- Tune the universal-prompt for #95/#441-class items (rename
+  `sw-performance` / `sw-security` to less-generic titles, or add
+  in-prompt examples so the model reaches for them).
+- "Inherits N from categories" chip on each page-type's
+  approval-UI summary.
+- More feature-presence categories (`has-listing`,
+  `has-rich-media`, `has-primary-cta`) — demand-driven.
+- MDN browser-compat-data adapter, per-source-type score
+  threshold, `/admin/considerations/<slug>` editor,
+  `/admin/sources` UX polish, content-diff for structured
+  sources.
+
+Net-new from this session:
+- **The `sw-seo` cons is empty.** Watch for SEO-flavoured items
+  in the pending queue (crawlability, sitemaps, canonicals,
+  internal linking, structured data); approve them onto sw-seo
+  as they show up. Worth doing a `python score.py --rescore` once
+  there's a meaningful SEO body of work in the catalog so Groq
+  reroutes existing pending items to sw-seo where appropriate.
+- **Edit-in-place via the Approved tab.** New audit loop —
+  scan the tab, click Edit on anything that needs correcting,
+  Save bounces back to the public read view. Use it when you
+  spot an approved sub whose placement set looks wrong.
