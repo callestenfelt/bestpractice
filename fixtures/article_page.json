@@ -1,7 +1,7 @@
 {
   "parent_type": "page_type",
   "parent_slug": "article-page",
-  "extracted_at": "2026-05-15T21:44:55.984935Z",
+  "extracted_at": "2026-05-18T00:00:00Z",
   "new_anchor": "2026-05-15",
   "groups": [
     {
@@ -133,80 +133,6 @@
       "group_order": 2,
       "considerations": [
         {
-          "slug": "url-structure",
-          "title": "URL structure",
-          "intro": "",
-          "display_order": 1,
-          "sub_considerations": [
-            {
-              "slug": "kebab",
-              "one_liner": "Use lowercase kebab-case. Hyphens separate words; underscores do not.",
-              "body": "<p>Google's URL structure guide explicitly recommends hyphens over underscores for word boundaries. Underscores are treated as word-joiners; <code>type_inference</code> is one token, <code>type-inference</code> is two.</p>\n<p>Capitals work but introduce case-sensitivity surprises on some servers and in user expectations. Lowercase everything.</p>",
-              "phases": [
-                "seo",
-                "frontend"
-              ],
-              "source_name": "Google Search Central",
-              "source_suffix": "",
-              "source_title": "URL structure best practices",
-              "source_url": "https://developers.google.com/search/docs/crawling-indexing/url-structure",
-              "source_date": "2024-08-14",
-              "last_updated": "2024-08-14",
-              "display_order": 1
-            },
-            {
-              "slug": "no-dates",
-              "one_liner": "Keep dates out of the URL unless the article is genuinely time-bound (e.g. an annual report).",
-              "body": "<p>A URL like <code>/2021/05/typography-on-mobile/</code> ages the article by definition. When you update it in 2026, you either lie via the URL or break every existing link.</p>\n<p>Flat slugs (<code>/typography-on-mobile/</code>) are durable. Use <code>datePublished</code> and <code>dateModified</code> in structured data for the date facts.</p>",
-              "phases": [
-                "seo",
-                "strategy",
-                "maintenance"
-              ],
-              "source_name": "Moz",
-              "source_suffix": "",
-              "source_title": "URL best practices",
-              "source_url": "https://moz.com/learn/seo/url",
-              "source_date": "2024-01-15",
-              "last_updated": "2024-01-15",
-              "display_order": 2
-            },
-            {
-              "slug": "length",
-              "one_liner": "Keep slugs under ~60 characters; truncate the working title, don't extend it.",
-              "body": "<p>Long URLs get truncated in shared previews and look untrustworthy. Strip stop words (\"a\", \"the\", \"and\", \"of\") from the slug; the title element can keep them.</p>\n<p>If you can drop a word from the slug and a reader who pasted only the URL still understands the topic, drop it.</p>",
-              "phases": [
-                "seo",
-                "content"
-              ],
-              "source_name": "Google Search Central",
-              "source_suffix": "",
-              "source_title": "URL structure best practices",
-              "source_url": "https://developers.google.com/search/docs/crawling-indexing/url-structure",
-              "source_date": "2024-08-14",
-              "last_updated": "2024-08-14",
-              "display_order": 3
-            },
-            {
-              "slug": "redirects",
-              "one_liner": "When you change a slug, ship a 301 from the old URL. Always. No exceptions.",
-              "body": "<p>A 301 transfers PageRank, signals permanence to crawlers, and preserves backlinks. 302s don't — they say \"we'll be back\". Use 302 only for genuine temporary redirects (A/B tests, geo-routing).</p>\n<p>Keep a redirect map under version control. Stale redirects pile up; review once a year.</p>\n<pre><code>RewriteEngine On\nRedirect 301 /old-slug /new-slug</code></pre>",
-              "phases": [
-                "seo",
-                "backend",
-                "maintenance"
-              ],
-              "source_name": "MDN",
-              "source_suffix": "",
-              "source_title": "HTTP redirections",
-              "source_url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections",
-              "source_date": "2025-03-04",
-              "last_updated": "2025-03-04",
-              "display_order": 4
-            }
-          ]
-        },
-        {
           "slug": "eyebrow",
           "title": "Eyebrow / kicker",
           "intro": "",
@@ -244,96 +170,6 @@
               "source_date": "2024-12-11",
               "last_updated": "2024-12-11",
               "display_order": 2
-            }
-          ]
-        },
-        {
-          "slug": "page-title-h1",
-          "title": "Page title & H1",
-          "intro": "",
-          "display_order": 3,
-          "sub_considerations": [
-            {
-              "slug": "wcag-246",
-              "one_liner": "WCAG 2.4.6 requires headings and labels to describe topic or purpose.",
-              "body": "<p>SC 2.4.6 (AA) is the rule against clever, opaque headings. Screen reader users navigate by heading; cute titles that hide the topic (\"Down the rabbit hole\") force a full read just to know what the page is.</p>\n<p>Article H1: state the subject. Reserve cleverness for the lead.</p>",
-              "phases": [
-                "ux",
-                "frontend"
-              ],
-              "source_name": "W3C / WCAG 2.2",
-              "source_suffix": "SC 2.4.6",
-              "source_title": "WCAG 2.2 SC 2.4.6 Headings and Labels",
-              "source_url": "https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html",
-              "source_date": "2023-09-21",
-              "last_updated": "2023-09-21",
-              "display_order": 1
-            },
-            {
-              "slug": "match",
-              "one_liner": "Match the H1 to the <code>&lt;title&gt;</code> element unless SEO demands a longer title.",
-              "body": "<p>The on-page H1 and the document <code>&lt;title&gt;</code> are usually the same. When they diverge, the title carries the search-engine load — site name suffix, secondary keyword — and the H1 carries the editorial load.</p>\n<p><strong>On mobile.</strong> Browser tabs truncate at ~25 characters. Front-load the most distinctive word.</p>\n<p><strong>On desktop.</strong> Titles up to ~60 characters render in full in Google's SERP. Suffix style: <code>Title — Site name</code>.</p>",
-              "phases": [
-                "seo",
-                "content",
-                "frontend"
-              ],
-              "source_name": "Nielsen Norman Group",
-              "source_suffix": "",
-              "source_title": "Page titles",
-              "source_url": "https://www.nngroup.com/articles/page-titles/",
-              "source_date": "2024-09-12",
-              "last_updated": "2024-09-12",
-              "display_order": 2
-            },
-            {
-              "slug": "one-h1",
-              "one_liner": "One H1 per page. Google has tolerated multiple H1s since 2019; that doesn't make it a good idea.",
-              "body": "<p>Assistive tech still uses the document outline to convey \"what page is this\". Multiple H1s flatten it. The HTML5 outline algorithm that promised <code>&lt;section&gt;</code>-scoped H1s never shipped in browsers or screen readers — write H1–H6 manually.</p>",
-              "phases": [
-                "frontend",
-                "seo"
-              ],
-              "source_name": "web.dev",
-              "source_suffix": "",
-              "source_title": "Document outline and headings",
-              "source_url": "https://web.dev/learn/html/headings-and-sections",
-              "source_date": "2026-05-04",
-              "last_updated": "2026-05-12",
-              "display_order": 3
-            },
-            {
-              "slug": "length",
-              "one_liner": "Aim for ~50–70 characters in the H1. Long enough to be specific, short enough to scan.",
-              "body": "<p>Headings that exceed two display lines stop being scannable. Use <code>text-wrap: balance;</code> to keep the break point graceful at narrow widths.</p>\n<pre><code>h1 { text-wrap: balance; }</code></pre>",
-              "phases": [
-                "content",
-                "design"
-              ],
-              "source_name": "Nielsen Norman Group",
-              "source_suffix": "",
-              "source_title": "Microcontent: a few words go a long way",
-              "source_url": "https://www.nngroup.com/articles/microcontent-how-to-write-headlines-page-titles-and-subject-lines/",
-              "source_date": "2024-09-12",
-              "last_updated": "2024-09-12",
-              "display_order": 4
-            },
-            {
-              "slug": "front-load",
-              "one_liner": "Front-load distinctive words. The reader's eye and the SERP both lose attention left-to-right.",
-              "body": "<p>Eye-tracking work going back to the early F-pattern studies shows that the first two words of a heading do disproportionate work. \"An introduction to variable fonts\" buries the lede; \"Variable fonts: an introduction\" earns the click.</p>",
-              "phases": [
-                "ux",
-                "content",
-                "seo"
-              ],
-              "source_name": "Nielsen Norman Group",
-              "source_suffix": "",
-              "source_title": "F-shaped pattern of reading",
-              "source_url": "https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/",
-              "source_date": "2024-09-12",
-              "last_updated": "2024-09-12",
-              "display_order": 5
             }
           ]
         },
@@ -878,63 +714,6 @@
       "group_order": 5,
       "considerations": [
         {
-          "slug": "meta-description",
-          "title": "Meta description",
-          "intro": "",
-          "display_order": 1,
-          "sub_considerations": [
-            {
-              "slug": "length",
-              "one_liner": "Aim for ~150–160 characters. Google routinely truncates beyond ~158, and longer values get rewritten.",
-              "body": "<p>Google selects the snippet at query time. If your description is too long, irrelevant to the query, or absent, Google generates one from the page body. Write it for humans; the bot will use it if it matches intent.</p>\n<p><strong>On mobile.</strong> Snippets render shorter — front-load the first 60 characters with the answer.</p>\n<p><strong>On desktop.</strong> You get the full ~158 characters in most layouts.</p>",
-              "phases": [
-                "seo",
-                "content"
-              ],
-              "source_name": "Google Search Central",
-              "source_suffix": "",
-              "source_title": "Create good meta descriptions",
-              "source_url": "https://developers.google.com/search/docs/appearance/snippet",
-              "source_date": "2024-08-14",
-              "last_updated": "2024-08-14",
-              "display_order": 1
-            },
-            {
-              "slug": "no-keywords",
-              "one_liner": "Don't stuff keywords into the meta description. It's a snippet, not a ranking factor.",
-              "body": "<p>Meta descriptions haven't been a ranking signal since 2009. Their only job is to win the click. Write them like the back of a book.</p>",
-              "phases": [
-                "seo",
-                "maintenance"
-              ],
-              "source_name": "Moz",
-              "source_suffix": "",
-              "source_title": "Meta description",
-              "source_url": "https://moz.com/learn/seo/meta-description",
-              "source_date": "2024-01-15",
-              "last_updated": "2024-01-15",
-              "display_order": 2
-            },
-            {
-              "slug": "uniqueness",
-              "one_liner": "Every page gets a unique description. Duplicates trigger \"duplicate meta description\" warnings in Search Console.",
-              "body": "<p>If you can't write a unique one, omit it and let Google generate. An auto-generated snippet from real body content beats a templated one that lies.</p>",
-              "phases": [
-                "seo",
-                "content",
-                "maintenance"
-              ],
-              "source_name": "Google Search Console docs",
-              "source_suffix": "",
-              "source_title": "Search Console: meta descriptions",
-              "source_url": "https://support.google.com/webmasters/",
-              "source_date": "2025-06-30",
-              "last_updated": "2025-06-30",
-              "display_order": 3
-            }
-          ]
-        },
-        {
           "slug": "structured-data",
           "title": "Structured data (Article schema)",
           "intro": "",
@@ -1149,6 +928,227 @@
               "source_date": "2024-08-19",
               "last_updated": "2024-08-19",
               "display_order": 2
+            }
+          ]
+        },
+        {
+          "slug": "url-structure",
+          "title": "URL structure",
+          "intro": "",
+          "display_order": 3,
+          "sub_considerations": [
+            {
+              "slug": "kebab",
+              "one_liner": "Use lowercase kebab-case. Hyphens separate words; underscores do not.",
+              "body": "<p>Google's URL structure guide explicitly recommends hyphens over underscores for word boundaries. Underscores are treated as word-joiners; <code>type_inference</code> is one token, <code>type-inference</code> is two.</p>\n<p>Capitals work but introduce case-sensitivity surprises on some servers and in user expectations. Lowercase everything.</p>",
+              "phases": [
+                "seo",
+                "frontend"
+              ],
+              "source_name": "Google Search Central",
+              "source_suffix": "",
+              "source_title": "URL structure best practices",
+              "source_url": "https://developers.google.com/search/docs/crawling-indexing/url-structure",
+              "source_date": "2024-08-14",
+              "last_updated": "2024-08-14",
+              "display_order": 1
+            },
+            {
+              "slug": "no-dates",
+              "one_liner": "Keep dates out of the URL unless the article is genuinely time-bound (e.g. an annual report).",
+              "body": "<p>A URL like <code>/2021/05/typography-on-mobile/</code> ages the article by definition. When you update it in 2026, you either lie via the URL or break every existing link.</p>\n<p>Flat slugs (<code>/typography-on-mobile/</code>) are durable. Use <code>datePublished</code> and <code>dateModified</code> in structured data for the date facts.</p>",
+              "phases": [
+                "seo",
+                "strategy",
+                "maintenance"
+              ],
+              "source_name": "Moz",
+              "source_suffix": "",
+              "source_title": "URL best practices",
+              "source_url": "https://moz.com/learn/seo/url",
+              "source_date": "2024-01-15",
+              "last_updated": "2024-01-15",
+              "display_order": 2
+            },
+            {
+              "slug": "length",
+              "one_liner": "Keep slugs under ~60 characters; truncate the working title, don't extend it.",
+              "body": "<p>Long URLs get truncated in shared previews and look untrustworthy. Strip stop words (\"a\", \"the\", \"and\", \"of\") from the slug; the title element can keep them.</p>\n<p>If you can drop a word from the slug and a reader who pasted only the URL still understands the topic, drop it.</p>",
+              "phases": [
+                "seo",
+                "content"
+              ],
+              "source_name": "Google Search Central",
+              "source_suffix": "",
+              "source_title": "URL structure best practices",
+              "source_url": "https://developers.google.com/search/docs/crawling-indexing/url-structure",
+              "source_date": "2024-08-14",
+              "last_updated": "2024-08-14",
+              "display_order": 3
+            },
+            {
+              "slug": "redirects",
+              "one_liner": "When you change a slug, ship a 301 from the old URL. Always. No exceptions.",
+              "body": "<p>A 301 transfers PageRank, signals permanence to crawlers, and preserves backlinks. 302s don't — they say \"we'll be back\". Use 302 only for genuine temporary redirects (A/B tests, geo-routing).</p>\n<p>Keep a redirect map under version control. Stale redirects pile up; review once a year.</p>\n<pre><code>RewriteEngine On\nRedirect 301 /old-slug /new-slug</code></pre>",
+              "phases": [
+                "seo",
+                "backend",
+                "maintenance"
+              ],
+              "source_name": "MDN",
+              "source_suffix": "",
+              "source_title": "HTTP redirections",
+              "source_url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections",
+              "source_date": "2025-03-04",
+              "last_updated": "2025-03-04",
+              "display_order": 4
+            }
+          ]
+        },
+        {
+          "slug": "page-title-h1",
+          "title": "Page title & H1",
+          "intro": "",
+          "display_order": 4,
+          "sub_considerations": [
+            {
+              "slug": "wcag-246",
+              "one_liner": "WCAG 2.4.6 requires headings and labels to describe topic or purpose.",
+              "body": "<p>SC 2.4.6 (AA) is the rule against clever, opaque headings. Screen reader users navigate by heading; cute titles that hide the topic (\"Down the rabbit hole\") force a full read just to know what the page is.</p>\n<p>Article H1: state the subject. Reserve cleverness for the lead.</p>",
+              "phases": [
+                "ux",
+                "frontend"
+              ],
+              "source_name": "W3C / WCAG 2.2",
+              "source_suffix": "SC 2.4.6",
+              "source_title": "WCAG 2.2 SC 2.4.6 Headings and Labels",
+              "source_url": "https://www.w3.org/WAI/WCAG22/Understanding/headings-and-labels.html",
+              "source_date": "2023-09-21",
+              "last_updated": "2023-09-21",
+              "display_order": 1
+            },
+            {
+              "slug": "match",
+              "one_liner": "Match the H1 to the <code>&lt;title&gt;</code> element unless SEO demands a longer title.",
+              "body": "<p>The on-page H1 and the document <code>&lt;title&gt;</code> are usually the same. When they diverge, the title carries the search-engine load — site name suffix, secondary keyword — and the H1 carries the editorial load.</p>\n<p><strong>On mobile.</strong> Browser tabs truncate at ~25 characters. Front-load the most distinctive word.</p>\n<p><strong>On desktop.</strong> Titles up to ~60 characters render in full in Google's SERP. Suffix style: <code>Title — Site name</code>.</p>",
+              "phases": [
+                "seo",
+                "content",
+                "frontend"
+              ],
+              "source_name": "Nielsen Norman Group",
+              "source_suffix": "",
+              "source_title": "Page titles",
+              "source_url": "https://www.nngroup.com/articles/page-titles/",
+              "source_date": "2024-09-12",
+              "last_updated": "2024-09-12",
+              "display_order": 2
+            },
+            {
+              "slug": "one-h1",
+              "one_liner": "One H1 per page. Google has tolerated multiple H1s since 2019; that doesn't make it a good idea.",
+              "body": "<p>Assistive tech still uses the document outline to convey \"what page is this\". Multiple H1s flatten it. The HTML5 outline algorithm that promised <code>&lt;section&gt;</code>-scoped H1s never shipped in browsers or screen readers — write H1–H6 manually.</p>",
+              "phases": [
+                "frontend",
+                "seo"
+              ],
+              "source_name": "web.dev",
+              "source_suffix": "",
+              "source_title": "Document outline and headings",
+              "source_url": "https://web.dev/learn/html/headings-and-sections",
+              "source_date": "2026-05-04",
+              "last_updated": "2026-05-12",
+              "display_order": 3
+            },
+            {
+              "slug": "length",
+              "one_liner": "Aim for ~50–70 characters in the H1. Long enough to be specific, short enough to scan.",
+              "body": "<p>Headings that exceed two display lines stop being scannable. Use <code>text-wrap: balance;</code> to keep the break point graceful at narrow widths.</p>\n<pre><code>h1 { text-wrap: balance; }</code></pre>",
+              "phases": [
+                "content",
+                "design"
+              ],
+              "source_name": "Nielsen Norman Group",
+              "source_suffix": "",
+              "source_title": "Microcontent: a few words go a long way",
+              "source_url": "https://www.nngroup.com/articles/microcontent-how-to-write-headlines-page-titles-and-subject-lines/",
+              "source_date": "2024-09-12",
+              "last_updated": "2024-09-12",
+              "display_order": 4
+            },
+            {
+              "slug": "front-load",
+              "one_liner": "Front-load distinctive words. The reader's eye and the SERP both lose attention left-to-right.",
+              "body": "<p>Eye-tracking work going back to the early F-pattern studies shows that the first two words of a heading do disproportionate work. \"An introduction to variable fonts\" buries the lede; \"Variable fonts: an introduction\" earns the click.</p>",
+              "phases": [
+                "ux",
+                "content",
+                "seo"
+              ],
+              "source_name": "Nielsen Norman Group",
+              "source_suffix": "",
+              "source_title": "F-shaped pattern of reading",
+              "source_url": "https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/",
+              "source_date": "2024-09-12",
+              "last_updated": "2024-09-12",
+              "display_order": 5
+            }
+          ]
+        },
+        {
+          "slug": "meta-description",
+          "title": "Meta description",
+          "intro": "",
+          "display_order": 5,
+          "sub_considerations": [
+            {
+              "slug": "length",
+              "one_liner": "Aim for ~150–160 characters. Google routinely truncates beyond ~158, and longer values get rewritten.",
+              "body": "<p>Google selects the snippet at query time. If your description is too long, irrelevant to the query, or absent, Google generates one from the page body. Write it for humans; the bot will use it if it matches intent.</p>\n<p><strong>On mobile.</strong> Snippets render shorter — front-load the first 60 characters with the answer.</p>\n<p><strong>On desktop.</strong> You get the full ~158 characters in most layouts.</p>",
+              "phases": [
+                "seo",
+                "content"
+              ],
+              "source_name": "Google Search Central",
+              "source_suffix": "",
+              "source_title": "Create good meta descriptions",
+              "source_url": "https://developers.google.com/search/docs/appearance/snippet",
+              "source_date": "2024-08-14",
+              "last_updated": "2024-08-14",
+              "display_order": 1
+            },
+            {
+              "slug": "no-keywords",
+              "one_liner": "Don't stuff keywords into the meta description. It's a snippet, not a ranking factor.",
+              "body": "<p>Meta descriptions haven't been a ranking signal since 2009. Their only job is to win the click. Write them like the back of a book.</p>",
+              "phases": [
+                "seo",
+                "maintenance"
+              ],
+              "source_name": "Moz",
+              "source_suffix": "",
+              "source_title": "Meta description",
+              "source_url": "https://moz.com/learn/seo/meta-description",
+              "source_date": "2024-01-15",
+              "last_updated": "2024-01-15",
+              "display_order": 2
+            },
+            {
+              "slug": "uniqueness",
+              "one_liner": "Every page gets a unique description. Duplicates trigger \"duplicate meta description\" warnings in Search Console.",
+              "body": "<p>If you can't write a unique one, omit it and let Google generate. An auto-generated snippet from real body content beats a templated one that lies.</p>",
+              "phases": [
+                "seo",
+                "content",
+                "maintenance"
+              ],
+              "source_name": "Google Search Console docs",
+              "source_suffix": "",
+              "source_title": "Search Console: meta descriptions",
+              "source_url": "https://support.google.com/webmasters/",
+              "source_date": "2025-06-30",
+              "last_updated": "2025-06-30",
+              "display_order": 3
             }
           ]
         }

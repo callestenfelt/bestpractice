@@ -1098,6 +1098,28 @@ PAGE_TYPE_CATEGORIES: list[tuple[str, str, str, list[str]]] = [
      ["error-page", "404-page", "cookie-page", "legal-page"]),
     ("authenticated", "Behind authentication", "Pages users only see after signing in. Session handling, identity surfaces, and privacy considerations weigh heaviest here.",
      ["dashboard-page", "profile-page", "auth-page"]),
+    # Feature-presence category: pages with a primary form interaction
+    # (sign-up, sign-in, checkout, contact, account settings). Pure
+    # "page has a search input" surfaces don't qualify — has-form is for
+    # multi-field forms with validation + submit semantics.
+    ("has-form", "Has a primary form", "Pages whose central interaction is a multi-field form — sign in, checkout, contact, profile edit. Form structure, validation, autofill, and accessible labelling all live here.",
+     ["auth-page", "checkout-page", "contact-page", "profile-page"]),
+]
+
+
+# Category-owned considerations — virtual umbrellas attached to a category
+# rather than a single page_type. Surfaces via consideration_destinations
+# (dest_kind='category', dest_slug=<category>) on every page in the category.
+# parent_type stays 'page_type' (schema CHECK is enum-bound) and parent_slug
+# uses the namespaced sentinel 'category:<slug>' so the legacy
+# (parent_type, parent_slug, slug) UNIQUE survives.
+CATEGORY_SCAFFOLDS: list[dict] = [
+    {"category_slug": "has-form", "group_label": "Form fundamentals", "considerations": [
+        ("form-structure", "Form structure & fieldsets"),
+        ("form-validation", "Validation & error recovery"),
+        ("form-autofill", "Autofill & input modes"),
+        ("form-labels", "Field labels & accessibility"),
+    ]},
 ]
 
 
@@ -1377,6 +1399,53 @@ def seed_site_wide_scaffolds(conn: sqlite3.Connection) -> int:
     return added
 
 
+def seed_category_scaffolds(conn: sqlite3.Connection) -> int:
+    """Seed empty consideration containers attached to a page-type category.
+
+    Mirrors seed_site_wide_scaffolds — idempotent on the namespaced
+    (parent_type='page_type', parent_slug='category:<cat>', slug) key. Each
+    row also gets a consideration_destinations entry with dest_kind='category'
+    so the read view + approval picker surface it on every member page-type.
+    Returns number of rows added this run.
+    """
+    cur = conn.cursor()
+    now = now_iso()
+    added = 0
+    for spec in CATEGORY_SCAFFOLDS:
+        cat_slug = spec["category_slug"]
+        group_label = spec["group_label"]
+        group_slug = slugify(group_label)
+        parent_slug = f"category:{cat_slug}"
+        for order, (cons_slug, cons_title) in enumerate(spec["considerations"], start=1):
+            row = cur.execute(
+                """SELECT id FROM considerations
+                    WHERE parent_type='page_type' AND parent_slug=? AND slug=?""",
+                (parent_slug, cons_slug),
+            ).fetchone()
+            if row:
+                continue
+            cur.execute(
+                """INSERT INTO considerations
+                       (slug, parent_type, parent_slug, title, intro,
+                        group_label, group_slug, group_order, display_order,
+                        status, created_at, updated_at)
+                   VALUES (?, 'page_type', ?, ?, '',
+                           ?, ?, 7, ?,
+                           'approved', ?, ?)""",
+                (cons_slug, parent_slug, cons_title,
+                 group_label, group_slug, order, now, now),
+            )
+            cur.execute(
+                """INSERT OR IGNORE INTO consideration_destinations
+                       (consideration_id, dest_kind, dest_slug)
+                   VALUES (?, 'category', ?)""",
+                (cur.lastrowid, cat_slug),
+            )
+            added += 1
+    conn.commit()
+    return added
+
+
 def seed_scaffolds(conn: sqlite3.Connection) -> int:
     """Seed empty consideration containers from SCAFFOLDS for the 19 remaining
     page-types and the first-wave components. Same idempotency contract as
@@ -1556,6 +1625,9 @@ def main() -> None:
         print("seeding site-wide scaffolds...")
         sw_added = seed_site_wide_scaffolds(conn)
         print(f"  site-wide scaffolds added: {sw_added} (existing rows preserved)")
+        print("seeding category scaffolds...")
+        cs_added = seed_category_scaffolds(conn)
+        print(f"  category scaffolds added: {cs_added} (existing rows preserved)")
         print("seeding page-type & component scaffolds...")
         sc_added = seed_scaffolds(conn)
         print(f"  scaffolds added: {sc_added} (existing rows preserved)")

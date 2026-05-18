@@ -551,8 +551,8 @@ def _neighbors(ids: list[int], sub_id: int):
 
 def _dest_keys_for_cons(db: sqlite3.Connection, cons_ids: list[int]) -> dict[int, set[str]]:
     """For each cons id, the set of '{kind}:{slug}' destination keys it
-    surfaces under (page_type / component only — categories are no longer
-    pickable in the approval UI, so we don't expand them here)."""
+    surfaces under. Includes page_type, component, AND category — categories
+    are first-class destinations in the approval picker as of Session 17."""
     out: dict[int, set[str]] = {cid: set() for cid in cons_ids}
     if not cons_ids:
         return out
@@ -561,7 +561,7 @@ def _dest_keys_for_cons(db: sqlite3.Connection, cons_ids: list[int]) -> dict[int
         f"""SELECT consideration_id, dest_kind, dest_slug
               FROM consideration_destinations
              WHERE consideration_id IN ({ph})
-               AND dest_kind IN ('page_type', 'component')""",
+               AND dest_kind IN ('page_type', 'component', 'category')""",
         cons_ids,
     ).fetchall():
         out.setdefault(r["consideration_id"], set()).add(
@@ -583,7 +583,7 @@ def _cons_by_parent(db: sqlite3.Connection):
              JOIN consideration_destinations d ON d.consideration_id = c.id
             WHERE c.status='approved'
               AND c.slug != 'ingest-inbox'
-              AND d.dest_kind IN ('page_type', 'component')
+              AND d.dest_kind IN ('page_type', 'component', 'category')
             ORDER BY d.dest_kind, d.dest_slug,
                      c.group_order, c.display_order, c.id"""
     ).fetchall()
@@ -812,11 +812,22 @@ def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
     can reuse the same shape without re-running the full GET handler."""
     queue_ids = _pending_queue_ids(db)
     prev_id, next_id, pos_index, pos_total = _neighbors(queue_ids, sub["id"])
-    page_types_pal = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
-        "SELECT slug, label FROM page_types ORDER BY display_order"
-    ).fetchall()]
+    page_types_pal_all = [
+        {"slug": r["slug"], "label": r["label"]}
+        for r in db.execute(
+            "SELECT slug, label FROM page_types ORDER BY display_order"
+        ).fetchall()
+    ]
+    # Split site-wide out of the page_types list. It deserves its own
+    # section in the approval UI because it's the "applies to every page"
+    # placement and otherwise gets buried in the alphabetical column.
+    site_wide_pal = next((p for p in page_types_pal_all if p["slug"] == "site-wide"), None)
+    page_types_pal = [p for p in page_types_pal_all if p["slug"] != "site-wide"]
     components_pal = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
         "SELECT slug, label FROM components ORDER BY display_order"
+    ).fetchall()]
+    categories_pal = [{"slug": r["slug"], "label": r["label"]} for r in db.execute(
+        "SELECT slug, label FROM page_type_categories ORDER BY display_order"
     ).fetchall()]
     phases = db.execute(
         "SELECT slug, label FROM phases ORDER BY display_order"
@@ -832,7 +843,12 @@ def _queue_item_context(db: sqlite3.Connection, sub: dict, error: str = ""):
         "next_id": next_id,
         "pos_index": pos_index,
         "pos_total": pos_total,
-        "dest_palette": {"page_types": page_types_pal, "components": components_pal},
+        "dest_palette": {
+            "site_wide": site_wide_pal,
+            "categories": categories_pal,
+            "page_types": page_types_pal,
+            "components": components_pal,
+        },
         "cons_by_dest_key": cons_by_dest_key,
         "phases": phases,
         "error": error,
@@ -1050,20 +1066,39 @@ def admin_considerations_new():
     title = (request.form.get("title") or "").strip()
     group_label = (request.form.get("group_label") or "").strip()
 
-    if parent_type not in ("page_type", "component"):
+    if parent_type not in ("page_type", "component", "category"):
         return jsonify({"ok": False, "error": "Bad parent_type."}), 400
     if not title:
         return jsonify({"ok": False, "error": "Title required."}), 400
-    table = "page_types" if parent_type == "page_type" else "components"
-    if not db.execute(f"SELECT 1 FROM {table} WHERE slug = ?", (parent_slug,)).fetchone():
-        return jsonify({"ok": False, "error": "Unknown parent."}), 400
+    # Categories use a namespaced sentinel parent_slug ('category:<cat>')
+    # because the considerations schema CHECK pins parent_type to
+    # ('page_type','component'). The destination row carries the real
+    # category kind+slug; this row-level value is just for the legacy
+    # (parent_type, parent_slug, slug) UNIQUE.
+    if parent_type == "category":
+        if not db.execute(
+            "SELECT 1 FROM page_type_categories WHERE slug = ?", (parent_slug,)
+        ).fetchone():
+            return jsonify({"ok": False, "error": "Unknown category."}), 400
+        row_parent_type = "page_type"
+        row_parent_slug = f"category:{parent_slug}"
+        dest_kind = "category"
+        dest_slug = parent_slug
+    else:
+        table = "page_types" if parent_type == "page_type" else "components"
+        if not db.execute(f"SELECT 1 FROM {table} WHERE slug = ?", (parent_slug,)).fetchone():
+            return jsonify({"ok": False, "error": "Unknown parent."}), 400
+        row_parent_type = parent_type
+        row_parent_slug = parent_slug
+        dest_kind = parent_type
+        dest_slug = parent_slug
 
     base_slug = _slugify(title)
     slug = base_slug
     n = 2
     while db.execute(
         "SELECT 1 FROM considerations WHERE parent_type=? AND parent_slug=? AND slug=?",
-        (parent_type, parent_slug, slug),
+        (row_parent_type, row_parent_slug, slug),
     ).fetchone():
         slug = f"{base_slug}-{n}"
         n += 1
@@ -1074,14 +1109,14 @@ def admin_considerations_new():
                   COALESCE(MAX(display_order), 0) AS do_
              FROM considerations
             WHERE parent_type=? AND parent_slug=? AND group_slug=?""",
-        (parent_type, parent_slug, group_slug),
+        (row_parent_type, row_parent_slug, group_slug),
     ).fetchone()
     # If a group with this slug already exists, reuse its group_order;
     # otherwise this is a new group, append after the current max.
     existing = db.execute(
         """SELECT group_order FROM considerations
             WHERE parent_type=? AND parent_slug=? AND group_slug=? LIMIT 1""",
-        (parent_type, parent_slug, group_slug),
+        (row_parent_type, row_parent_slug, group_slug),
     ).fetchone()
     if existing:
         group_order = existing["group_order"]
@@ -1090,7 +1125,7 @@ def admin_considerations_new():
             """SELECT COALESCE(MAX(group_order), 0) AS go
                  FROM considerations
                 WHERE parent_type=? AND parent_slug=?""",
-            (parent_type, parent_slug),
+            (row_parent_type, row_parent_slug),
         ).fetchone()["go"]
         group_order = max_go + 1
     display_order = grp_row["do_"] + 1
@@ -1101,14 +1136,14 @@ def admin_considerations_new():
                (slug, parent_type, parent_slug, title, intro, group_label, group_slug,
                 group_order, display_order, status, created_at, updated_at)
            VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, 'approved', ?, ?)""",
-        (slug, parent_type, parent_slug, title[:200], group_label,
+        (slug, row_parent_type, row_parent_slug, title[:200], group_label,
          group_slug, group_order, display_order, now, now),
     )
     new_id = cur.lastrowid
     db.execute(
         """INSERT OR IGNORE INTO consideration_destinations
                (consideration_id, dest_kind, dest_slug) VALUES (?, ?, ?)""",
-        (new_id, parent_type, parent_slug),
+        (new_id, dest_kind, dest_slug),
     )
     db.commit()
     label = f"{group_label} → {title}" if group_label else title

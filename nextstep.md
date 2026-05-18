@@ -1757,6 +1757,152 @@ Remaining deferred items (now without "cron + daily SQLite backup"):
   skips on content-hash match; a real diff would flag *changes* in
   upstream specs.
 
+## Session 17 — reusable placements + feature-presence scoring (2026-05-18, local only)
+
+The editor flagged: "many groups approved on the article-page (Page
+title & H1, URL structure, …) apply to most content pages and list
+pages too, but the approval UI surfaces them as page-type-specific."
+The kebab-case URL rule literally couldn't be placed elsewhere because
+no "URL structure" group existed on the other pages — and the inline
+"+ new consideration here" path is bad ergonomics across 15 pages.
+
+Underneath the complaint, three separate gaps:
+1. Some "page-specific" considerations were always universal (URL,
+   title, meta description) and should have been site-wide from the
+   start.
+2. Some shared-but-not-universal rules (form validation, autofill,
+   accessible labels) want a *category* placement, not a list of 4-5
+   page-types. The DB already supports `dest_kind='category'` and the
+   read view already JOINs through `page_type_in_category` — the
+   approval UI and the Groq prompt just ignored both.
+3. Groq's placement reasoning was feature-blind. It picked from the
+   catalog without ever asking "does this rule apply to anything with
+   a URL? a title? a form?" — so universal rules over-fitted to
+   single page-types.
+
+### Done
+- [x] **`scripts/migrate_universal_to_sitewide.py`** — one-shot
+      idempotent migration. Moves cons `url-structure` (id 3),
+      `page-title-h1` (id 5), `meta-description` (id 14) from
+      `(page_type, article-page)` to `(page_type, site-wide)`,
+      including swapping the `consideration_destinations` row. Dry-run
+      is the default; `--apply` commits. `sub_consideration_placements`
+      rows are keyed on consideration_id so they ride along with no
+      explicit work. Re-running is a no-op.
+- [x] **`fixtures/article_page.json` rewrite.** Same three cons
+      relocated into the existing `group_slug='site-wide'` group so a
+      fresh `init_db.py` rebuild lands them in the right home. The
+      fixture loader (`init_db.py:1481`) already auto-routes that
+      group to `parent_slug='site-wide'`.
+- [x] **`has-form` category + 4 form-fundamental cons.** Added to
+      `PAGE_TYPE_CATEGORIES` (members: auth, checkout, contact, profile)
+      and seeded via a new `CATEGORY_SCAFFOLDS` list + the new
+      `seed_category_scaffolds()` helper in `init_db.py`. Slugs:
+      `form-structure`, `form-validation`, `form-autofill`,
+      `form-labels`. Each row is anchored on
+      `(parent_type='page_type', parent_slug='category:has-form')` —
+      sentinel parent_slug because the schema CHECK pins parent_type
+      to `('page_type','component')`; the real destination kind lives
+      in `consideration_destinations(dest_kind='category')`.
+- [x] **Approval UI surfaces site-wide + categories.** Four sections
+      in `templates/admin/queue_item.html`: "Site-wide (every page)",
+      "Page categories", "Page types", "Components". `app.py`:
+      `_cons_by_parent` now includes `dest_kind='category'` rows;
+      `_dest_keys_for_cons` likewise tracks category placements so
+      editing an approved sub correctly pre-checks its category
+      destination; `_queue_item_context` enriches the palette dict;
+      `POST /admin/considerations/new` accepts `parent_type='category'`
+      and writes a `consideration_destinations(dest_kind='category')`
+      row, with the consideration row itself getting the
+      `'category:<slug>'` sentinel parent.
+- [x] **Groq feature-presence prompt + tagged catalog.** Each catalog
+      entry is now prefixed with `[SITE-WIDE]`, `[CAT:<slug>]`, or the
+      parent label so the model sees destination class at a glance. A
+      category cheat-sheet (slug + label + member page-types) is
+      appended to every user message. The system prompt's
+      `"placements"` section was rewritten around a three-step
+      reason-about-scope flow (universal → [SITE-WIDE], categorical →
+      [CAT:*], specific → page-type/component) with explicit
+      forbidden patterns ("never enumerate page-types for URL/title/
+      heading rules").
+
+### Smoke-test results
+Re-scored four representative pending items against the new prompt:
+- #339 "WCAG 2.4.2: page titles required" → cons 5
+  ([SITE-WIDE] Page title & H1). ✓
+- #459 "Use fieldset to group related form inputs" → cons 474
+  ([CAT:has-form] Form structure & fieldsets). ✓
+- #95 "Optimize website performance" → no placements (model played
+  it safe; the [SITE-WIDE] Performance cons is a good target but the
+  model didn't reach for it. Likely a wording tweak on either the
+  cons title or the prompt's universal examples is enough.)
+- #441 "OWASP security misconfiguration" → no placements (same
+  pattern as #95). Both are improvements over the prior "lands on
+  article-page Behind the scenes" failure mode but the new prompt
+  is still under-reaching on generic "Performance"/"Security"
+  framings.
+
+### Files changed
+- `init_db.py` — `PAGE_TYPE_CATEGORIES` gets `has-form`;
+  `CATEGORY_SCAFFOLDS` list; `seed_category_scaffolds()`; wired into
+  `main()`.
+- `fixtures/article_page.json` — universal cons relocated to the
+  site-wide group.
+- `scripts/migrate_universal_to_sitewide.py` — new, ASCII-only logs
+  (Windows console is cp1252).
+- `app.py` — `_cons_by_parent`, `_dest_keys_for_cons`,
+  `_queue_item_context`, `admin_considerations_new`.
+- `templates/admin/queue_item.html` — four destination sections.
+- `score.py` — `fetch_consideration_catalog` rewrite;
+  `fetch_category_summary` new; `build_user_prompt` takes categories;
+  system prompt rewrite.
+- `CLAUDE.md` — Session 17 paragraph.
+
+### Prod deploy
+Push to `main`, then on the VPS:
+```
+python3 init_db.py
+python3 scripts/migrate_universal_to_sitewide.py --apply
+# optional: re-route the existing pending queue against the new catalog
+python3 score.py --rescore
+```
+No schema migrations beyond rows added to existing tables.
+
+### Decisions worth noting
+- **Sentinel `parent_slug='category:<slug>'` over a schema CHECK
+  relax.** SQLite ALTER doesn't modify CHECK; relaxing it means a
+  full table rebuild (CREATE NEW + INSERT SELECT + DROP + RENAME +
+  recreate indexes). The sentinel solves the same problem in one
+  string and keeps the legacy `(parent_type, parent_slug, slug)`
+  UNIQUE working. The authoritative destination lives in
+  `consideration_destinations`, not the legacy columns, so this
+  doesn't bend the public read path.
+- **`has-form` only this round, not has-listing / has-rich-media /
+  has-primary-cta.** The plan considered all four but the editor
+  only has concrete pain on universal rules right now. Adding
+  three more categories preemptively would just clutter the
+  approval picker until they have rows to land on. Easy to add
+  one at a time as need surfaces.
+- **Don't touch already-approved subs.** The Groq rescore writes
+  only to `status='pending'` rows. An editor's manual placement
+  decisions on approved subs are sticky. If the editor wants to
+  relocate an approved sub to a new site-wide/category home, the
+  edit-in-place link from Session 15 is the path.
+
+### Next-session pointer
+Same list as Session 16, plus possible follow-ups from this session:
+- **Tune the universal-prompt for #95/#441-class items.** Either
+  rename `sw-performance` / `sw-security` to be less generic
+  ("Performance budget & Core Web Vitals", "Security headers &
+  hardening") OR add a couple of in-prompt examples so the model
+  reaches for them more readily.
+- **Add a "inherits N from categories" chip** on each page-type's
+  approval-UI summary so the editor knows why a page's
+  consideration list looks shorter than expected.
+- **More feature-presence categories** (`has-listing`, `has-rich-media`,
+  `has-primary-cta`) — purely demand-driven; add when an item
+  obviously wants one.
+
 Prod deploy: GHA rsync deposits the script + unit files but the
 systemd install is a one-time manual step (see above). Verify with
 `systemctl list-timers bestpractice-backup.timer` after install.

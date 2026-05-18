@@ -135,6 +135,12 @@
         </div>
       {% endmacro %}
 
+      {% if dest_palette.site_wide %}
+        {{ dest_group('page_type', 'Site-wide (every page)', [dest_palette.site_wide]) }}
+      {% endif %}
+      {% if dest_palette.categories %}
+        {{ dest_group('category',  'Page categories',        dest_palette.categories) }}
+      {% endif %}
       {{ dest_group('page_type', 'Page types', dest_palette.page_types) }}
       {{ dest_group('component', 'Components', dest_palette.components) }}
     </aside>

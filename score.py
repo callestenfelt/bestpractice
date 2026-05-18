@@ -94,14 +94,32 @@ For each item, return a JSON object with EXACTLY these fields:
   measurement, maintenance, legal
 
 - "placements": array of 0-4 consideration ids from the list provided in
-  the user message. Each id is one destination (page-type or component)
-  where this item belongs. Most items have 1-3 placements; reach for 4
-  only when the guidance clearly applies broadly. Prefer few strong fits
-  over many weak ones — empty list is better than forcing bad fits.
-  Don't default to site-wide; prefer specific page-types/components when
-  the guidance applies there directly. A cross-cutting topic (a11y,
-  security, performance, content) often deserves a site-wide placement
-  PLUS one specific page-type/component where it has a focused angle.
+  the user message. REASON ABOUT SCOPE BEFORE PICKING IDS:
+    1. What page feature does this guidance apply to? (URL, page title,
+       headings, form, header, primary CTA, transactional flow, content
+       body, list/index, structured data, performance, …)
+    2. Is that feature universal (every page), categorical (a subset of
+       pages share the feature), or specific (one page-type/component)?
+    3. Pick from the catalog accordingly:
+       - Universal → the [SITE-WIDE] consideration. NEVER enumerate
+         page-types for guidance that obviously applies everywhere. If
+         the rule is about URLs, page titles, meta descriptions,
+         heading hierarchy, Core Web Vitals, security, privacy,
+         accessibility, performance, measurement, or internationalization,
+         it belongs on the matching [SITE-WIDE] consideration. Listing
+         five page-types here is wrong.
+       - Categorical → the [CAT:<slug>] consideration. The cheat-sheet
+         at the bottom of this message lists each category's members.
+         Form-validation guidance belongs on [CAT:has-form], not on
+         auth-page + checkout-page + contact-page.
+       - Specific → the page-type or component consideration. Reserve
+         these for guidance whose angle is tied to that surface
+         (e.g. "Article H1 should match the byline angle" → article-page;
+         "Cookie banner accept/decline parity" → cookie-banner component).
+  Cap at 4. Most items want 1-2; reach for 3-4 only when the guidance
+  genuinely needs both a universal/categorical placement AND a specific
+  one (e.g. a form rule that has a special twist for checkout). Empty
+  list is fine — better than a forced fit.
 
 - "one_liner": rewritten one-line summary, ≤ 120 characters, terse,
   no marketing language, no emoji. Make it scannable and specific.
@@ -136,34 +154,101 @@ def fetch_pending(conn: sqlite3.Connection, limit: int | None, rescore: bool = F
 
 def fetch_consideration_catalog(conn: sqlite3.Connection) -> tuple[list[dict], set[int]]:
     """Returns ([{id, label}], {valid_ids}). Skips the ingest-inbox row;
-    items shouldn't be routed back to it."""
-    rows = conn.execute(
-        """SELECT c.id, c.title, c.parent_type, c.parent_slug, c.group_label,
-                  COALESCE(pt.label, cmp.label) AS parent_label
+    items shouldn't be routed back to it.
+
+    Label encoding tags each cons with its destination class so Groq can
+    reason about scope:
+      [SITE-WIDE]    — applies to every page (URL hygiene, page titles, etc.)
+      [CAT:<slug>]   — applies to every page in the category (e.g. has-form)
+      <Parent Label> — a specific page-type or component
+    A cons with multiple destinations gets the most-fanned-out prefix.
+    """
+    cons_rows = conn.execute(
+        """SELECT c.id, c.title, c.group_label
              FROM considerations c
-        LEFT JOIN page_types pt ON c.parent_type='page_type' AND pt.slug=c.parent_slug
-        LEFT JOIN components cmp ON c.parent_type='component' AND cmp.slug=c.parent_slug
             WHERE c.status='approved' AND c.slug != 'ingest-inbox'
-            ORDER BY c.parent_type, c.parent_slug, c.group_order, c.display_order"""
+            ORDER BY c.group_order, c.display_order, c.id"""
     ).fetchall()
+    if not cons_rows:
+        return [], set()
+
+    page_type_labels = {r["slug"]: r["label"] for r in conn.execute(
+        "SELECT slug, label FROM page_types"
+    ).fetchall()}
+    component_labels = {r["slug"]: r["label"] for r in conn.execute(
+        "SELECT slug, label FROM components"
+    ).fetchall()}
+
+    dests_by_cons: dict[int, list[tuple[str, str]]] = {}
+    for r in conn.execute(
+        "SELECT consideration_id, dest_kind, dest_slug FROM consideration_destinations"
+    ).fetchall():
+        dests_by_cons.setdefault(r["consideration_id"], []).append(
+            (r["dest_kind"], r["dest_slug"])
+        )
+
+    def prefix(cons_id: int) -> str:
+        dests = dests_by_cons.get(cons_id, [])
+        if any(k == "page_type" and s == "site-wide" for k, s in dests):
+            return "[SITE-WIDE]"
+        cat_dests = [s for k, s in dests if k == "category"]
+        if cat_dests:
+            return f"[CAT:{cat_dests[0]}]"
+        for k, s in dests:
+            if k == "page_type":
+                return page_type_labels.get(s, s)
+            if k == "component":
+                return component_labels.get(s, s) + " (component)"
+        return "[ORPHAN]"
+
     catalog = []
     valid_ids = set()
-    for r in rows:
-        label = f"{r['parent_label']} → {r['title']}"
+    for r in cons_rows:
+        pref = prefix(r["id"])
         if r["group_label"]:
-            label = f"{r['parent_label']} · {r['group_label']} → {r['title']}"
+            label = f"{pref} · {r['group_label']} → {r['title']}"
+        else:
+            label = f"{pref} → {r['title']}"
         catalog.append({"id": r["id"], "label": label})
         valid_ids.add(r["id"])
     return catalog, valid_ids
+
+
+def fetch_category_summary(conn: sqlite3.Connection) -> list[dict]:
+    """Returns [{slug, label, members}] for the feature-presence cheat-sheet
+    appended to each scoring prompt. Members is a comma-joined string of
+    member page-type slugs."""
+    cats = conn.execute(
+        """SELECT slug, label, definition FROM page_type_categories
+            ORDER BY display_order"""
+    ).fetchall()
+    members: dict[str, list[str]] = {}
+    for r in conn.execute(
+        """SELECT category_slug, page_type_slug FROM page_type_in_category"""
+    ).fetchall():
+        members.setdefault(r["category_slug"], []).append(r["page_type_slug"])
+    return [
+        {
+            "slug": c["slug"],
+            "label": c["label"],
+            "definition": c["definition"],
+            "members": ", ".join(sorted(members.get(c["slug"], []))),
+        }
+        for c in cats
+    ]
 
 
 def fetch_valid_phases(conn: sqlite3.Connection) -> set[str]:
     return {r[0] for r in conn.execute("SELECT slug FROM phases").fetchall()}
 
 
-def build_user_prompt(item: sqlite3.Row, catalog: list[dict]) -> str:
+def build_user_prompt(item: sqlite3.Row, catalog: list[dict], categories: list[dict]) -> str:
     catalog_lines = "\n".join(f"  [{c['id']}] {c['label']}" for c in catalog)
     body_text = (item["body"] or "").replace("<p>", "").replace("</p>", "")
+    cat_lines = "\n".join(
+        f"  [CAT:{c['slug']}] {c['label']} — members: {c['members']}"
+        for c in categories
+    )
     return f"""ITEM:
 Source: {item['source_name']}
 Source title: {item['source_title']}
@@ -173,10 +258,16 @@ Published: {item['source_date']}
 Source text:
 {body_text}
 
-AVAILABLE CONSIDERATIONS (pick the id for the best fit, or null):
+AVAILABLE CONSIDERATIONS (id → destination):
 {catalog_lines}
 
-Return one JSON object as specified."""
+CATEGORY CHEAT-SHEET (which page-types belong to each [CAT:*]):
+{cat_lines}
+
+Pick placements by reasoning about page-feature scope first (see system
+prompt). Use [SITE-WIDE] for universal rules, [CAT:*] for categorical
+ones, specific page-types/components only when the angle is tied to
+that surface. Return one JSON object as specified."""
 
 
 def groq_call(messages: list[dict]) -> tuple[dict | None, str | None]:
@@ -342,6 +433,7 @@ def main() -> int:
 
     pending = fetch_pending(conn, args.limit, rescore=args.rescore)
     catalog, valid_cons_ids = fetch_consideration_catalog(conn)
+    categories = fetch_category_summary(conn)
     valid_phases = fetch_valid_phases(conn)
 
     print(f"db: {DB_PATH}")
@@ -356,7 +448,7 @@ def main() -> int:
     errors = 0
 
     for idx, item in enumerate(pending, start=1):
-        prompt = build_user_prompt(item, catalog)
+        prompt = build_user_prompt(item, catalog, categories)
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
