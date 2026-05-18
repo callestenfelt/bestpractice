@@ -1,6 +1,6 @@
 # bestpractice — next steps
 
-Last updated: 2026-05-18 (Session 20 — `all-pages` category + universals render inline)
+Last updated: 2026-05-18 (Session 20b — approval UI relabel)
 
 This file is the running session log. Format follows the convention used in
 `E:\_dev\bubble` (`docs/nextstep.md`): numbered sessions with narrative +
@@ -2278,3 +2278,63 @@ Net-new from this session:
   currently need to find a page-type that renders it and
   click through. Worth adding a route or a "by all-pages"
   list view to `/admin/considerations` if/when that lands.
+
+---
+
+## Session 20b — approval UI relabel ✅ shipped 2026-05-18 (`main`)
+
+Follow-up to Session 20. Editor opened a pending Schema.org
+WebPage item, ticked "Site-wide" in the approval form, and
+expected to see SEO in the dropdown — but the dropdown only
+listed the 9 umbrellas. SEO had moved to the All-pages
+category in Session 20, and the form's labels didn't make the
+new split obvious: both "Site-wide (every page)" and "All
+pages" (under Page categories) say "every page" in spirit but
+mean different things.
+
+### Done
+- [x] **Rename "Site-wide (every page)" → "Cross-cutting umbrellas"**
+      in the approval form's destination palette.
+- [x] **Add one-line hint under each destination heading.**
+      Umbrellas hint: "Renders in a trailing bucket at the bottom
+      of every page. Use for rules without a single per-page home —
+      performance, security, privacy, accessibility umbrellas, etc."
+      Categories hint: "Renders inline in the page's natural group.
+      'All pages' covers every page-type (URL, page title, meta
+      description, SEO). Other categories target subsets."
+- [x] **`dest_group` Jinja macro takes an optional `hint` arg.**
+      Emits a `<p class="qitem__hint qitem__dest-hint">` under the
+      `<h4>` heading. Page-types and Components blocks pass no
+      hint and render unchanged.
+- [x] **New CSS rule `.qitem__dest-hint`** in
+      `static/styles/components.css` — `margin: 0 0 6px 0; line-height: 1.4;`
+      so the hint sits cleanly between heading and items.
+
+### Files changed
+- `templates/admin/queue_item.html` — macro signature, two
+  hint strings on the umbrellas + categories calls.
+- `static/styles/components.css` — `.qitem__dest-hint` rule.
+- `CLAUDE.md`, `nextstep.md` — this session note.
+
+### How to test
+Open `/admin/queue/<any-pending-id>` after deploy. The
+right-hand Placements sidebar shows:
+1. "CROSS-CUTTING UMBRELLAS" with hint, single
+   Site-wide destination checkbox whose dropdown lists the 9
+   umbrella cons (Contrast, Keyboard, Security, Privacy,
+   Performance, Error handling, Measurement, i18n, Accessible
+   content).
+2. "PAGE CATEGORIES" with hint, "All pages" first (display
+   order = 1) whose dropdown lists URL structure, Page title &
+   H1, Meta description, SEO. Other categories (`has-form`,
+   `content-rich`, etc.) below.
+3. "PAGE TYPES" (no hint) and "COMPONENTS" (no hint) as before.
+
+### Prod deploy
+Pure template + CSS — GHA rsync only, no init_db / migration
+needed. No Groq spend.
+
+### Next-session pointer
+Nothing net-new; carry-overs from Session 20 still apply
+(ingest-inbox leak on every page render; no admin view for
+`category:all-pages` cons).
